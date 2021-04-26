@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "inet.h": "c",
+        "if_packet.h": "c",
+        "btp.h": "c",
+        "helpers.h": "c",
+        "if.h": "c",
+        "ioctl.h": "c",
+        "socket.h": "c",
+        "limits.h": "c",
+        "ip.h": "c"
+    }
+}
