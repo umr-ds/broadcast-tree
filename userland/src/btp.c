@@ -2,6 +2,14 @@
 
 #include "btp.h"
 #include "helpers.h"
+#include "tree.h"
+
+bool connected = false;
+pending_connection_t pending_connection = { 0x0 };
+parent_t parent = { 0x0 };
+self_t self = { 0x0 };
+
+extern int sockfd;
 
 void init_tree_construction(int sockfd, mac_addr_t laddr, struct sockaddr_ll l_sockaddr) {
     btp_frame_t discovery_frame = {
@@ -42,6 +50,44 @@ void parse_header(btp_frame_t *in_frame, uint8_t *recv_frame) {
     pprint_frame(in_frame);
 }
 
+uint32_t compute_tx_pwr() {
+    // TODO: get SNR, RX power
+    return 4;
+}
+
+bool should_switch(btp_header_t header, uint32_t new_parent_tx) {
+    if (parent.own_pwr < parent.high_pwr) return false;
+    uint32_t gain = parent.own_pwr - parent.snd_high_pwr;
+
+    if (new_parent_tx < header.high_pwr) return true;
+    uint32_t loss = new_parent_tx - header.high_pwr;
+
+    return gain > loss;
+}
+
+void establish_connection(mac_addr_t potential_parent_addr, uint32_t new_parent_tx) {
+    pending_connection.pending = true;
+    memcpy(pending_connection.parent, potential_parent_addr, 6);
+    pending_connection.tx_pwr = new_parent_tx;
+
+    // TODO: Resume here with sending child_request frame
+}
+
+void handle_discovery(btp_frame_t *in_frame) {
+    // TODO: handle updates from parent
+
+    if (pending_connection.pending) return;
+
+    mac_addr_t potential_parent_addr;
+    memcpy(potential_parent_addr, in_frame->eth.ether_shost, 6);
+
+    uint32_t new_parent_tx = compute_tx_pwr();
+
+    if (connected && !should_switch(in_frame->btp, new_parent_tx)) return;
+
+    establish_connection(potential_parent_addr, new_parent_tx);
+}
+
 void handle_packet(uint8_t *recv_frame) {
     btp_frame_t in_frame = { 0x0 };
     parse_header(&in_frame, recv_frame);
@@ -49,6 +95,7 @@ void handle_packet(uint8_t *recv_frame) {
     switch(in_frame.btp.frame_type) {
         case discovery:
             printf("Received Discovery\n");
+            handle_discovery(&in_frame);
             break;
 
         default:

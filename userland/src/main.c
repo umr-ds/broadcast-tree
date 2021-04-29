@@ -17,9 +17,10 @@ struct sockaddr_ll L_SOCKADDR = {
     .sll_halen = 0,
     .sll_addr = { 0 }
 };
+int sockfd = 0;
 
 int init_sock() {
-	int sockfd;
+    int sockfd;
     int ioctl_stat;
 
 	struct ifreq if_idx;
@@ -31,12 +32,6 @@ int init_sock() {
 	}
 
     memcpy(if_idx.ifr_name, IF_NAME, IFNAMSIZ - 1);
-    ioctl_stat = ioctl(sockfd, SIOCGIFINDEX, &if_idx);
-	if (ioctl_stat < 0) {
-        perror("Could not get the interface's index");
-    }
-  
-    memcpy(if_mac.ifr_name, IF_NAME, IFNAMSIZ - 1);
     ioctl_stat = ioctl(sockfd, SIOCGIFHWADDR, &if_mac);
 	if (ioctl_stat < 0) {
         perror("Could not get MAC address");
