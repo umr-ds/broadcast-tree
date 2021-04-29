@@ -4,9 +4,12 @@
 #include "btp.h"
 
 /**
- * Very simple hash function
+ * Generate a (hopefully unique) id for a new braodcast tree.
+ * This is done running the source node's mac address together with the current timestamp through a very simple hashing function.
+ * 
+ * @param laddr: MAC address of the source node of the new tree
  */
-uint32_t gen_tree_id(unsigned char *str);
+uint32_t gen_tree_id(mac_addr_t laddr);
 
 /**
  * 
