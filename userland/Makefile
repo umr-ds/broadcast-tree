@@ -1,25 +1,30 @@
 TARGET = btp
-# LIBS = -lm
 CC = gcc
 INCLUDES = -Iinclude/
-CFLAGS = -g -Wall -Wpedantic -Werror $(INCLUDES)
+CFLAGS = -g -Wall -Wextra -Wpedantic -Werror $(INCLUDES)
+
+SOURCEDIR = src
+BUILDDIR = build
+INCLUDEDIR = include
+
+SOURCES = $(wildcard $(SOURCEDIR)/*.c)
+OBJECTS = $(patsubst $(SOURCEDIR)/%.c,$(BUILDDIR)/%.o,$(SOURCES))
+HEADERS = $(wildcard $(INCLUDEDIR)/*.h)
 
 .PHONY: default all clean
 
 default: $(TARGET)
 all: default
 
-OBJECTS = $(patsubst %.c, %.o, $(wildcard src/*.c))
-HEADERS = $(wildcard include/*.h)
-
-%.o: %.c $(HEADERS)
+$(OBJECTS): $(BUILDDIR)/%.o: $(SOURCEDIR)/%.c
+	@mkdir -p $(BUILDDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 .PRECIOUS: $(TARGET) $(OBJECTS)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
+	$(CC) $(OBJECTS) -Wall -o $@
 
 clean:
-	-rm -f *.o
+	-rm -rf $(BUILDDIR)
 	-rm -f $(TARGET)
