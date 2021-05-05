@@ -3,37 +3,78 @@
 #include <netinet/ip.h>
 #include <errno.h>
 #include <poll.h>
+#include <argp.h>
 
 #include "btp.h"
 
-const char* IF_NAME = "enp34s0";
+struct arguments {
+    char *interface;
+};
+
+const char *argp_program_version = "btp 0.1";
+const char *argp_program_bug_address = "<sterz@mathematik.uni-marburg.de>";
+static char doc[] = "BTP -- Broadcast Tree Protocol";
+static char args_doc[] = "INTERFACE";
+static struct argp_option options[] = {
+        { 0 }
+};
+
 mac_addr_t LADDR = { 0x0 };
 struct sockaddr_ll L_SOCKADDR = {
-    .sll_family = 0,
-    .sll_protocol = 0,
-    .sll_ifindex = 0,
-    .sll_hatype = 0,
-    .sll_pkttype = 0,
-    .sll_halen = 0,
-    .sll_addr = { 0 }
+        .sll_family = 0,
+        .sll_protocol = 0,
+        .sll_ifindex = 0,
+        .sll_hatype = 0,
+        .sll_pkttype = 0,
+        .sll_halen = 0,
+        .sll_addr = { 0 }
 };
 int sockfd = 0;
 
-int init_sock() {
+static error_t parse_opt (int key, char *arg, struct argp_state *state) {
+    struct arguments *arguments = state->input;
+
+    switch (key) {
+        case ARGP_KEY_ARG:
+            if (state->arg_num >= 1) argp_usage (state);
+
+            arguments->interface = arg;
+
+            break;
+
+        case ARGP_KEY_END:
+            if (state->arg_num < 1) argp_usage (state);
+            break;
+
+        default:
+            return ARGP_ERR_UNKNOWN;
+    }
+    return 0;
+}
+
+static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
+
+int init_sock(char *if_name) {
     int sockfd;
     int ioctl_stat;
 
-	struct ifreq if_idx;
-	struct ifreq if_mac;
+    struct ifreq if_idx;
+    struct ifreq if_mac;
 
-	if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(BTP_ETHERTYPE))) == -1) {
-	    perror("Could not create socket");
+    if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(BTP_ETHERTYPE))) == -1) {
+        perror("Could not create socket");
         return sockfd;
-	}
+    }
 
-    memcpy(if_idx.ifr_name, IF_NAME, IFNAMSIZ - 1);
+    memcpy(if_idx.ifr_name, if_name, IFNAMSIZ - 1);
+    ioctl_stat = ioctl(sockfd, SIOCGIFINDEX, &if_idx);
+    if (ioctl_stat < 0) {
+        perror("Could not get the interface's index");
+    }
+
+    memcpy(if_mac.ifr_name, if_name, IFNAMSIZ - 1);
     ioctl_stat = ioctl(sockfd, SIOCGIFHWADDR, &if_mac);
-	if (ioctl_stat < 0) {
+    if (ioctl_stat < 0) {
         perror("Could not get MAC address");
         return ioctl_stat;
     }
@@ -89,18 +130,15 @@ int event_loop(int sockfd) {
     }
 }
 
-int main () {
+int main (int argc, char **argv) {
+    int sockfd;
 
-    /*
-    if argv[1] == "source":
-        construct_tree
-    else:
-        LISTEN
-    */
+    struct arguments arguments = {
+            .interface = ""
+    };
+    argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
-	int sockfd;
-
-    sockfd = init_sock();
+    sockfd = init_sock(arguments.interface);
     if (sockfd < 0){
         exit(sockfd);
     }
