@@ -4,10 +4,12 @@
 #include <errno.h>
 #include <poll.h>
 #include <argp.h>
+#include <stdbool.h>
 
 #include "btp.h"
 
 struct arguments {
+    bool source;
     char *interface;
 };
 
@@ -16,6 +18,7 @@ const char *argp_program_bug_address = "<sterz@mathematik.uni-marburg.de>";
 static char doc[] = "BTP -- Broadcast Tree Protocol";
 static char args_doc[] = "INTERFACE";
 static struct argp_option options[] = {
+        {"source",      's', 0,      0, "This node is a BTP source", 0 },
         { 0 }
 };
 
@@ -35,6 +38,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
     struct arguments *arguments = state->input;
 
     switch (key) {
+        case 's':
+            arguments->source = true;
+            break;
         case ARGP_KEY_ARG:
             if (state->arg_num >= 1) argp_usage (state);
 
@@ -134,9 +140,15 @@ int main (int argc, char **argv) {
     int sockfd;
 
     struct arguments arguments = {
+            .source = false,
             .interface = ""
     };
     argp_parse (&argp, argc, argv, 0, 0, &arguments);
+
+    if (!arguments.source) {
+        printf("Client mode not implemented yet.\n");
+        return -1;
+    }
 
     sockfd = init_sock(arguments.interface);
     if (sockfd < 0){
