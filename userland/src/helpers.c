@@ -1,6 +1,14 @@
+#include <time.h>
+
 #include "helpers.h"
 
-uint32_t gen_tree_id(unsigned char *str) {
+uint32_t gen_tree_id(mac_addr_t laddr) {
+    unsigned char *str = malloc(10);
+
+    time_t cur_time = time(NULL);
+    memcpy(str, laddr, 6);
+    memcpy(str + 6, &cur_time, 4);
+
     uint32_t hash = 5381;
     int c;
 

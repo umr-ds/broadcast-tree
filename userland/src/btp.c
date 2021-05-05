@@ -1,5 +1,3 @@
-#include <time.h>
-
 #include "btp.h"
 #include "helpers.h"
 #include "tree.h"
@@ -30,11 +28,7 @@ void init_tree_construction(int sockfd, mac_addr_t laddr, struct sockaddr_ll l_s
         }
     };
 
-    unsigned char buf[10];
-    time_t cur_time = time(NULL);
-    memcpy(buf, laddr, 6);
-    memcpy(buf + 6, &cur_time, 4);
-    discovery_frame.btp.tree_id = gen_tree_id(buf);
+    discovery_frame.btp.tree_id = gen_tree_id(laddr);
 
     memcpy(discovery_frame.eth.ether_shost, laddr, 6);
 
