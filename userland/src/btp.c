@@ -3,9 +3,9 @@
 #include "tree.h"
 
 bool connected = false;
-pending_connection_t pending_connection = { 0x0 };
-parent_t parent = { 0x0 };
-self_t self = { 0x0 };
+pending_connection_t pending_connection = {0x0};
+parent_t parent = {0x0};
+self_t self = {0x0};
 
 extern struct sockaddr_ll L_SOCKADDR;
 extern int sockfd;
@@ -15,7 +15,7 @@ ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
     // TODO
     return -1;
 #else
-    ssize_t sent_bytes = sendto(sockfd, data, data_len, 0, (struct sockaddr*)&L_SOCKADDR, sizeof(struct sockaddr_ll));
+    ssize_t sent_bytes = sendto(sockfd, data, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
     if (sent_bytes < 0) {
         perror("Could not send data");
     }
@@ -31,30 +31,12 @@ void init_self(mac_addr_t laddr, uint32_t max_pwr, bool is_source) {
 }
 
 void init_tree_construction() {
-    btp_frame_t discovery_frame = {
-        .eth = {
-            .ether_dhost = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
-            .ether_shost = { 0 },
-            .ether_type = htons(BTP_ETHERTYPE)
-        },
-        .btp = {
-            .recv_err = 0,
-            .game_fin = 0,
-            .mutex = 0,
-            .unused = 0,
-            .frame_type = discovery,
-            .tree_id = 0,
-            .seq_num = 0,
-            .snd_high_pwr = 0
-        }
-    };
+    btp_frame_t discovery_frame = { 0x0 };
+    mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, gen_tree_id(self.laddr), 0, 0);
 
-    discovery_frame.btp.tree_id = gen_tree_id(self.laddr);
-
-    memcpy(discovery_frame.eth.ether_shost, self.laddr, 6);
-
-	/* Send packet */
-    send_btp_frame((uint8_t *)&discovery_frame, sizeof(btp_frame_t));
+    /* Send packet */
+    send_btp_frame((uint8_t *) &discovery_frame, sizeof(btp_frame_t));
 }
 
 void parse_header(btp_frame_t *in_frame, uint8_t *recv_frame) {
@@ -94,28 +76,10 @@ void establish_connection(mac_addr_t potential_parent_addr, uint32_t new_parent_
     memcpy(pending_connection.parent, potential_parent_addr, 6);
     pending_connection.tx_pwr = new_parent_tx;
 
-    btp_frame_t child_request_frame = {
-            .eth = {
-                    .ether_dhost = { 0 },
-                    .ether_shost = { 0 },
-                    .ether_type = htons(BTP_ETHERTYPE)
-            },
-            .btp = {
-                    .recv_err = 0,
-                    .game_fin = 0,
-                    .mutex = 0,
-                    .unused = 0,
-                    .frame_type = child_request,
-                    .tree_id = tree_id,
-                    .seq_num = 0,
-                    .snd_high_pwr = 0
-            }
-    };
+    btp_frame_t child_request_frame = { 0x0 };
+    build_frame(&child_request_frame, potential_parent_addr, 0, 0, 0, child_request, tree_id, 0, 0);
 
-    memcpy(child_request_frame.eth.ether_shost, self.laddr, 6);
-    memcpy(child_request_frame.eth.ether_dhost, potential_parent_addr, 6);
-
-    send_btp_frame((uint8_t *)&child_request_frame, sizeof(btp_frame_t));
+    send_btp_frame((uint8_t *) &child_request_frame, sizeof(btp_frame_t));
 }
 
 void handle_discovery(btp_frame_t *in_frame) {
@@ -136,21 +100,53 @@ void handle_discovery(btp_frame_t *in_frame) {
     establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.tree_id);
 }
 
+void accept_child(btp_frame_t *in_frame, uint32_t child_tx_pwr) {
+    // TODO: add child to list of children
+    self.num_children++;
+    if (child_tx_pwr > self.high_pwr) {
+        self.snd_high_pwr = self.high_pwr;
+        self.high_pwr = child_tx_pwr;
+    } else if (child_tx_pwr > self.snd_high_pwr) {
+        self.snd_high_pwr = child_tx_pwr;
+    }
+
+    btp_frame_t child_confirm_frame = { 0x0 };
+    build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, 0, child_confirm, in_frame->btp.tree_id, 0, 0);
+
+    send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(btp_frame_t));
+}
+
+void handle_child_request(btp_frame_t *in_frame) {
+    if (already_child(in_frame->eth.ether_shost)) return;
+
+    uint32_t potential_child_send_pwr = compute_tx_pwr();
+    if (!connected
+        || self.num_children >= BREADTH
+        || potential_child_send_pwr > self.max_pwr
+       ) {
+        // TODO: Reject
+        printf("Should reject. Not implemented, yet.\n");
+    } else {
+        accept_child(in_frame, potential_child_send_pwr);
+    }
+}
+
 void handle_child_confirm() {
 
 }
 
 void handle_packet(uint8_t *recv_frame) {
-    btp_frame_t in_frame = { 0x0 };
+    btp_frame_t in_frame = {0x0};
     parse_header(&in_frame, recv_frame);
 
-    switch(in_frame.btp.frame_type) {
+    switch (in_frame.btp.frame_type) {
         case discovery:
             printf("Received Discovery\n");
             handle_discovery(&in_frame);
             break;
         case child_request:
-            printf("Received Child Request. Not implemented, yet.\n");
+            printf("Received Child Request.\n");
+            handle_child_request(&in_frame);
             break;
         case child_confirm:
             printf("Received Child Confirm. Not implemented, yet.\n");

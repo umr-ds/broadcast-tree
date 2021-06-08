@@ -26,4 +26,10 @@ void print_mac(uint8_t * addr);
  */
 void pprint_frame(btp_frame_t *in_frame);
 
+bool already_child(mac_addr_t potential_child_addr);
+
+void build_frame(btp_frame_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t game_fin, uint8_t mutex,
+                 frame_t frame_type, uint32_t tree_id,
+                 uint16_t seq_num, uint32_t tx_pwr);
+
 #endif // __HELPERS_H__
