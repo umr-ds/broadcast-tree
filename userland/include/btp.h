@@ -35,15 +35,15 @@ typedef enum {
  */
 typedef struct {
     uint8_t recv_err:1; // flag set if the channel has been very noisy
-    uint8_t game_fin:1; // flag set if the node has alrady finished its game
-    uint8_t mutex:1; // flasg set if something-something mutex
+    uint8_t game_fin:1; // flag set if the node has already finished its game
+    uint8_t mutex:1; // flags set if something-something mutex
     uint8_t unused:2;
     frame_t frame_type:3; // see frame_t enum
-    uint32_t tree_id; // uinque ID for each broadcast-tree
+    uint32_t tree_id; // unique ID for each broadcast-tree
     uint16_t seq_num; // sequence-number to distinguish frames (different from sequence number for payloads)
     uint32_t tx_pwr; // power with which this frame has been sent
     mac_addr_t parent_addr; // address of the parent of the sending node
-    uint32_t high_pwr; // power whith which the sending node sends data frames
+    uint32_t high_pwr; // power with which the sending node sends data frames
     uint32_t snd_high_pwr; // power with which the sending node WOULD send data frames, if its furthest child were to disconnect
 } btp_header_t;
 
@@ -77,12 +77,8 @@ typedef struct {
 
 /**
  * Initialises the construction of a new broadcast-tree
- * 
- * @param sockfd: File-descriptor of a raw ethernet socket which will be used for sending & receiving
- * @param laddr: MAC-address of the interface which contains our raw socket
- * @param l_sockaddr: No friggin clue...
  */
-void init_tree_construction(int sockfd, mac_addr_t laddr, struct sockaddr_ll l_sockaddr);
+void init_tree_construction();
 
 /**
  * Parse the common btp-header
@@ -98,6 +94,8 @@ void parse_header(btp_frame_t *in_frame, uint8_t *recv_frame);
  * @param racv_frame: Pointer to a raw bitstream as it was read from raw socket
  */
 void handle_packet(uint8_t *recv_frame);
+
+void init_self(mac_addr_t laddr, uint32_t max_pwr);
 
 
 #endif // __BTP_H__

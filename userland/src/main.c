@@ -5,6 +5,7 @@
 #include <poll.h>
 #include <argp.h>
 #include <stdbool.h>
+#include <tree.h>
 
 #include "btp.h"
 
@@ -22,7 +23,6 @@ static struct argp_option options[] = {
         { 0 }
 };
 
-mac_addr_t LADDR = { 0x0 };
 struct sockaddr_ll L_SOCKADDR = {
         .sll_family = 0,
         .sll_protocol = 0,
@@ -32,7 +32,6 @@ struct sockaddr_ll L_SOCKADDR = {
         .sll_halen = 0,
         .sll_addr = { 0 }
 };
-int sockfd = 0;
 
 static error_t parse_opt (int key, char *arg, struct argp_state *state) {
     struct arguments *arguments = state->input;
@@ -60,8 +59,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
 
 static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
 
+int sockfd = 0;
 int init_sock(char *if_name) {
-    int sockfd;
     int ioctl_stat;
 
     struct ifreq if_idx;
@@ -88,12 +87,12 @@ int init_sock(char *if_name) {
     L_SOCKADDR.sll_ifindex = if_idx.ifr_ifindex;
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
-    memcpy(LADDR, &if_mac.ifr_hwaddr.sa_data, 6);
+    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0);
 
     return sockfd;
 }
 
-int event_loop(int sockfd) {
+int event_loop() {
     ssize_t read_bytes;
     uint8_t recv_frame[MTU];
     memset(recv_frame, 0, MTU * sizeof (uint8_t));
@@ -137,7 +136,6 @@ int event_loop(int sockfd) {
 }
 
 int main (int argc, char **argv) {
-    int sockfd;
 
     struct arguments arguments = {
             .source = false,
@@ -155,7 +153,7 @@ int main (int argc, char **argv) {
         exit(sockfd);
     }
 
-    init_tree_construction(sockfd, LADDR, L_SOCKADDR);
+    init_tree_construction();
 
-    return event_loop(sockfd);
+    return event_loop();
 }

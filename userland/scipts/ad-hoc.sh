@@ -17,9 +17,10 @@ IPADDR=$2
 
 set -x
 
-ifconfig "$IFNAME" down && ifconfig "$IFNAME" up
+ifconfig "$IFNAME" down
 iwconfig "$IFNAME" key "s:12345"
 iwconfig "$IFNAME" mode ad-hoc
+ifconfig "$IFNAME" up
 iwconfig "$IFNAME" essid btp
 iwconfig "$IFNAME" channel 1
 iwconfig "$IFNAME" ap c0:ff:ee:c0:ff:ee
