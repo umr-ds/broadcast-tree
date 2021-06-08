@@ -120,7 +120,7 @@ void handle_child_request(btp_frame_t *in_frame) {
     if (already_child(in_frame->eth.ether_shost)) return;
 
     uint32_t potential_child_send_pwr = compute_tx_pwr();
-    if (!connected
+    if ((!connected && !self.is_source)
         || self.num_children >= BREADTH
         || potential_child_send_pwr > self.max_pwr
        ) {
