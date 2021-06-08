@@ -205,3 +205,4 @@ Temporary Items
 # End of https://www.toptal.com/developers/gitignore/api/c,macos,linux,visualstudiocode,jetbrains+all
 
 btp
+*/.DS_Store
