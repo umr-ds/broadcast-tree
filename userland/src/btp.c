@@ -146,13 +146,13 @@ void handle_packet(uint8_t *recv_frame) {
             handle_discovery(&in_frame);
             break;
         case child_request:
-            printf("TODO");
+            printf("Received Child Request. Not implemented, yet.\n");
             break;
         case child_confirm:
-            printf("TODO");
+            printf("Received Child Confirm. Not implemented, yet.\n");
             break;
         case child_reject:
-            printf("TODO");
+            printf("Received Child Reject. Not implemented, yet.\n");
             break;
 
         default:

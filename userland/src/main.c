@@ -143,17 +143,15 @@ int main (int argc, char **argv) {
     };
     argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
-    if (!arguments.source) {
-        printf("Client mode not implemented yet.\n");
-        return -1;
-    }
 
     sockfd = init_sock(arguments.interface);
     if (sockfd < 0){
         exit(sockfd);
     }
 
-    init_tree_construction();
+    if (arguments.source) {
+        init_tree_construction();
+    }
 
     return event_loop();
 }
