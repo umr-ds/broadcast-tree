@@ -24,9 +24,10 @@ ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #endif
 }
 
-void init_self(mac_addr_t laddr, uint32_t max_pwr) {
+void init_self(mac_addr_t laddr, uint32_t max_pwr, bool is_source) {
     self.max_pwr = max_pwr;
     memcpy(self.laddr, laddr, 6);
+    self.is_source = is_source;
 }
 
 void init_tree_construction() {
@@ -118,6 +119,9 @@ void establish_connection(mac_addr_t potential_parent_addr, uint32_t new_parent_
 }
 
 void handle_discovery(btp_frame_t *in_frame) {
+    // if we are the tree's source, we don't want to connect to anyone
+    if (self.is_source) return;
+
     // TODO: handle updates from parent
 
     if (pending_connection.pending) return;

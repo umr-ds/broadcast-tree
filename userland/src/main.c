@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <poll.h>
 #include <argp.h>
-#include <stdbool.h>
 #include <tree.h>
 
 #include "btp.h"
@@ -60,7 +59,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
 static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
 
 int sockfd = 0;
-int init_sock(char *if_name) {
+int init_sock(char *if_name, bool is_source) {
     int ioctl_stat;
 
     struct ifreq if_idx;
@@ -87,7 +86,7 @@ int init_sock(char *if_name) {
     L_SOCKADDR.sll_ifindex = if_idx.ifr_ifindex;
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
-    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0);
+    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0, is_source);
 
     return sockfd;
 }
@@ -144,7 +143,7 @@ int main (int argc, char **argv) {
     argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
 
-    sockfd = init_sock(arguments.interface);
+    sockfd = init_sock(arguments.interface, arguments.source);
     if (sockfd < 0){
         exit(sockfd);
     }

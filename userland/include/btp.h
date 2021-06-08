@@ -7,6 +7,7 @@
 #include <linux/if_packet.h>
 #include <arpa/inet.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define MTU 1500
 #define BTP_HEADER_SIZE 25
@@ -95,7 +96,7 @@ void parse_header(btp_frame_t *in_frame, uint8_t *recv_frame);
  */
 void handle_packet(uint8_t *recv_frame);
 
-void init_self(mac_addr_t laddr, uint32_t max_pwr);
+void init_self(mac_addr_t laddr, uint32_t max_pwr, bool is_root);
 
 
 #endif // __BTP_H__

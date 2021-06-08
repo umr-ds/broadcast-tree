@@ -1,8 +1,6 @@
 #ifndef __TREE_H__
 #define __TREE_H__
 
-#include <stdbool.h>
-
 #include "btp.h"
 
 #define BREADTH 10
@@ -29,6 +27,7 @@ typedef struct {
  * Our own state
  */
 typedef struct {
+    bool is_source; // whether we are the rood of the broadcast tree
     child_t children[BREADTH]; // list of currently connected children
     uint32_t max_pwr; // maximum power at which we are able (or willing) to broadcast
     uint32_t high_pwr; // the power at which we currently broadcast data frames
