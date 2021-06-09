@@ -1,0 +1,10 @@
+FROM Base.img
+
+RUN bash
+RUN bash -c "
+    cd /nexmon/buildtools/isl-0.10
+    ./configure
+    make
+    make install
+    ln -s /usr/local/lib/libisl.so /usr/lib/arm-linux-gnueabihf/libisl.so.10
+"
