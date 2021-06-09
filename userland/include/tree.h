@@ -34,16 +34,9 @@ typedef struct {
     uint32_t high_pwr; // the power at which we currently broadcast data frames
     uint32_t snd_high_pwr; // the power at which we WOULD broadacst data frames, if our furthest child were to disconnect
     mac_addr_t laddr; // local mac address
-    mac_addr_t parent; // address of our currently connected parent
+    parent_t *parent; // currently connected parent
+    parent_t *pending_parent;
+    uint32_t tree_id; // the tree to which we belong
 } self_t;
-
-/**
- * Track state of a currently pending connection
- */
-typedef struct {
-    bool pending; // are we currently waiting for a response to a connection request?
-    mac_addr_t parent; // the parent to which we are attempting to connect
-    uint32_t tx_pwr; // power at which the parent has to broadcast to reach us (used later to update the parent's high_pwr)
-} pending_connection_t;
 
 #endif // __TREE_H__
