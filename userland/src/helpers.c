@@ -90,7 +90,6 @@ void pprint_frame(btp_frame_t *in_frame) {
     printf("    Mutex:                %hu\n", in_frame->btp.mutex);
     printf("    Frame Type:           %i\n", in_frame->btp.frame_type);
     printf("    Tree ID:              %u\n", in_frame->btp.tree_id);
-    printf("    Seq Num:              %hu\n", in_frame->btp.seq_num);
     printf("    TX Power:             %u\n", in_frame->btp.tx_pwr);
     printf("    Parent Addr:          ");
     print_mac(in_frame->btp.parent_addr);
@@ -101,15 +100,12 @@ void pprint_frame(btp_frame_t *in_frame) {
 }
 
 void build_frame(btp_frame_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t game_fin, uint8_t mutex,
-            frame_t frame_type, uint32_t tree_id,
-            uint16_t seq_num, uint32_t tx_pwr) {
-
+            frame_t frame_type, uint32_t tree_id, uint32_t tx_pwr) {
     out->btp.recv_err = recv_err;
     out->btp.game_fin = game_fin;
     out->btp.mutex = mutex;
     out->btp.frame_type = frame_type;
     out->btp.tree_id = tree_id;
-    out->btp.seq_num = seq_num;
     out->btp.tx_pwr = tx_pwr;
     out->btp.high_pwr = self.high_pwr;
     out->btp.snd_high_pwr = self.snd_high_pwr;

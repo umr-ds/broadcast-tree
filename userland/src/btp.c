@@ -33,7 +33,7 @@ void init_self(mac_addr_t laddr, uint32_t max_pwr, bool is_source) {
 void init_tree_construction() {
     btp_frame_t discovery_frame = { 0x0 };
     mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-    build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, gen_tree_id(self.laddr), 0, 0);
+    build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, gen_tree_id(self.laddr), 0);
 
     /* Send packet */
     send_btp_frame((uint8_t *) &discovery_frame, sizeof(btp_frame_t));
@@ -46,7 +46,7 @@ void parse_header(btp_frame_t *in_frame, uint8_t *recv_frame) {
 
 uint32_t compute_tx_pwr() {
     // TODO: get SNR, RX power
-    return 4;
+    return 0;
 }
 
 bool should_switch(btp_header_t header, uint32_t new_parent_tx) {
@@ -77,7 +77,7 @@ void establish_connection(mac_addr_t potential_parent_addr, uint32_t new_parent_
     pending_connection.tx_pwr = new_parent_tx;
 
     btp_frame_t child_request_frame = { 0x0 };
-    build_frame(&child_request_frame, potential_parent_addr, 0, 0, 0, child_request, tree_id, 0, 0);
+    build_frame(&child_request_frame, potential_parent_addr, 0, 0, 0, child_request, tree_id, 0);
 
     send_btp_frame((uint8_t *) &child_request_frame, sizeof(btp_frame_t));
 }
@@ -111,9 +111,20 @@ void accept_child(btp_frame_t *in_frame, uint32_t child_tx_pwr) {
     }
 
     btp_frame_t child_confirm_frame = { 0x0 };
-    build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, 0, child_confirm, in_frame->btp.tree_id, 0, 0);
+    build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, 0, child_confirm, in_frame->btp.tree_id, 0);
+
+    printf("Accepting child.\n");
 
     send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(btp_frame_t));
+}
+
+void reject_child(btp_frame_t *in_frame) {
+    btp_frame_t child_rejection_frame = { 0x0 };
+    build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, 0, child_reject, in_frame->btp.tree_id, 0);
+
+    printf("Rejecting child.\n");
+
+    send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(btp_frame_t));
 }
 
 void handle_child_request(btp_frame_t *in_frame) {
@@ -124,8 +135,7 @@ void handle_child_request(btp_frame_t *in_frame) {
         || self.num_children >= BREADTH
         || potential_child_send_pwr > self.max_pwr
        ) {
-        // TODO: Reject
-        printf("Should reject. Not implemented, yet.\n");
+        reject_child(in_frame);
     } else {
         accept_child(in_frame, potential_child_send_pwr);
     }

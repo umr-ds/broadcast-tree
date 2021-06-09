@@ -41,7 +41,6 @@ typedef struct {
     uint8_t unused:2;
     frame_t frame_type:3; // see frame_t enum
     uint32_t tree_id; // unique ID for each broadcast-tree
-    uint16_t seq_num; // sequence-number to distinguish frames (different from sequence number for payloads)
     uint32_t tx_pwr; // power with which this frame has been sent
     mac_addr_t parent_addr; // address of the parent of the sending node
     uint32_t high_pwr; // power with which the sending node sends data frames
