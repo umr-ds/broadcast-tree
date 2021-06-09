@@ -28,6 +28,7 @@ void init_self(mac_addr_t laddr, uint32_t max_pwr, bool is_source) {
     self.max_pwr = max_pwr;
     memcpy(self.laddr, laddr, 6);
     self.is_source = is_source;
+    self.children = hashmap_new();
 }
 
 void init_tree_construction() {
@@ -101,8 +102,12 @@ void handle_discovery(btp_frame_t *in_frame) {
 }
 
 void accept_child(btp_frame_t *in_frame, uint32_t child_tx_pwr) {
-    // TODO: add child to list of children
-    self.num_children++;
+    child_t *new_child = (child_t *) malloc(sizeof(child_t));
+    memcpy(new_child->addr, in_frame->eth.ether_shost, 6);
+    new_child->tx_pwr = child_tx_pwr;
+
+    hashmap_put(self.children, (char *)in_frame->eth.ether_shost, new_child);
+
     if (child_tx_pwr > self.high_pwr) {
         self.snd_high_pwr = self.high_pwr;
         self.high_pwr = child_tx_pwr;
@@ -132,7 +137,7 @@ void handle_child_request(btp_frame_t *in_frame) {
 
     uint32_t potential_child_send_pwr = compute_tx_pwr();
     if ((!connected && !self.is_source)
-        || self.num_children >= BREADTH
+        || hashmap_length(self.children) >= BREADTH
         || potential_child_send_pwr > self.max_pwr
        ) {
         reject_child(in_frame);

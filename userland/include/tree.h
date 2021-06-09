@@ -2,6 +2,7 @@
 #define __TREE_H__
 
 #include "btp.h"
+#include "hashmap.h"
 
 #define BREADTH 10
 
@@ -28,8 +29,7 @@ typedef struct {
  */
 typedef struct {
     bool is_source; // whether we are the rood of the broadcast tree
-    uint32_t num_children; // how many children are currently connected to us
-    child_t children[BREADTH]; // list of currently connected children
+    map_t children; // hashmap of currently connected children
     uint32_t max_pwr; // maximum power at which we are able (or willing) to broadcast
     uint32_t high_pwr; // the power at which we currently broadcast data frames
     uint32_t snd_high_pwr; // the power at which we WOULD broadacst data frames, if our furthest child were to disconnect

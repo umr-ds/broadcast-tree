@@ -6,12 +6,9 @@
 extern self_t self;
 
 bool already_child(mac_addr_t potential_child_addr) {
-    int i;
-    for (i = 0; i < BREADTH; i++) {
-        child_t child = self.children[i];
-        if (memcmp(child.addr, potential_child_addr, 6) == 0) {
-            return true;
-        }
+    child_t child = {0x0};
+    if (hashmap_get(self.children, (char *)potential_child_addr, (any_t*)&child) == MAP_OK) {
+        return true;
     }
 
     return false;
