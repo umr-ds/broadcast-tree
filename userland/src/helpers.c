@@ -106,7 +106,9 @@ void build_frame(btp_frame_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t g
     out->btp.tx_pwr = tx_pwr;
     out->btp.high_pwr = self.high_pwr;
     out->btp.snd_high_pwr = self.snd_high_pwr;
-    memcpy(out->btp.parent_addr, self.parent, 6);
+    if (self.parent) {
+        memcpy(out->btp.parent_addr, self.parent, 6);
+    }
 
     out->eth.ether_type = htons(BTP_ETHERTYPE);
     memcpy(out->eth.ether_dhost, daddr, 6);

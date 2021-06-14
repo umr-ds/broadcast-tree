@@ -34,6 +34,7 @@ void init_self(mac_addr_t laddr, uint32_t max_pwr, bool is_source) {
     memcpy(self.laddr, laddr, 6);
     self.is_source = is_source;
     self.children = hashmap_new();
+    self.parent = NULL;
 }
 
 void init_tree_construction() {
