@@ -7,11 +7,11 @@ self_t self = {0x0};
 extern struct sockaddr_ll L_SOCKADDR;
 extern int sockfd;
 
-bool is_connected(self_t self) {
+bool self_is_connected() {
     return self.parent;
 }
 
-bool is_pending(self_t self) {
+bool self_is_pending() {
     return self.pending_parent;
 }
 
@@ -100,14 +100,14 @@ void handle_discovery(btp_frame_t *in_frame) {
 
     // TODO: handle updates from parent
 
-    if (is_pending(self)) return;
+    if (self_is_pending()) return;
 
     mac_addr_t potential_parent_addr;
     memcpy(potential_parent_addr, in_frame->eth.ether_shost, 6);
 
     uint32_t new_parent_tx = compute_tx_pwr();
 
-    if (is_connected(self) && !should_switch(in_frame->btp, new_parent_tx)) return;
+    if (self_is_connected() && !should_switch(in_frame->btp, new_parent_tx)) return;
 
     establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.tree_id);
 }
@@ -147,7 +147,7 @@ void handle_child_request(btp_frame_t *in_frame) {
     if (already_child(in_frame->eth.ether_shost)) return;
 
     uint32_t potential_child_send_pwr = compute_tx_pwr();
-    if ((!is_connected(self) && !self.is_source)
+    if ((!self_is_connected() && !self.is_source)
         || hashmap_length(self.children) >= BREADTH
         || potential_child_send_pwr > self.max_pwr
        ) {
@@ -168,10 +168,10 @@ void disconnect_from_parent() {
 
 void handle_child_confirm(btp_frame_t *in_frame) {
     // We received a confirmation from a parent we never asked. Ignore.
-    if (is_pending(self) && memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
+    if (self_is_pending() && memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
 
     // If we are already connected, disconnect from the current par
-    if (is_connected(self)) disconnect_from_parent();
+    if (self_is_connected()) disconnect_from_parent();
 
     self.tree_id = in_frame->btp.tree_id;
 
