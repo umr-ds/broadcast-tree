@@ -1,7 +1,7 @@
 TARGET = btp
 CC = gcc
 INCLUDES = -Iinclude/
-CFLAGS = -g -Wall -Wextra -Wpedantic -Werror $(INCLUDES)
+CFLAGS = -g3 -Wall -Wextra -Wpedantic -Werror $(INCLUDES)
 
 SOURCEDIR = src
 BUILDDIR = build
