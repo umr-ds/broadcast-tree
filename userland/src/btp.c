@@ -30,11 +30,15 @@ ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 }
 
 void init_self(mac_addr_t laddr, uint32_t max_pwr, bool is_source) {
-    self.max_pwr = max_pwr;
-    memcpy(self.laddr, laddr, 6);
     self.is_source = is_source;
     self.children = hashmap_new();
+    self.max_pwr = max_pwr;
+    self.high_pwr = 0;
+    self.snd_high_pwr = 0;
+    memcpy(self.laddr, laddr, 6);
     self.parent = NULL;
+    self.pending_parent = NULL;
+    self.tree_id = 0;
 }
 
 void init_tree_construction() {
