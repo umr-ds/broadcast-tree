@@ -27,8 +27,5 @@ struct btp_frame {
 
 ## Installing the patch on a Raspberry Pi 3B running Raspbian with kernel version 4.4, 4.9, or 4.14
 1. Download and setup [nexmon](https://nexmon.org/) (commit 1ad6a827e92efa8f531594c85d6cdbc184fee3e8 or newer)
-    * follow the README on [nexmon](https://nexmon.org/), but:  
-        ***do not update the kernel above 4.14 (e.g. due to running `apt-get upgrade`)***  
-        ***install matching kernel-headers (e.g. by using [rpi-source](https://github.com/RPi-Distro/rpi-source) instead of using `apt-get install raspberrypi-kernel-headers`)***
 2. Copy this directory to `/home/pi/nexmon/patches/bcm43430a1/7_45_41_46/nexmon_btp`
 3. Change directory to `/home/pi/nexmon/patches/bcm43430a1/7_45_41_46/nexmon_btp` and run `sudo -E make install-firmware`
