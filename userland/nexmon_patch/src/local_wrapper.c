@@ -53,11 +53,13 @@
 #endif
 
 AT(CHIP_VER_BCM43430a1, FW_VER_ALL, 0x880b50)
+AT(CHIP_VER_BCM43455c0, FW_VER_ALL, 0x9BE0C)
 int
 local_memcmp(void *s1, void *s2, int n)
 RETURN_DUMMY
 
 AT(CHIP_VER_BCM43430a1, FW_VER_ALL, 0x81F410)
+AT(CHIP_VER_BCM43455c0, FW_VER_ALL, 0x9C30C)
 void *
 local_wlc_monitor(void *wlc, void * wrxh, void *p, int wlc_if)
 RETURN_DUMMY

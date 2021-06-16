@@ -66,5 +66,6 @@ wlc_ioctl_hook(struct wlc_info *wlc, int cmd, char *arg, int len, void *wlc_if)
 }
 
 __attribute__((at(0x4305c, "", CHIP_VER_BCM43430a1, FW_VER_7_45_41_46)))
+__attribute__((at(0x20E264, "", CHIP_VER_BCM43455c0, FW_VER_7_45_206)))
 GenericPatch4(wlc_ioctl_hook, wlc_ioctl_hook + 1);
 

@@ -64,6 +64,11 @@ struct ether_header {
 
 #define D11_PHY_HDR_LEN 6
 #define FCS_LENGTH 4
+#if NEXMON_CHIP == CHIP_VER_BCM43430a1
+#define RXOFF_EXTRA 0
+#else
+#define RXOFF_EXTRA 2
+#endif
 
 #define ETHER_TYPE_BTP 0x88df //35039
 

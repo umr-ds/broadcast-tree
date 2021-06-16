@@ -3,7 +3,11 @@ GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
 include ../version.mk
 include $(FW_PATH)/definitions.mk
 
+ifneq ($(findstring bcm43455c0,$(FW_PATH)), )
+LOCAL_SRCS=$(wildcard src/*.c) src/ucode_compressed.c
+else
 LOCAL_SRCS=$(wildcard src/*.c) src/ucode_compressed.c src/templateram.c
+endif
 COMMON_SRCS=$(wildcard $(NEXMON_ROOT)/patches/common/*.c)
 FW_SRCS=$(wildcard $(FW_PATH)/*.c)
 
@@ -24,7 +28,7 @@ CFLAGS= \
 	-DUCODESIZE=$(UCODESIZE) \
 	-DGIT_VERSION=\"$(GIT_VERSION)\" \
 	-DBUILD_NUMBER=\"$$(cat BUILD_NUMBER)\" \
-	-Wall -Werror -O2 -nostdlib -nostartfiles -ffreestanding -mthumb -march=$(NEXMON_ARCH) \
+	-Wall -Werror -Wno-unused-variable -O2 -nostdlib -nostartfiles -ffreestanding -mthumb -march=$(NEXMON_ARCH) \
 	-ffunction-sections -fdata-sections \
 	-I$(NEXMON_ROOT)/patches/include \
 	-Iinclude \
@@ -157,15 +161,15 @@ endif
 
 backup-firmware:
 ifeq ($(shell uname -m),$(filter $(shell uname -m), armv6l armv7l))
-	cp /lib/firmware/brcm/brcmfmac43430-sdio.bin brcmfmac43430-sdio.bin.orig
+	cp /lib/firmware/brcm/$(RAM_FILE) $(RAM_FILE).orig
 else
 	$(warning Warning: Cannot backup the original firmware on this arch.)
 endif
 
-install-firmware: brcmfmac43430-sdio.bin
+install-firmware: $(RAM_FILE)
 ifeq ($(shell uname -m),$(filter $(shell uname -m), armv6l armv7l))
-	@printf "\033[0;31m  COPYING\033[0m brcmfmac43430-sdio.bin => /lib/firmware/brcm/brcmfmac43430-sdio.bin\n"
-	$(Q)cp brcmfmac43430-sdio.bin /lib/firmware/brcm/brcmfmac43430-sdio.bin
+	@printf "\033[0;31m  COPYING\033[0m %s => /lib/firmware/brcm/%s\n" $< $<
+	$(Q)cp $< /lib/firmware/brcm/$<
 ifeq ($(shell lsmod | grep "^brcmfmac" | wc -l), 1)
 	@printf "\033[0;31m  UNLOADING\033[0m brcmfmac\n"
 	$(Q)rmmod brcmfmac
@@ -174,7 +178,7 @@ endif
 	@printf "\033[0;31m  RELOADING\033[0m brcmfmac\n"
 	$(Q)modprobe brcmfmac
 else
-	$(warning Warning: Cannot install firmware on this arch., bcm43430-sdio.bin needs to be copied manually into /lib/firmware/brcm/ on your RPI3)
+	$(warning Warning: Cannot install firmware on this arch., firmware file needs to be copied manually into /lib/firmware/brcm/ on your RPI)
 endif
 
 clean-firmware: FORCE

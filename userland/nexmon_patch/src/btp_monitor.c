@@ -49,17 +49,17 @@ struct ether_addr broadcastaddr = {.octet = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 /* hook call to wlc_recv in wlc_bmac_recv to pre-check ether_type and send as monitor frame to host if BTP */
 void wlc_recv_hook(struct wlc_info *wlc, struct sk_buff *p) {
     /* check packet length is at least d11header, phy header, management frame header and llc snap header */
-    if (p != 0 && p->len >= wlc->hwrxoff + D11_PHY_HDR_LEN + sizeof(struct dot11_management_header) + sizeof(struct dot11_llc_snap_header)) {
+    if (p != 0 && p->len >= wlc->hwrxoff + RXOFF_EXTRA + D11_PHY_HDR_LEN + sizeof(struct dot11_management_header) + sizeof(struct dot11_llc_snap_header)) {
         uint8 *wrxh = (uint8 *)(p->data);
         // TODO?: check type/subtype
-        struct dot11_management_header *mh = (struct dot11_management_header *)(wrxh + wlc->hwrxoff + D11_PHY_HDR_LEN);
-        struct dot11_llc_snap_header *llc = (struct dot11_llc_snap_header *)(wrxh + wlc->hwrxoff + D11_PHY_HDR_LEN + sizeof(struct dot11_management_header));
+        struct dot11_management_header *mh = (struct dot11_management_header *)(wrxh + wlc->hwrxoff + RXOFF_EXTRA + D11_PHY_HDR_LEN);
+        struct dot11_llc_snap_header *llc = (struct dot11_llc_snap_header *)(wrxh + wlc->hwrxoff + RXOFF_EXTRA + D11_PHY_HDR_LEN + sizeof(struct dot11_management_header));
         /* check ether_type is BTP and destination address matches own or broadcast etheraddr */
         if (llc->type == SWAP16(ETHER_TYPE_BTP)
                 && (!local_memcmp((void *)&mh->da, (void *)&wlc->pub->cur_etheraddr, sizeof(struct ether_addr))
                     || !local_memcmp((void *)&mh->da, (void *)&broadcastaddr, sizeof(struct ether_addr)))) {
             /* remove d11header */
-            skb_pull(p, wlc->hwrxoff);
+            skb_pull(p, wlc->hwrxoff + RXOFF_EXTRA);
             /* forward to wlc_monitor to process headers */
             local_wlc_monitor(wlc, wrxh, p, 0);
             return;
@@ -68,8 +68,24 @@ void wlc_recv_hook(struct wlc_info *wlc, struct sk_buff *p) {
     wlc_recv(wlc, p);
 }
 __attribute__((at(0x1C25A, "", CHIP_VER_BCM43430a1, FW_VER_7_45_41_46)))
+__attribute__((at(0x1BDE8E, "", CHIP_VER_BCM43455c0, FW_VER_7_45_206)))
 BLPatch(wlc_recv, wlc_recv_hook);
 
+
+static int
+channel2freq(struct wl_info *wl, unsigned int channel)
+{
+#if NEXMON_CHIP == CHIP_VER_BCM43430a1
+    return wlc_phy_channel2freq(channel);
+#else
+    int freq = 0;
+    void *ci = 0;
+
+    wlc_phy_chan2freq_acphy(wl->wlc->band->pi, channel, &freq, &ci);
+
+    return freq;
+#endif
+}
 
 /* rebuild frame to ethernet header, radiotap header, and payload, forward to host */
 void
@@ -108,7 +124,7 @@ wl_monitor_radiotap(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *p)
     frame->tsf.tsf_l = sts->mactime;
     frame->tsf.tsf_h = 0;
     frame->flags = 0;
-    frame->chan_freq = wlc_phy_channel2freq(CHSPEC_CHANNEL(sts->chanspec));
+    frame->chan_freq = channel2freq(wl, CHSPEC_CHANNEL(sts->chanspec));
     if (CHSPEC_IS2G(sts->chanspec))
         frame->chan_flags = (IEEE80211_CHAN_2GHZ | IEEE80211_CHAN_DYN);
     else
@@ -127,7 +143,7 @@ end:
     skb_push(p, sizeof(struct dot11_llc_snap_header));
     skb_push(p, sizeof(struct dot11_management_header));
     skb_push(p, D11_PHY_HDR_LEN);
-    skb_push(p, wl->wlc->hwrxoff);
+    skb_push(p, RXOFF_EXTRA + wl->wlc->hwrxoff);
     pkt_buf_free_skb(wl->wlc->osh, p, 0);
 }
 
@@ -138,4 +154,5 @@ wl_monitor_hook(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *p) {
     wl_monitor_radiotap(wl, sts, p);
 }
 __attribute__((at(0x81F620, "flashpatch", CHIP_VER_BCM43430a1, FW_VER_ALL)))
+__attribute__((at(0x1A6C98, "", CHIP_VER_BCM43455c0, FW_VER_7_45_206)))
 BLPatch(flash_patch_179, wl_monitor_hook);
