@@ -3,9 +3,9 @@ Wi-Fi frames with ethertype `0x88df (35039)` in their LLC that are broadcasted o
 ```C
 struct btp_frame {
     /* ethernet header */
-    uint8 ether_dhost[6];
-    uint8 ether_shost[6];
-    uint16 ether_type;
+    uint8   ether_dhost[6];
+    uint8   ether_shost[6];
+    uint16  ether_type;
     /* radiotap header */
     uint8   it_version;
     uint8   it_pad;
@@ -14,14 +14,16 @@ struct btp_frame {
     /* radiotap fields */
     uint32  tsf_l;
     uint32  tsf_h;
+    uint8   flags;
     uint8   data_rate;
     uint16  chan_freq;
     uint16  chan_flags;
     int8    dbm_antsignal;
     int8    dbm_antnoise;   /* constant value -91 for bcm43430a1 */
-    /* payload */
-    int     payload_len;
-    uint8   payload[];
+    /* btp header */
+    btp_header_t btp;
+    /* btp frame type specific data */
+    ...
 };
 ```
 
