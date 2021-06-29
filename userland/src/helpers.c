@@ -73,7 +73,7 @@ void print_mac(uint8_t *addr) {
     printf("%x:%x:%x:%x:%x:%x\n", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
 }
 
-void pprint_frame(btp_frame_t *in_frame) {
+void pprint_frame(eth_radio_btp_t *in_frame) {
     // ETHERNET
     struct ether_header eth = in_frame->eth;
     printf("BTP Frame:\n");
@@ -85,7 +85,7 @@ void pprint_frame(btp_frame_t *in_frame) {
     printf("--->EtherType:.........%hu\n", ntohs(eth.ether_type));
 
     // RADIOTAP
-    radiotap_t rdio = in_frame->radiotap;
+    radiotap_header_t rdio = in_frame->radiotap;
     printf("->RadioTap Header:\n");
     printf("--->Version:...........%hhu\n", rdio.it_version);
     printf("--->Length:............%hu\n", rdio.it_len);
@@ -117,7 +117,7 @@ void pprint_frame(btp_frame_t *in_frame) {
     fflush(stdout);
 }
 
-void build_frame(btp_frame_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t game_fin, uint8_t mutex,
+void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t game_fin, uint8_t mutex,
             frame_t frame_type, uint32_t tree_id, int8_t tx_pwr) {
     out->btp.recv_err = recv_err;
     out->btp.game_fin = game_fin;

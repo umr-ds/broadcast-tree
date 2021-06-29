@@ -50,7 +50,7 @@ typedef struct {
     uint16_t  chan_flags;
     int8_t    dbm_antsignal;
     int8_t    dbm_antnoise;   /* constant value -91 for bcm43430a1 */
-} __attribute__((packed)) radiotap_t;
+} __attribute__((packed)) radiotap_header_t;
 
 /**
  * Common header of all BTP-frames
@@ -70,32 +70,63 @@ typedef struct {
 
 /**
  * Common frame structure of all BTP-frames
+ * WITH RADIOTAP
  */
 typedef struct {
     struct ether_header eth;
-    radiotap_t radiotap;
+    radiotap_header_t radiotap;
     btp_header_t btp;
-} __attribute__((packed)) btp_frame_t;
+} __attribute__((packed)) eth_radio_btp_t;
+
+/**
+ * Common frame structure of all BTP-frames
+ */
+typedef struct {
+    struct ether_header eth;
+    btp_header_t btp;
+} __attribute__((packed)) eth_btp_t;
+
+/**
+ * Payload frames are used to transmit payload data after the tree has been built
+ * WITH RADIOTAP
+ */
+typedef struct {
+    eth_radio_btp_t btp_frame;
+    uint16_t seq_num; // payload sequence number - separate from btp sequence number
+    // TODO: buffer over-read if payload_len > len(payload)?
+    uint16_t payload_len;
+    uint8_t payload[MAX_PAYLOAD];
+} __attribute__((packed)) eth_radio_btp_payload_t;
 
 /**
  * Payload frames are used to transmit payload data after the tree has been built
  */
 typedef struct {
-    btp_frame_t btp_frame;
+    eth_btp_t btp_frame;
     uint16_t seq_num; // payload sequence number - separate from btp sequence number
     // TODO: buffer over-read if payload_len > len(payload)?
     uint16_t payload_len;
     uint8_t payload[MAX_PAYLOAD];
-} __attribute__((packed)) btp_payload_frame_t;
+} __attribute__((packed)) eth_btp_payload_t;
+
+/**
+ * Frame for the Path-to-Source cycle avoidance scheme
+ * WITH RADIOTAP
+ */
+typedef struct {
+    eth_radio_btp_t btp_frame;
+    uint8_t depth;
+    mac_addr_t parents[MAX_DEPTH];
+} __attribute__((packed)) eth_radio_btp_pts_t;
 
 /**
  * Frame for the Path-to-Source cycle avoidance scheme
  */
 typedef struct {
-    btp_frame_t btp_frame;
+    eth_btp_t btp_frame;
     uint8_t depth;
     mac_addr_t parents[MAX_DEPTH];
-} __attribute__((packed)) path_to_source_frame_t;
+} __attribute__((packed)) eth_btp_pts_t;
 
 /**
  * Initialises the construction of a new broadcast-tree
@@ -108,7 +139,7 @@ void init_tree_construction();
  * @param in_frame: Pointer to a btp_frame_t struct which will serve as the destination
  * @param racv_frame: Pointer to a raw bitstream as it was read from raw socket
  */
-void parse_header(btp_frame_t *in_frame, uint8_t *recv_frame);
+void parse_header(eth_radio_btp_t *in_frame, uint8_t *recv_frame);
 
 /**
  * Do stuf with a received packet

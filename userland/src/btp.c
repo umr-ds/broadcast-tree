@@ -42,16 +42,16 @@ void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source) {
 }
 
 void init_tree_construction() {
-    btp_frame_t discovery_frame = { 0x0 };
+    eth_btp_t discovery_frame = { 0x0 };
     mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, gen_tree_id(self.laddr), 0);
 
     /* Send packet */
-    send_btp_frame((uint8_t *) &discovery_frame, sizeof(btp_frame_t));
+    send_btp_frame((uint8_t *) &discovery_frame, sizeof(eth_btp_t));
 }
 
-void parse_header(btp_frame_t *in_frame, uint8_t *recv_frame) {
-    memcpy(in_frame, recv_frame, sizeof(btp_frame_t));
+void parse_header(eth_radio_btp_t *in_frame, uint8_t *recv_frame) {
+    memcpy(in_frame, recv_frame, sizeof(eth_radio_btp_t ));
     pprint_frame(in_frame);
 }
 
@@ -88,13 +88,13 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
     memcpy(self.pending_parent->addr, potential_parent_addr, 6);
     self.pending_parent->own_pwr = new_parent_tx;
 
-    btp_frame_t child_request_frame = { 0x0 };
+    eth_btp_t child_request_frame = { 0x0 };
     build_frame(&child_request_frame, potential_parent_addr, 0, 0, 0, child_request, tree_id, 0);
 
-    send_btp_frame((uint8_t *) &child_request_frame, sizeof(btp_frame_t));
+    send_btp_frame((uint8_t *) &child_request_frame, sizeof(eth_btp_t));
 }
 
-void handle_discovery(btp_frame_t *in_frame) {
+void handle_discovery(eth_radio_btp_t *in_frame) {
     // if we are the tree's source, we don't want to connect to anyone
     if (self.is_source) return;
 
@@ -112,7 +112,7 @@ void handle_discovery(btp_frame_t *in_frame) {
     establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.tree_id);
 }
 
-void accept_child(btp_frame_t *in_frame, int8_t child_tx_pwr) {
+void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
     child_t *new_child = (child_t *) malloc(sizeof(child_t));
     memcpy(new_child->addr, in_frame->eth.ether_shost, 6);
     new_child->tx_pwr = child_tx_pwr;
@@ -126,24 +126,24 @@ void accept_child(btp_frame_t *in_frame, int8_t child_tx_pwr) {
         self.snd_high_pwr = child_tx_pwr;
     }
 
-    btp_frame_t child_confirm_frame = { 0x0 };
+    eth_btp_t child_confirm_frame = { 0x0 };
     build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, 0, child_confirm, in_frame->btp.tree_id, 0);
 
     printf("Accepting child.\n");
 
-    send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(btp_frame_t));
+    send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(eth_btp_t));
 }
 
-void reject_child(btp_frame_t *in_frame) {
-    btp_frame_t child_rejection_frame = { 0x0 };
+void reject_child(eth_radio_btp_t *in_frame) {
+    eth_btp_t child_rejection_frame = { 0x0 };
     build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, 0, child_reject, in_frame->btp.tree_id, 0);
 
     printf("Rejecting child.\n");
 
-    send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(btp_frame_t));
+    send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t));
 }
 
-void handle_child_request(btp_frame_t *in_frame) {
+void handle_child_request(eth_radio_btp_t *in_frame) {
     if (already_child(in_frame->eth.ether_shost)) return;
 
     int8_t potential_child_send_pwr = compute_tx_pwr();
@@ -158,15 +158,15 @@ void handle_child_request(btp_frame_t *in_frame) {
 }
 
 void disconnect_from_parent() {
-    btp_frame_t disconnect_frame = { 0x0 };
+    eth_btp_t disconnect_frame = { 0x0 };
     build_frame(&disconnect_frame, self.parent->addr, 0, 0, 0, parent_revocaction, self.tree_id, 0);
 
     free(self.parent);
 
-    send_btp_frame((uint8_t *)&disconnect_frame, sizeof(btp_frame_t));
+    send_btp_frame((uint8_t *)&disconnect_frame, sizeof(eth_btp_t));
 }
 
-void handle_child_confirm(btp_frame_t *in_frame) {
+void handle_child_confirm(eth_radio_btp_t *in_frame) {
     // We received a confirmation from a parent we never asked. Ignore.
     if (self_is_pending() && memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
 
@@ -180,7 +180,7 @@ void handle_child_confirm(btp_frame_t *in_frame) {
 }
 
 void handle_packet(uint8_t *recv_frame) {
-    btp_frame_t in_frame = {0x0};
+    eth_radio_btp_t in_frame = {0x0};
     parse_header(&in_frame, recv_frame);
 
     switch (in_frame.btp.frame_type) {
