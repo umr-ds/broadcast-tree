@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <poll.h>
 #include <argp.h>
-#include <tree.h>
 
 #include "btp.h"
 

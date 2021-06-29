@@ -29,7 +29,7 @@ ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #endif
 }
 
-void init_self(mac_addr_t laddr, uint32_t max_pwr, bool is_source) {
+void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source) {
     self.is_source = is_source;
     self.children = hashmap_new();
     self.max_pwr = max_pwr;
@@ -55,12 +55,12 @@ void parse_header(btp_frame_t *in_frame, uint8_t *recv_frame) {
     pprint_frame(in_frame);
 }
 
-uint32_t compute_tx_pwr() {
+int8_t compute_tx_pwr() {
     // TODO: get SNR, RX power
     return 0;
 }
 
-bool should_switch(btp_header_t header, uint32_t new_parent_tx) {
+bool should_switch(btp_header_t header, int8_t new_parent_tx) {
     // If parent's sending power to reach us is lower than the power
     // the parent is currently using, we should not switch, since we
     // are not the furthest away child
@@ -72,17 +72,17 @@ bool should_switch(btp_header_t header, uint32_t new_parent_tx) {
 
     // The difference between the old parent's current sending power to reach us and
     // its gains when not connected to us.
-    uint32_t gain = self.parent->own_pwr - self.parent->snd_high_pwr;
+    int8_t gain = self.parent->own_pwr - self.parent->snd_high_pwr;
 
     // The difference between the new parents new sending power to reach us and its
     // current highest sending power, i.e., how bad would it be to switch to this parent.
-    uint32_t loss = new_parent_tx - header.high_pwr;
+    int8_t loss = new_parent_tx - header.high_pwr;
 
     // If the old parent would gain more than the new loses, we should switch.
     return gain > loss;
 }
 
-void establish_connection(mac_addr_t potential_parent_addr, uint32_t new_parent_tx, uint32_t tree_id) {
+void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx, uint32_t tree_id) {
     self.pending_parent = (parent_t *) malloc(sizeof(parent_t));
 
     memcpy(self.pending_parent->addr, potential_parent_addr, 6);
@@ -105,14 +105,14 @@ void handle_discovery(btp_frame_t *in_frame) {
     mac_addr_t potential_parent_addr;
     memcpy(potential_parent_addr, in_frame->eth.ether_shost, 6);
 
-    uint32_t new_parent_tx = compute_tx_pwr();
+    int8_t new_parent_tx = compute_tx_pwr();
 
     if (self_is_connected() && !should_switch(in_frame->btp, new_parent_tx)) return;
 
     establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.tree_id);
 }
 
-void accept_child(btp_frame_t *in_frame, uint32_t child_tx_pwr) {
+void accept_child(btp_frame_t *in_frame, int8_t child_tx_pwr) {
     child_t *new_child = (child_t *) malloc(sizeof(child_t));
     memcpy(new_child->addr, in_frame->eth.ether_shost, 6);
     new_child->tx_pwr = child_tx_pwr;
@@ -146,7 +146,7 @@ void reject_child(btp_frame_t *in_frame) {
 void handle_child_request(btp_frame_t *in_frame) {
     if (already_child(in_frame->eth.ether_shost)) return;
 
-    uint32_t potential_child_send_pwr = compute_tx_pwr();
+    int8_t potential_child_send_pwr = compute_tx_pwr();
     if ((!self_is_connected() && !self.is_source)
         || hashmap_length(self.children) >= BREADTH
         || potential_child_send_pwr > self.max_pwr

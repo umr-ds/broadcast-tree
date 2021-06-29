@@ -74,30 +74,51 @@ void print_mac(uint8_t *addr) {
 }
 
 void pprint_frame(btp_frame_t *in_frame) {
+    // ETHERNET
+    struct ether_header eth = in_frame->eth;
     printf("BTP Frame:\n");
-    printf("  Ethernet:\n");
-    printf("    Source:               ");
-    print_mac(in_frame->eth.ether_shost);
-    printf("    Destination:          ");
-    print_mac(in_frame->eth.ether_dhost);
-    printf("    EtherType:            %hu\n", ntohs(in_frame->eth.ether_type));
-    printf("  BTP:\n");
-    printf("    Recv Error:           %hu\n", in_frame->btp.recv_err);
-    printf("    Game Fin:             %hu\n", in_frame->btp.game_fin);
-    printf("    Mutex:                %hu\n", in_frame->btp.mutex);
-    printf("    Frame Type:           %i\n", in_frame->btp.frame_type);
-    printf("    Tree ID:              %u\n", in_frame->btp.tree_id);
-    printf("    TX Power:             %u\n", in_frame->btp.tx_pwr);
-    printf("    Parent Addr:          ");
-    print_mac(in_frame->btp.parent_addr);
-    printf("    Highest Power:        %u\n", in_frame->btp.high_pwr);
-    printf("    Second highest power: %u\n", in_frame->btp.snd_high_pwr);
+    printf("->Ethernet:\n");
+    printf("--->Source:............");
+    print_mac(eth.ether_shost);
+    printf("--->Destination:.......");
+    print_mac(eth.ether_dhost);
+    printf("--->EtherType:.........%hu\n", ntohs(eth.ether_type));
+
+    // RADIOTAP
+    radiotap_t rdio = in_frame->radiotap;
+    printf("->RadioTap Header:\n");
+    printf("--->Version:...........%hhu\n", rdio.it_version);
+    printf("--->Length:............%hu\n", rdio.it_len);
+    printf("--->Present:...........%u\n", rdio.it_present);
+
+    printf("->RadioTap Header:\n");
+    printf("--->Time Sync:.........%u%u\n", rdio.tsf_h, rdio.tsf_l);
+    printf("--->Flags:.............%hhu\n", rdio.flags);
+    printf("--->data_rate:.........%hhu\n", rdio.data_rate);
+    printf("--->Frequency:.........%hu\n", rdio.chan_freq);
+    printf("--->Channel Flags:.....%hu\n", rdio.chan_flags);
+    printf("--->Signal:............%hhi\n", rdio.dbm_antsignal);
+    printf("--->Noise:.............%hhi\n", rdio.dbm_antnoise);
+
+    // BTP
+    btp_header_t btp = in_frame->btp;
+    printf("->BTP:\n");
+    printf("--->Recv Error:........%hhu\n", btp.recv_err);
+    printf("--->Game Fin:..........%hhu\n", btp.game_fin);
+    printf("--->Mutex:.............%hhu\n", btp.mutex);
+    printf("--->Frame Type:........%i\n", btp.frame_type);
+    printf("--->Tree ID:...........%u\n", btp.tree_id);
+    printf("--->TX Power:..........%hhu\n", btp.tx_pwr);
+    printf("--->Parent Addr:.......");
+    print_mac(btp.parent_addr);
+    printf("--->Highest Power:.....%hhu\n", btp.high_pwr);
+    printf("--->2nd highest power:.%hhu\n", btp.snd_high_pwr);
 
     fflush(stdout);
 }
 
 void build_frame(btp_frame_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t game_fin, uint8_t mutex,
-            frame_t frame_type, uint32_t tree_id, uint32_t tx_pwr) {
+            frame_t frame_type, uint32_t tree_id, int8_t tx_pwr) {
     out->btp.recv_err = recv_err;
     out->btp.game_fin = game_fin;
     out->btp.mutex = mutex;

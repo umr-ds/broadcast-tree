@@ -32,6 +32,27 @@ typedef enum {
 } frame_t;
 
 /**
+ * Radio information required for computing transmission power.
+ * For this to work, you have to install the nexmon patch.
+ */
+typedef struct {
+    /* radiotap header */
+    uint8_t   it_version;
+    uint8_t   it_pad;
+    uint16_t  it_len;
+    uint32_t  it_present;
+    /* radiotap fields */
+    uint32_t  tsf_l;
+    uint32_t  tsf_h;
+    uint8_t   flags;
+    uint8_t   data_rate;
+    uint16_t  chan_freq;
+    uint16_t  chan_flags;
+    int8_t    dbm_antsignal;
+    int8_t    dbm_antnoise;   /* constant value -91 for bcm43430a1 */
+} __attribute__((packed)) radiotap_t;
+
+/**
  * Common header of all BTP-frames
  */
 typedef struct {
@@ -41,19 +62,20 @@ typedef struct {
     uint8_t unused:2;
     frame_t frame_type:3; // see frame_t enum
     uint32_t tree_id; // unique ID for each broadcast-tree
-    uint32_t tx_pwr; // power with which this frame has been sent
+    int8_t tx_pwr; // power with which this frame has been sent
     mac_addr_t parent_addr; // address of the parent of the sending node
-    uint32_t high_pwr; // power with which the sending node sends data frames
-    uint32_t snd_high_pwr; // power with which the sending node WOULD send data frames, if its furthest child were to disconnect
-} btp_header_t;
+    int8_t high_pwr; // power with which the sending node sends data frames
+    int8_t snd_high_pwr; // power with which the sending node WOULD send data frames, if its furthest child were to disconnect
+} __attribute__((packed)) btp_header_t;
 
 /**
  * Common frame structure of all BTP-frames
  */
 typedef struct {
-    struct ether_header eth; // ethernet-header
+    struct ether_header eth;
+    radiotap_t radiotap;
     btp_header_t btp;
-} btp_frame_t;
+} __attribute__((packed)) btp_frame_t;
 
 /**
  * Payload frames are used to transmit payload data after the tree has been built
@@ -64,7 +86,7 @@ typedef struct {
     // TODO: buffer over-read if payload_len > len(payload)?
     uint16_t payload_len;
     uint8_t payload[MAX_PAYLOAD];
-} btp_payload_frame_t;
+} __attribute__((packed)) btp_payload_frame_t;
 
 /**
  * Frame for the Path-to-Source cycle avoidance scheme
@@ -73,7 +95,7 @@ typedef struct {
     btp_frame_t btp_frame;
     uint8_t depth;
     mac_addr_t parents[MAX_DEPTH];
-} path_to_source_frame_t;
+} __attribute__((packed)) path_to_source_frame_t;
 
 /**
  * Initialises the construction of a new broadcast-tree
@@ -95,7 +117,14 @@ void parse_header(btp_frame_t *in_frame, uint8_t *recv_frame);
  */
 void handle_packet(uint8_t *recv_frame);
 
-void init_self(mac_addr_t laddr, uint32_t max_pwr, bool is_root);
+/**
+ * Initializier for self_t struct, that represents our identity in the tree
+ *
+ * @param laddr: Our own mac address
+ * @param max_pwr: The maximum power we are able to sent
+ * @param is_root: Whether we are the source of the tree or not
+ */
+void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_root);
 
 
 #endif // __BTP_H__

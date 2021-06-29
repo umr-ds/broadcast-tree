@@ -26,9 +26,16 @@ void print_mac(uint8_t * addr);
  */
 void pprint_frame(btp_frame_t *in_frame);
 
+/**
+ * Check, whether the given MAC address is already registered as a child.
+ */
 bool already_child(mac_addr_t potential_child_addr);
 
+/**
+ * This function builds a btp frame from the given fields.
+ * The result is in the out parameter.
+ */
 void build_frame(btp_frame_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t game_fin, uint8_t mutex,
-                 frame_t frame_type, uint32_t tree_id, uint32_t tx_pwr);
+                 frame_t frame_type, uint32_t tree_id, int8_t tx_pwr);
 
 #endif // __HELPERS_H__
