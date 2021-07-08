@@ -49,22 +49,37 @@ struct ether_addr broadcastaddr = {.octet = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 /* hook call to wlc_recv in wlc_bmac_recv to pre-check ether_type and send as monitor frame to host if BTP */
 void wlc_recv_hook(struct wlc_info *wlc, struct sk_buff *p) {
     /* check packet length is at least d11header, phy header, management frame header and llc snap header */
-    if (p != 0 && p->len >= wlc->hwrxoff + RXOFF_EXTRA + D11_PHY_HDR_LEN + sizeof(struct dot11_management_header) + sizeof(struct dot11_llc_snap_header)) {
+    if (p != 0 && p->len >= wlc->hwrxoff + D11_PHY_HDR_LEN + sizeof(struct dot11_management_header) + sizeof(struct dot11_llc_snap_header)) {
         uint8 *wrxh = (uint8 *)(p->data);
-        // TODO?: check type/subtype
-        struct dot11_management_header *mh = (struct dot11_management_header *)(wrxh + wlc->hwrxoff + RXOFF_EXTRA + D11_PHY_HDR_LEN);
-        struct dot11_llc_snap_header *llc = (struct dot11_llc_snap_header *)(wrxh + wlc->hwrxoff + RXOFF_EXTRA + D11_PHY_HDR_LEN + sizeof(struct dot11_management_header));
+        uint16 *wrxh16 = (uint16 *)wrxh;
+        uint8 pad = 0;
+        uint32 mh_length = 0;
+        /* check if there is a two byte padding */
+        if (wrxh16[8] & 4)
+            pad = 2;
+        /* check type/subtype */
+        uint8 type = *(uint8 *)(wrxh + wlc->hwrxoff + pad + D11_PHY_HDR_LEN);
+        if (type == 0x80) { /* broadcast management frame */
+            mh_length = sizeof(struct dot11_management_header);
+        } else if (type == 0x88) { /* unicast qos frame */
+            mh_length = sizeof(struct dot11_qos_header);
+        } else {
+            goto exit;
+        }
+        struct dot11_management_header *mh = (struct dot11_management_header *)(wrxh + wlc->hwrxoff + pad + D11_PHY_HDR_LEN);
+        struct dot11_llc_snap_header *llc = (struct dot11_llc_snap_header *)(wrxh + wlc->hwrxoff + pad + D11_PHY_HDR_LEN + mh_length);
         /* check ether_type is BTP and destination address matches own or broadcast etheraddr */
         if (llc->type == SWAP16(ETHER_TYPE_BTP)
                 && (!local_memcmp((void *)&mh->da, (void *)&wlc->pub->cur_etheraddr, sizeof(struct ether_addr))
                     || !local_memcmp((void *)&mh->da, (void *)&broadcastaddr, sizeof(struct ether_addr)))) {
             /* remove d11header */
-            skb_pull(p, wlc->hwrxoff + RXOFF_EXTRA);
+            skb_pull(p, wlc->hwrxoff + pad);
             /* forward to wlc_monitor to process headers */
             local_wlc_monitor(wlc, wrxh, p, 0);
             return;
         }
     }
+exit:
     wlc_recv(wlc, p);
 }
 __attribute__((at(0x1C25A, "", CHIP_VER_BCM43430a1, FW_VER_7_45_41_46)))
@@ -92,9 +107,17 @@ void
 wl_monitor_radiotap(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *p) {
     /* remove d11 phy header to get management header */
     skb_pull(p, D11_PHY_HDR_LEN);
+    /* check type/subtype */
+    uint8 type = *(uint8 *)p->data;
+    uint32 mh_length = 0;
+    if (type == 0x80) { /* broadcast management frame */
+        mh_length = sizeof(struct dot11_management_header);
+    } else if (type == 0x88) { /* unicast qos frame */
+        mh_length = sizeof(struct dot11_qos_header);
+    }
     struct dot11_management_header *mh = (struct dot11_management_header *)p->data;
     /* remove management header to get llc snap header */
-    skb_pull(p, sizeof(struct dot11_management_header));
+    skb_pull(p, mh_length);
     struct dot11_llc_snap_header *llc = (struct dot11_llc_snap_header *)p->data;
     /* remove llc snap header to get payload */
     skb_pull(p, sizeof(struct dot11_llc_snap_header));
@@ -141,9 +164,9 @@ wl_monitor_radiotap(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *p)
     /* free original packet buffer */
 end:
     skb_push(p, sizeof(struct dot11_llc_snap_header));
-    skb_push(p, sizeof(struct dot11_management_header));
+    skb_push(p, mh_length);
     skb_push(p, D11_PHY_HDR_LEN);
-    skb_push(p, RXOFF_EXTRA + wl->wlc->hwrxoff);
+    skb_push(p, wl->wlc->hwrxoff);
     pkt_buf_free_skb(wl->wlc->osh, p, 0);
 }
 
