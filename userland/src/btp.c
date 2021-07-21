@@ -1,3 +1,5 @@
+#include <iwlib.h>
+
 #include "btp.h"
 #include "helpers.h"
 #include "tree.h"
@@ -15,9 +17,24 @@ bool self_is_pending() {
     return self.pending_parent;
 }
 
+/*bool set_tx_pwr(int8_t tx_pwr) {
+    struct iwreq wrq;
+    wrq.u.txpower.value = tx_pwr;
+    wrq.u.txpower.fixed = 1;
+    wrq.u.txpower.disabled = 0;
+    wrq.u.txpower.flags = IW_TXPOW_DBM;
+
+
+    if(iw_set_ext(skfd, ifname, SIOCSIWTXPOW, &wrq) < 0) {
+        return false;
+    }
+
+    return true;
+}*/
+
 ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #ifdef NEXMON
-    // TODO
+    // TODO implement with nexmon.
     return -1;
 #else
     ssize_t sent_bytes = sendto(sockfd, data, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
@@ -44,7 +61,7 @@ void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source) {
 void init_tree_construction() {
     eth_btp_t discovery_frame = { 0x0 };
     mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-    build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, gen_tree_id(self.laddr), 0);
+    build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, gen_tree_id(self.laddr), MAX_TX_PWR);
 
     /* Send packet */
     send_btp_frame((uint8_t *) &discovery_frame, sizeof(eth_btp_t));
@@ -55,9 +72,19 @@ void parse_header(eth_radio_btp_t *in_frame, uint8_t *recv_frame) {
     pprint_frame(in_frame);
 }
 
-int8_t compute_tx_pwr() {
-    // TODO: get SNR, RX power
-    return 0;
+int8_t compute_tx_pwr(eth_radio_btp_t *in_frame) {
+
+    int8_t old_tx_power = in_frame->btp.tx_pwr;
+    int8_t signal = in_frame->radiotap.dbm_antsignal;
+    int8_t noise = in_frame->radiotap.dbm_antnoise;
+
+    int8_t snr = signal - noise;
+
+    int8_t new_tx_power = old_tx_power - (snr - MINIMAL_SNR);
+
+    printf("Peer sent with %hhi dBm, new tx power is %hhi dBm.\n", old_tx_power, new_tx_power);
+
+    return new_tx_power;
 }
 
 bool should_switch(btp_header_t header, int8_t new_parent_tx) {
@@ -89,7 +116,8 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
     self.pending_parent->own_pwr = new_parent_tx;
 
     eth_btp_t child_request_frame = { 0x0 };
-    build_frame(&child_request_frame, potential_parent_addr, 0, 0, 0, child_request, tree_id, 0);
+    // TODO: Set actual new_parent_tx in hardware.
+    build_frame(&child_request_frame, potential_parent_addr, 0, 0, 0, child_request, tree_id, new_parent_tx);
 
     send_btp_frame((uint8_t *) &child_request_frame, sizeof(eth_btp_t));
 }
@@ -98,14 +126,18 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
     // if we are the tree's source, we don't want to connect to anyone
     if (self.is_source) return;
 
-    // TODO: handle updates from parent
-
     if (self_is_pending()) return;
+
+    if (self_is_connected() && memcmp(in_frame->eth.ether_shost, self.parent->addr, 6) == 0) {
+        self.parent->high_pwr = in_frame->btp.high_pwr;
+        self.parent->snd_high_pwr = in_frame->btp.snd_high_pwr;
+        return;
+    }
 
     mac_addr_t potential_parent_addr;
     memcpy(potential_parent_addr, in_frame->eth.ether_shost, 6);
 
-    int8_t new_parent_tx = compute_tx_pwr();
+    int8_t new_parent_tx = compute_tx_pwr(in_frame);
 
     if (self_is_connected() && !should_switch(in_frame->btp, new_parent_tx)) return;
 
@@ -127,7 +159,8 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
     }
 
     eth_btp_t child_confirm_frame = { 0x0 };
-    build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, 0, child_confirm, in_frame->btp.tree_id, 0);
+    // TODO: Set actual child_tx_pwr in hardware.
+    build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, 0, child_confirm, in_frame->btp.tree_id, child_tx_pwr);
 
     printf("Accepting child.\n");
 
@@ -136,7 +169,7 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
 
 void reject_child(eth_radio_btp_t *in_frame) {
     eth_btp_t child_rejection_frame = { 0x0 };
-    build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, 0, child_reject, in_frame->btp.tree_id, 0);
+    build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, 0, child_reject, in_frame->btp.tree_id, MAX_TX_PWR);
 
     printf("Rejecting child.\n");
 
@@ -146,7 +179,7 @@ void reject_child(eth_radio_btp_t *in_frame) {
 void handle_child_request(eth_radio_btp_t *in_frame) {
     if (already_child(in_frame->eth.ether_shost)) return;
 
-    int8_t potential_child_send_pwr = compute_tx_pwr();
+    int8_t potential_child_send_pwr = compute_tx_pwr(in_frame);
     if ((!self_is_connected() && !self.is_source)
         || hashmap_length(self.children) >= BREADTH
         || potential_child_send_pwr > self.max_pwr
@@ -159,7 +192,7 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
 
 void disconnect_from_parent() {
     eth_btp_t disconnect_frame = { 0x0 };
-    build_frame(&disconnect_frame, self.parent->addr, 0, 0, 0, parent_revocaction, self.tree_id, 0);
+    build_frame(&disconnect_frame, self.parent->addr, 0, 0, 0, parent_revocaction, self.tree_id, MAX_TX_PWR);
 
     free(self.parent);
 
