@@ -59,7 +59,7 @@ void wlc_recv_hook(struct wlc_info *wlc, struct sk_buff *p) {
             pad = 2;
         /* check type/subtype */
         uint8 type = *(uint8 *)(wrxh + wlc->hwrxoff + pad + D11_PHY_HDR_LEN);
-        if (type == 0x80) { /* broadcast management frame */
+        if (type == 0x08) { /* data frame */
             mh_length = sizeof(struct dot11_management_header);
         } else if (type == 0x88) { /* unicast qos frame */
             mh_length = sizeof(struct dot11_qos_header);
@@ -110,7 +110,7 @@ wl_monitor_radiotap(struct wl_info *wl, struct wl_rxsts *sts, struct sk_buff *p)
     /* check type/subtype */
     uint8 type = *(uint8 *)p->data;
     uint32 mh_length = 0;
-    if (type == 0x80) { /* broadcast management frame */
+    if (type == 0x08) { /* broadcast management frame */
         mh_length = sizeof(struct dot11_management_header);
     } else if (type == 0x88) { /* unicast qos frame */
         mh_length = sizeof(struct dot11_qos_header);
