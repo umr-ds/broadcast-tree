@@ -38,4 +38,6 @@ bool already_child(mac_addr_t potential_child_addr);
 void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t game_fin, uint8_t mutex,
                  frame_t frame_type, uint32_t tree_id, int8_t tx_pwr);
 
+int32_t get_tx_pwr();
+
 #endif // __HELPERS_H__

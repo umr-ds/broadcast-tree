@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include <iwlib.h>
+
 #define MTU 1500
 #define BTP_HEADER_SIZE 25
 #define MAX_PAYLOAD (MTU - BTP_HEADER_SIZE)
@@ -158,7 +160,7 @@ void handle_packet(uint8_t *recv_frame);
  * @param max_pwr: The maximum power we are able to sent
  * @param is_root: Whether we are the source of the tree or not
  */
-void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_root);
+void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source, char *if_name, int iw_sockfd);
 
 
 #endif // __BTP_H__

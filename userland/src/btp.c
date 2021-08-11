@@ -17,20 +17,20 @@ bool self_is_pending() {
     return self.pending_parent;
 }
 
-/*bool set_tx_pwr(int8_t tx_pwr) {
+bool set_tx_pwr(int8_t tx_pwr) {
     struct iwreq wrq;
-    wrq.u.txpower.value = tx_pwr;
+    wrq.u.txpower.value = (int32_t) tx_pwr;
     wrq.u.txpower.fixed = 1;
     wrq.u.txpower.disabled = 0;
     wrq.u.txpower.flags = IW_TXPOW_DBM;
 
 
-    if(iw_set_ext(skfd, ifname, SIOCSIWTXPOW, &wrq) < 0) {
+    if(iw_set_ext(sockfd, "wlan0", SIOCSIWTXPOW, &wrq) < 0) {
         return false;
     }
 
     return true;
-}*/
+}
 
 ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #ifdef NEXMON
@@ -46,7 +46,7 @@ ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #endif
 }
 
-void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source) {
+void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source, char *if_name, int iw_sockfd) {
     self.is_source = is_source;
     self.children = hashmap_new();
     self.max_pwr = max_pwr;
@@ -56,6 +56,8 @@ void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source) {
     self.parent = NULL;
     self.pending_parent = NULL;
     self.tree_id = 0;
+    self.iw_sockfd = iw_sockfd;
+    strncpy(self.if_name, if_name, IFNAMSIZ);
 }
 
 void init_tree_construction() {
@@ -115,8 +117,9 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
     memcpy(self.pending_parent->addr, potential_parent_addr, 6);
     self.pending_parent->own_pwr = new_parent_tx;
 
+    set_tx_pwr(new_parent_tx);
+
     eth_btp_t child_request_frame = { 0x0 };
-    // TODO: Set actual new_parent_tx in hardware.
     build_frame(&child_request_frame, potential_parent_addr, 0, 0, 0, child_request, tree_id, new_parent_tx);
 
     send_btp_frame((uint8_t *) &child_request_frame, sizeof(eth_btp_t));
@@ -158,8 +161,9 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
         self.snd_high_pwr = child_tx_pwr;
     }
 
+    set_tx_pwr(child_tx_pwr);
+
     eth_btp_t child_confirm_frame = { 0x0 };
-    // TODO: Set actual child_tx_pwr in hardware.
     build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, 0, child_confirm, in_frame->btp.tree_id, child_tx_pwr);
 
     printf("Accepting child.\n");

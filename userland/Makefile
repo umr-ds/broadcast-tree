@@ -1,7 +1,7 @@
 TARGET = btp
 CC = gcc
 INCLUDES = -Iinclude/
-CFLAGS = -g3 -Wall -Wextra -Wpedantic -Werror $(INCLUDES)
+CFLAGS = -liw -g3 $(INCLUDES)
 
 SOURCEDIR = src
 BUILDDIR = build
@@ -23,7 +23,7 @@ $(OBJECTS): $(BUILDDIR)/%.o: $(SOURCEDIR)/%.c
 .PRECIOUS: $(TARGET) $(OBJECTS)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -Wall -o $@
+	$(CC) $(CFLAGS) $(OBJECTS) -Wall -o $@
 
 clean:
 	-rm -rf $(BUILDDIR)

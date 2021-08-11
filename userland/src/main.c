@@ -5,6 +5,7 @@
 #include <poll.h>
 #include <argp.h>
 
+#include "helpers.h"
 #include "btp.h"
 
 struct arguments {
@@ -85,7 +86,14 @@ int init_sock(char *if_name, bool is_source) {
     L_SOCKADDR.sll_ifindex = if_idx.ifr_ifindex;
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
-    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0, is_source);
+
+    int iw_sockfd;
+    if((iw_sockfd = iw_sockets_open()) < 0) {
+        perror("Could not open IW sockfd.");
+        return -1;
+    }
+
+    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0, is_source, if_name, iw_sockfd);
 
     return sockfd;
 }

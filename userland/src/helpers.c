@@ -31,6 +31,31 @@ uint32_t gen_tree_id(mac_addr_t laddr) {
     return hash;
 }
 
+int32_t get_tx_pwr() {
+    struct iwreq *wrq = malloc(sizeof(struct iwreq));
+    int32_t dbm;
+
+    int res;
+
+    /* Get current Transmit Power */
+    if((res = iw_get_ext(self.iw_sockfd, self.if_name, SIOCGIWTXPOW, wrq)) >= 0) {
+        if(wrq->u.txpower.disabled) {
+            printf("Transmission is disabled.\n");
+            return -1;
+        } else {
+            if(wrq->u.txpower.flags & IW_TXPOW_MWATT) {
+                dbm = iw_mwatt2dbm(wrq->u.txpower.value);
+            } else {
+                dbm = wrq->u.txpower.value;
+            }
+            return dbm;
+        }
+    } else {
+        perror("Could not get current TX power.");
+        return res;
+    }
+}
+
 void hexdump(const void *data, size_t size) {
     char chars[17];
     chars[16] = '\0';
