@@ -40,13 +40,14 @@ bool set_tx_pwr(int8_t tx_pwr) {
     wrq.u.txpower.flags = IW_TXPOW_DBM;
 
     if(iw_set_ext(self.sockfd, self.if_name, SIOCSIWTXPOW, &wrq) < 0) {
+        log_error("Could not set txpower: %s", strerror(errno));
         return false;
     }
 
     return true;
 }
 
-int32_t get_tx_pwr() {
+int8_t get_tx_pwr() {
     struct iwreq *wrq = malloc(sizeof(struct iwreq));
     int32_t dbm;
 
@@ -63,12 +64,34 @@ int32_t get_tx_pwr() {
             } else {
                 dbm = wrq->u.txpower.value;
             }
-            return dbm;
+            return (int8_t) dbm;
         }
     } else {
         log_error("Could not get current txpower: %s", strerror(errno));
-        return res;
+        return (int8_t) res;
     }
+}
+
+int8_t get_max_tx_pwr() {
+    int8_t cur_tx_pwr;
+    if ((cur_tx_pwr = get_tx_pwr()) < 0) {
+        return -1;
+    }
+
+    if (!set_tx_pwr(INT8_MAX)) {
+        return -1;
+    }
+
+    int8_t max_tx_pwr;
+    if ((max_tx_pwr = get_tx_pwr()) < 0) {
+        return -1;
+    }
+
+    if (!set_tx_pwr(cur_tx_pwr)) {
+        return -1;
+    }
+
+    return max_tx_pwr;
 }
 
 void hexdump(const void *data, size_t size) {

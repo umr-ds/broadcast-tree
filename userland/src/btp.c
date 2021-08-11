@@ -48,7 +48,7 @@ void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source, char *if_name, 
 void init_tree_construction() {
     eth_btp_t discovery_frame = { 0x0 };
     mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-    build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, gen_tree_id(self.laddr), MAX_TX_PWR);
+    build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, gen_tree_id(self.laddr), self.max_pwr);
 
     /* Send packet */
     send_btp_frame((uint8_t *) &discovery_frame, sizeof(eth_btp_t));
@@ -158,7 +158,7 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
 
 void reject_child(eth_radio_btp_t *in_frame) {
     eth_btp_t child_rejection_frame = { 0x0 };
-    build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, 0, child_reject, in_frame->btp.tree_id, MAX_TX_PWR);
+    build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, 0, child_reject, in_frame->btp.tree_id, self.max_pwr);
 
     log_warn("Rejecting child.");
 
@@ -181,7 +181,7 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
 
 void disconnect_from_parent() {
     eth_btp_t disconnect_frame = { 0x0 };
-    build_frame(&disconnect_frame, self.parent->addr, 0, 0, 0, parent_revocaction, self.tree_id, MAX_TX_PWR);
+    build_frame(&disconnect_frame, self.parent->addr, 0, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
 
     free(self.parent);
 

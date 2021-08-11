@@ -21,7 +21,6 @@
 #define BTP_ETHERTYPE 35039
 
 #define MINIMAL_SNR 15
-#define MAX_TX_PWR 20
 
 typedef uint8_t mac_addr_t[6];
 

@@ -8,6 +8,7 @@
 #include "log.h"
 #include "tree.h"
 #include "btp.h"
+#include "helpers.h"
 
 extern self_t self;
 
@@ -24,8 +25,8 @@ static char doc[] = "BTP -- Broadcast Tree Protocol";
 static char args_doc[] = "INTERFACE";
 static struct argp_option options[] = {
         {"source",      's', 0,      0, "This node is a BTP source", 0 },
-        {"log",      'l', "ll",      OPTION_ARG_OPTIONAL, "Log level\n0: QUIET, 1: TRACE, 2: DEBUG, 3: INFO (default),\n4: WARN, 5: ERROR, 6: FATAL", 1 },
-        {"file",      'f', "lf",      OPTION_ARG_OPTIONAL, "File path to log file.\nIf not present only stdout and stderr logging will be used.", 1 },
+        {"log",      'l', "level",      OPTION_ARG_OPTIONAL, "Log level\n0: QUIET, 1: TRACE, 2: DEBUG, 3: INFO (default),\n4: WARN, 5: ERROR, 6: FATAL", 1 },
+        {"file",      'f', "path",      OPTION_ARG_OPTIONAL, "File path to log file.\nIf not present only stdout and stderr logging will be used.", 1 },
         { 0 }
 };
 
@@ -99,7 +100,9 @@ int init_sock(char *if_name, bool is_source) {
     L_SOCKADDR.sll_ifindex = if_idx.ifr_ifindex;
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
-    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0, is_source, if_name, tmp_sockfd);
+    int8_t max_tx_pwr = get_max_tx_pwr();
+
+    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, max_tx_pwr, is_source, if_name, tmp_sockfd);
 
     return tmp_sockfd;
 }
@@ -150,7 +153,7 @@ int main (int argc, char **argv) {
 
     struct arguments arguments = {
             .source = false,
-            .log_level = 2,
+            .log_level = 3,
             .log_file = "",
             .interface = ""
     };
