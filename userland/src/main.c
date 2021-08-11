@@ -100,9 +100,10 @@ int init_sock(char *if_name, bool is_source) {
     L_SOCKADDR.sll_ifindex = if_idx.ifr_ifindex;
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
-    int8_t max_tx_pwr = get_max_tx_pwr();
+    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0, is_source, if_name, tmp_sockfd);
 
-    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, max_tx_pwr, is_source, if_name, tmp_sockfd);
+    int8_t max_tx_pwr = get_max_tx_pwr();
+    self.max_pwr = max_tx_pwr;
 
     return tmp_sockfd;
 }

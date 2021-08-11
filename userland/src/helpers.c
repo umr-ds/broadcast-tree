@@ -91,6 +91,7 @@ int8_t get_max_tx_pwr() {
         return -1;
     }
 
+    log_debug("Getting max txpower");
     return max_tx_pwr;
 }
 
