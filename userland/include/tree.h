@@ -38,7 +38,7 @@ typedef struct {
     parent_t *pending_parent;
     uint32_t tree_id; // the tree to which we belong
     char if_name[IFNAMSIZ]; // the interface name to be used
-    int iw_sockfd; // fd to the IO CTL sock for IW commands
+    int sockfd;
 } self_t;
 
 #endif // __TREE_H__

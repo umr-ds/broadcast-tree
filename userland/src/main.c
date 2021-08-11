@@ -5,8 +5,10 @@
 #include <poll.h>
 #include <argp.h>
 
-#include "helpers.h"
+#include "tree.h"
 #include "btp.h"
+
+extern self_t self;
 
 struct arguments {
     bool source;
@@ -58,26 +60,26 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
 
 static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
 
-int sockfd = 0;
 int init_sock(char *if_name, bool is_source) {
     int ioctl_stat;
+    int tmp_sockfd;
 
     struct ifreq if_idx;
     struct ifreq if_mac;
 
-    if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(BTP_ETHERTYPE))) == -1) {
+    if ((tmp_sockfd = socket(AF_PACKET, SOCK_RAW, htons(BTP_ETHERTYPE))) == -1) {
         perror("Could not create socket");
-        return sockfd;
+        return tmp_sockfd;
     }
 
     memcpy(if_idx.ifr_name, if_name, IFNAMSIZ - 1);
-    ioctl_stat = ioctl(sockfd, SIOCGIFINDEX, &if_idx);
+    ioctl_stat = ioctl(tmp_sockfd, SIOCGIFINDEX, &if_idx);
     if (ioctl_stat < 0) {
         perror("Could not get the interface's index");
     }
 
     memcpy(if_mac.ifr_name, if_name, IFNAMSIZ - 1);
-    ioctl_stat = ioctl(sockfd, SIOCGIFHWADDR, &if_mac);
+    ioctl_stat = ioctl(tmp_sockfd, SIOCGIFHWADDR, &if_mac);
     if (ioctl_stat < 0) {
         perror("Could not get MAC address");
         return ioctl_stat;
@@ -86,16 +88,9 @@ int init_sock(char *if_name, bool is_source) {
     L_SOCKADDR.sll_ifindex = if_idx.ifr_ifindex;
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
+    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0, is_source, if_name, tmp_sockfd);
 
-    int iw_sockfd;
-    if((iw_sockfd = iw_sockets_open()) < 0) {
-        perror("Could not open IW sockfd.");
-        return -1;
-    }
-
-    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0, is_source, if_name, iw_sockfd);
-
-    return sockfd;
+    return tmp_sockfd;
 }
 
 int event_loop() {
@@ -107,7 +102,7 @@ int event_loop() {
     printf("Waiting for BTP Response.\n");
     while (1) {
         struct pollfd pfd = {
-            .fd = sockfd,
+            .fd = self.sockfd,
             .events = POLLIN
         };
 
@@ -123,7 +118,7 @@ int event_loop() {
         }
 
         if (pfd.revents & POLLIN) {
-            if ((read_bytes = recv(sockfd, recv_frame, MTU, 0)) >= 0) {
+            if ((read_bytes = recv(self.sockfd, recv_frame, MTU, 0)) >= 0) {
                 printf("Received BTP response.\n");
                 handle_packet(recv_frame);
                 // hexdump(recv_frame, read_bytes);
@@ -150,7 +145,7 @@ int main (int argc, char **argv) {
     argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
 
-    sockfd = init_sock(arguments.interface, arguments.source);
+    int sockfd = init_sock(arguments.interface, arguments.source);
     if (sockfd < 0){
         exit(sockfd);
     }

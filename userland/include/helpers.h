@@ -39,5 +39,6 @@ void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t gam
                  frame_t frame_type, uint32_t tree_id, int8_t tx_pwr);
 
 int32_t get_tx_pwr();
+bool set_tx_pwr(int8_t tx_pwr);
 
 #endif // __HELPERS_H__

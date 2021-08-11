@@ -7,7 +7,6 @@
 self_t self = {0x0};
 
 extern struct sockaddr_ll L_SOCKADDR;
-extern int sockfd;
 
 bool self_is_connected() {
     return self.parent;
@@ -17,27 +16,12 @@ bool self_is_pending() {
     return self.pending_parent;
 }
 
-bool set_tx_pwr(int8_t tx_pwr) {
-    struct iwreq wrq;
-    wrq.u.txpower.value = (int32_t) tx_pwr;
-    wrq.u.txpower.fixed = 1;
-    wrq.u.txpower.disabled = 0;
-    wrq.u.txpower.flags = IW_TXPOW_DBM;
-
-
-    if(iw_set_ext(sockfd, "wlan0", SIOCSIWTXPOW, &wrq) < 0) {
-        return false;
-    }
-
-    return true;
-}
-
 ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #ifdef NEXMON
     // TODO implement with nexmon.
     return -1;
 #else
-    ssize_t sent_bytes = sendto(sockfd, data, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
+    ssize_t sent_bytes = sendto(self.sockfd, data, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
     if (sent_bytes < 0) {
         perror("Could not send data");
     }
@@ -46,7 +30,7 @@ ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #endif
 }
 
-void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source, char *if_name, int iw_sockfd) {
+void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source, char *if_name, int sockfd) {
     self.is_source = is_source;
     self.children = hashmap_new();
     self.max_pwr = max_pwr;
@@ -56,7 +40,7 @@ void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source, char *if_name, 
     self.parent = NULL;
     self.pending_parent = NULL;
     self.tree_id = 0;
-    self.iw_sockfd = iw_sockfd;
+    self.sockfd = sockfd;
     strncpy(self.if_name, if_name, IFNAMSIZ);
 }
 

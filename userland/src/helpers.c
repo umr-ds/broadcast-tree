@@ -31,6 +31,20 @@ uint32_t gen_tree_id(mac_addr_t laddr) {
     return hash;
 }
 
+bool set_tx_pwr(int8_t tx_pwr) {
+    struct iwreq wrq;
+    wrq.u.txpower.value = (int32_t) tx_pwr;
+    wrq.u.txpower.fixed = 1;
+    wrq.u.txpower.disabled = 0;
+    wrq.u.txpower.flags = IW_TXPOW_DBM;
+
+    if(iw_set_ext(self.sockfd, self.if_name, SIOCSIWTXPOW, &wrq) < 0) {
+        return false;
+    }
+
+    return true;
+}
+
 int32_t get_tx_pwr() {
     struct iwreq *wrq = malloc(sizeof(struct iwreq));
     int32_t dbm;
@@ -38,7 +52,7 @@ int32_t get_tx_pwr() {
     int res;
 
     /* Get current Transmit Power */
-    if((res = iw_get_ext(self.iw_sockfd, self.if_name, SIOCGIWTXPOW, wrq)) >= 0) {
+    if((res = iw_get_ext(self.sockfd, self.if_name, SIOCGIWTXPOW, wrq)) >= 0) {
         if(wrq->u.txpower.disabled) {
             printf("Transmission is disabled.\n");
             return -1;
