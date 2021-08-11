@@ -1,5 +1,6 @@
 #include <iwlib.h>
 
+#include "log.h"
 #include "btp.h"
 #include "helpers.h"
 #include "tree.h"
@@ -23,7 +24,7 @@ ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #else
     ssize_t sent_bytes = sendto(self.sockfd, data, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
     if (sent_bytes < 0) {
-        perror("Could not send data");
+        log_error("Could not send data: %s", strerror(errno));
     }
 
     return sent_bytes;
@@ -68,7 +69,7 @@ int8_t compute_tx_pwr(eth_radio_btp_t *in_frame) {
 
     int8_t new_tx_power = old_tx_power - (snr - MINIMAL_SNR);
 
-    printf("Peer sent with %hhi dBm, new tx power is %hhi dBm.\n", old_tx_power, new_tx_power);
+    log_debug("Peer sent with %hhi dBm, new tx power is %hhi dBm.", old_tx_power, new_tx_power);
 
     return new_tx_power;
 }
@@ -150,7 +151,7 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
     eth_btp_t child_confirm_frame = { 0x0 };
     build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, 0, child_confirm, in_frame->btp.tree_id, child_tx_pwr);
 
-    printf("Accepting child.\n");
+    log_info("Accepting child.");
 
     send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(eth_btp_t));
 }
@@ -159,7 +160,7 @@ void reject_child(eth_radio_btp_t *in_frame) {
     eth_btp_t child_rejection_frame = { 0x0 };
     build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, 0, child_reject, in_frame->btp.tree_id, MAX_TX_PWR);
 
-    printf("Rejecting child.\n");
+    log_warn("Rejecting child.");
 
     send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t));
 }
@@ -206,26 +207,26 @@ void handle_packet(uint8_t *recv_frame) {
 
     switch (in_frame.btp.frame_type) {
         case discovery:
-            printf("Received Discovery\n");
+            log_debug("Received Discovery");
             handle_discovery(&in_frame);
             break;
         case child_request:
-            printf("Received Child Request.\n");
+            log_debug("Received Child Request.");
             handle_child_request(&in_frame);
             break;
         case child_confirm:
-            printf("Received Child Confirm.\n");
+            log_debug("Received Child Confirm.");
             handle_child_confirm(&in_frame);
             break;
         case child_reject:
-            printf("Received Child Reject. Not implemented, yet.\n");
+            log_warn("Received Child Reject. Not implemented, yet.");
             break;
         case parent_revocaction:
-            printf("Received Parent Revocation. Not implemented, yet.\n");
+            log_warn("Received Parent Revocation. Not implemented, yet.");
             break;
 
         default:
-            printf("Received unknown type\n");
+            log_error("Received unknown type");
 
     }
 }

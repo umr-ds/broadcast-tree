@@ -1,6 +1,7 @@
 #include <time.h>
 #include <tree.h>
 
+#include "log.h"
 #include "helpers.h"
 
 extern self_t self;
@@ -54,7 +55,7 @@ int32_t get_tx_pwr() {
     /* Get current Transmit Power */
     if((res = iw_get_ext(self.sockfd, self.if_name, SIOCGIWTXPOW, wrq)) >= 0) {
         if(wrq->u.txpower.disabled) {
-            printf("Transmission is disabled.\n");
+            log_error("Transmission is disabled.");
             return -1;
         } else {
             if(wrq->u.txpower.flags & IW_TXPOW_MWATT) {
@@ -65,7 +66,7 @@ int32_t get_tx_pwr() {
             return dbm;
         }
     } else {
-        perror("Could not get current TX power.");
+        log_error("Could not get current txpower: %s", strerror(errno));
         return res;
     }
 }
@@ -78,7 +79,7 @@ void hexdump(const void *data, size_t size) {
     size_t padding_index;
 
     for (data_index = 0; data_index < size; ++data_index) {
-        printf("%02x ", ((unsigned char *) data)[data_index]);
+        log_debug("%02x ", ((unsigned char *) data)[data_index]);
 
         if (((unsigned char *) data)[data_index] >= ' ' && ((unsigned char *) data)[data_index] <= '~') {
             chars[data_index % 16] = ((unsigned char *) data)[data_index];
@@ -87,73 +88,82 @@ void hexdump(const void *data, size_t size) {
         }
 
         if ((data_index + 1) % 8 == 0 || data_index + 1 == size) {
-            printf(" ");
+            log_debug(" ");
 
             if ((data_index + 1) % 16 == 0) {
-                printf("|  %s \n", chars);
+                log_debug("|  %s \n", chars);
             } else if (data_index + 1 == size) {
                 chars[(data_index + 1) % 16] = '\0';
 
                 if ((data_index + 1) % 16 <= 8) {
-                    printf(" ");
+                    log_debug(" ");
                 }
 
                 for (padding_index = (data_index + 1) % 16; padding_index < 16; ++padding_index) {
-                    printf("   ");
+                    log_debug("   ");
                 }
 
-                printf("|  %s \n", chars);
+                log_debug("|  %s \n", chars);
             }
         }
     }
 }
 
-void print_mac(uint8_t *addr) {
-    printf("%x:%x:%x:%x:%x:%x\n", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
-}
-
 void pprint_frame(eth_radio_btp_t *in_frame) {
     // ETHERNET
     struct ether_header eth = in_frame->eth;
-    printf("BTP Frame:\n");
-    printf("->Ethernet:\n");
-    printf("--->Source:............");
-    print_mac(eth.ether_shost);
-    printf("--->Destination:.......");
-    print_mac(eth.ether_dhost);
-    printf("--->EtherType:.........%hu\n", ntohs(eth.ether_type));
-
-    // RADIOTAP
     radiotap_header_t rdio = in_frame->radiotap;
-    printf("->RadioTap Header:\n");
-    printf("--->Version:...........%hhu\n", rdio.it_version);
-    printf("--->Length:............%hu\n", rdio.it_len);
-    printf("--->Present:...........%u\n", rdio.it_present);
-
-    printf("->RadioTap Header:\n");
-    printf("--->Time Sync:.........%u%u\n", rdio.tsf_h, rdio.tsf_l);
-    printf("--->Flags:.............%hhu\n", rdio.flags);
-    printf("--->data_rate:.........%hhu\n", rdio.data_rate);
-    printf("--->Frequency:.........%hu\n", rdio.chan_freq);
-    printf("--->Channel Flags:.....%hu\n", rdio.chan_flags);
-    printf("--->Signal:............%hhi\n", rdio.dbm_antsignal);
-    printf("--->Noise:.............%hhi\n", rdio.dbm_antnoise);
-
-    // BTP
     btp_header_t btp = in_frame->btp;
-    printf("->BTP:\n");
-    printf("--->Recv Error:........%hhu\n", btp.recv_err);
-    printf("--->Game Fin:..........%hhu\n", btp.game_fin);
-    printf("--->Mutex:.............%hhu\n", btp.mutex);
-    printf("--->Frame Type:........%i\n", btp.frame_type);
-    printf("--->Tree ID:...........%u\n", btp.tree_id);
-    printf("--->TX Power:..........%hhu\n", btp.tx_pwr);
-    printf("--->Parent Addr:.......");
-    print_mac(btp.parent_addr);
-    printf("--->Highest Power:.....%hhu\n", btp.high_pwr);
-    printf("--->2nd highest power:.%hhu\n", btp.snd_high_pwr);
 
-    fflush(stdout);
+    log_debug("BTP Frame:\n"
+              "- Ethernet:\n"
+              "    Source:............%x:%x:%x:%x:%x:%x\n"
+              "    Destination:.......%x:%x:%x:%x:%x:%x\n"
+              "    EtherType:.........%hu\n"
+              "- RadioTap Header:\n"
+              "    Version:...........%hhu\n"
+              "    Length:............%hu\n"
+              "    Present:...........%u\n"
+              "    Time Sync:.........%u%u\n"
+              "    Flags:.............%hhu\n"
+              "    data_rate:.........%hhu\n"
+              "    Frequency:.........%hu\n"
+              "    Channel Flags:.....%hu\n"
+              "    Signal:............%hhi\n"
+              "    Noise:.............%hhi\n"
+              "- BTP:\n"
+              "    Recv Error:........%hhu\n"
+              "    Game Fin:..........%hhu\n"
+              "    Mutex:.............%hhu\n"
+              "    Frame Type:........%i\n"
+              "    Tree ID:...........%u\n"
+              "    TX Power:..........%hhu\n"
+              "    Parent Addr:.......%x:%x:%x:%x:%x:%x\n"
+              "    Highest Power:.....%hhu\n"
+              "    2nd highest power:.%hhu",
+              eth.ether_shost[0], eth.ether_shost[1], eth.ether_shost[2], eth.ether_shost[3], eth.ether_shost[4], eth.ether_shost[5],
+              eth.ether_dhost[0], eth.ether_dhost[1], eth.ether_dhost[2], eth.ether_dhost[3], eth.ether_dhost[4], eth.ether_dhost[5],
+              ntohs(eth.ether_type),
+              rdio.it_version,
+              rdio.it_len,
+              rdio.it_present,
+              rdio.tsf_h, rdio.tsf_l,
+              rdio.flags,
+              rdio.data_rate,
+              rdio.chan_freq,
+              rdio.chan_flags,
+              rdio.dbm_antsignal,
+              rdio.dbm_antnoise,
+              btp.recv_err,
+              btp.game_fin,
+              btp.mutex,
+              btp.frame_type,
+              btp.tree_id,
+              btp.tx_pwr,
+              btp.parent_addr[0], btp.parent_addr[1], btp.parent_addr[2], btp.parent_addr[3], btp.parent_addr[4], btp.parent_addr[5],
+              btp.high_pwr,
+              btp.snd_high_pwr
+    );
 }
 
 void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t game_fin, uint8_t mutex,

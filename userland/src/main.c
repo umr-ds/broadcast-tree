@@ -5,6 +5,7 @@
 #include <poll.h>
 #include <argp.h>
 
+#include "log.h"
 #include "tree.h"
 #include "btp.h"
 
@@ -12,6 +13,8 @@ extern self_t self;
 
 struct arguments {
     bool source;
+    int log_level;
+    char *log_file;
     char *interface;
 };
 
@@ -21,6 +24,8 @@ static char doc[] = "BTP -- Broadcast Tree Protocol";
 static char args_doc[] = "INTERFACE";
 static struct argp_option options[] = {
         {"source",      's', 0,      0, "This node is a BTP source", 0 },
+        {"log",      'l', "ll",      OPTION_ARG_OPTIONAL, "Log level\n0: QUIET, 1: TRACE, 2: DEBUG, 3: INFO (default),\n4: WARN, 5: ERROR, 6: FATAL", 1 },
+        {"file",      'f', "lf",      OPTION_ARG_OPTIONAL, "File path to log file.\nIf not present only stdout and stderr logging will be used.", 1 },
         { 0 }
 };
 
@@ -40,6 +45,12 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
     switch (key) {
         case 's':
             arguments->source = true;
+            break;
+        case 'l':
+            arguments->log_level = (int) strtol(arg, NULL, 10);
+            break;
+        case 'f':
+            arguments->log_file = arg;
             break;
         case ARGP_KEY_ARG:
             if (state->arg_num >= 1) argp_usage (state);
@@ -68,20 +79,20 @@ int init_sock(char *if_name, bool is_source) {
     struct ifreq if_mac;
 
     if ((tmp_sockfd = socket(AF_PACKET, SOCK_RAW, htons(BTP_ETHERTYPE))) == -1) {
-        perror("Could not create socket");
+        log_error("Could not create socket: %s", strerror(errno));
         return tmp_sockfd;
     }
 
     memcpy(if_idx.ifr_name, if_name, IFNAMSIZ - 1);
     ioctl_stat = ioctl(tmp_sockfd, SIOCGIFINDEX, &if_idx);
     if (ioctl_stat < 0) {
-        perror("Could not get the interface's index");
+        log_error("Could not get the interface's index: %s", strerror(errno));
     }
 
     memcpy(if_mac.ifr_name, if_name, IFNAMSIZ - 1);
     ioctl_stat = ioctl(tmp_sockfd, SIOCGIFHWADDR, &if_mac);
     if (ioctl_stat < 0) {
-        perror("Could not get MAC address");
+        log_error("Could not get MAC address: %s", strerror(errno));
         return ioctl_stat;
     }
 
@@ -99,7 +110,7 @@ int event_loop() {
     memset(recv_frame, 0, MTU * sizeof (uint8_t));
 
     int res;
-    printf("Waiting for BTP Response.\n");
+    log_info("Waiting for BTP packets.");
     while (1) {
         struct pollfd pfd = {
             .fd = self.sockfd,
@@ -109,7 +120,7 @@ int event_loop() {
         res = poll(&pfd, 1, POLL_TIMEOUT);
 
         if (res == -1) {
-            perror("Poll returned an error.");
+            log_error("Poll returned an error: %s", strerror(errno));
             return res;
         }
 
@@ -119,16 +130,15 @@ int event_loop() {
 
         if (pfd.revents & POLLIN) {
             if ((read_bytes = recv(self.sockfd, recv_frame, MTU, 0)) >= 0) {
-                printf("Received BTP response.\n");
+                log_info("Received BTP packet.");
                 handle_packet(recv_frame);
-                // hexdump(recv_frame, read_bytes);
             } else {
                 if (errno == EINTR) {
                     memset(recv_frame, 0, MTU * sizeof (uint8_t));
-                    perror("Received signal from recv.");
+                    log_error("Received signal from recv: %s", strerror(errno));
                     continue;
                 } else {
-                    perror("Could not receive data.");
+                    log_error("Could not receive data: %s", strerror(errno));
                     return read_bytes;
                 }
             }
@@ -140,10 +150,23 @@ int main (int argc, char **argv) {
 
     struct arguments arguments = {
             .source = false,
+            .log_level = 2,
+            .log_file = "",
             .interface = ""
     };
     argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
+    // Logging stuff
+    if (arguments.log_level == 0) {
+        log_set_quiet(true);
+    } else {
+        log_set_level(arguments.log_level - 1);
+    }
+
+    if (arguments.log_file[0] != '\0') {
+        FILE *lf = fopen(arguments.log_file, "a");
+        log_add_fp(lf, arguments.log_level - 1);
+    }
 
     int sockfd = init_sock(arguments.interface, arguments.source);
     if (sockfd < 0){
