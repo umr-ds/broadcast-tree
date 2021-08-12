@@ -43,7 +43,7 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
     memcpy(self.laddr, laddr, 6);
     self.parent = NULL;
     self.pending_parent = NULL;
-    self.tree_id = 0;
+    self.tree_id = is_source ? gen_tree_id(self.laddr) : 0;
     self.sockfd = sockfd;
     strncpy(self.if_name, if_name, IFNAMSIZ);
 }
@@ -52,7 +52,7 @@ void init_tree_construction() {
     log_info("Starting tree construction.");
     eth_btp_t discovery_frame = { 0x0 };
     mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-    build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, gen_tree_id(self.laddr), self.max_pwr);
+    build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, self.tree_id, self.max_pwr);
 
     log_debug(
             "Sending init tree frame: "
@@ -140,7 +140,7 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
             "TX Power: %i",
             discovery,
             tree_id,
-            self.max_pwr
+            new_parent_tx
     );
 
     send_btp_frame((uint8_t *) &child_request_frame, sizeof(eth_btp_t));
@@ -256,15 +256,15 @@ void handle_packet(uint8_t *recv_frame) {
 
     switch (in_frame.btp.frame_type) {
         case discovery:
-            log_debug("Received Discovery");
+            log_info("Received Discovery");
             handle_discovery(&in_frame);
             break;
         case child_request:
-            log_debug("Received Child Request.");
+            log_info("Received Child Request.");
             handle_child_request(&in_frame);
             break;
         case child_confirm:
-            log_debug("Received Child Confirm.");
+            log_info("Received Child Confirm.");
             handle_child_confirm(&in_frame);
             break;
         case child_reject:
