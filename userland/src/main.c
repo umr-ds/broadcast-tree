@@ -73,23 +73,27 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
 static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
 
 int init_sock(char *if_name, bool is_source) {
+    log_info("Initialising socket.");
     int ioctl_stat;
     int tmp_sockfd;
 
     struct ifreq if_idx;
     struct ifreq if_mac;
 
+    log_debug("Creating socket.");
     if ((tmp_sockfd = socket(AF_PACKET, SOCK_RAW, htons(BTP_ETHERTYPE))) == -1) {
         log_error("Could not create socket: %s", strerror(errno));
         return tmp_sockfd;
     }
 
+    log_debug("Getting interface's index.");
     memcpy(if_idx.ifr_name, if_name, IFNAMSIZ - 1);
     ioctl_stat = ioctl(tmp_sockfd, SIOCGIFINDEX, &if_idx);
     if (ioctl_stat < 0) {
         log_error("Could not get the interface's index: %s", strerror(errno));
     }
 
+    log_debug("Acquiring MAC address.");
     memcpy(if_mac.ifr_name, if_name, IFNAMSIZ - 1);
     ioctl_stat = ioctl(tmp_sockfd, SIOCGIFHWADDR, &if_mac);
     if (ioctl_stat < 0) {
@@ -100,6 +104,7 @@ int init_sock(char *if_name, bool is_source) {
     L_SOCKADDR.sll_ifindex = if_idx.ifr_ifindex;
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
+    log_debug("Initializing self.");
     init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0, is_source, if_name, tmp_sockfd);
 
     int8_t max_tx_pwr = get_max_tx_pwr();

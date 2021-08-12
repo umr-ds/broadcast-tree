@@ -134,7 +134,6 @@ void hexdump(const void *data, size_t size) {
 }
 
 void pprint_frame(eth_radio_btp_t *in_frame) {
-    // ETHERNET
     struct ether_header eth = in_frame->eth;
     radiotap_header_t rdio = in_frame->radiotap;
     btp_header_t btp = in_frame->btp;
