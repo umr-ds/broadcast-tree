@@ -1,6 +1,7 @@
 #include <time.h>
 #include <tree.h>
 
+#include "libexplain/ioctl.h"
 #include "log.h"
 #include "helpers.h"
 
@@ -40,7 +41,7 @@ bool set_tx_pwr(int8_t tx_pwr) {
     wrq.u.txpower.flags = IW_TXPOW_DBM;
 
     if(iw_set_ext(self.sockfd, self.if_name, SIOCSIWTXPOW, &wrq) < 0) {
-        log_error("Could not set txpower: %s", strerror(errno));
+        log_error("Could not set txpower: %s", explain_ioctl(self.sockfd, SIOCSIWTXPOW, &wrq));
         return false;
     }
 
@@ -49,10 +50,10 @@ bool set_tx_pwr(int8_t tx_pwr) {
 
 int8_t get_tx_pwr() {
     struct iwreq *wrq = malloc(sizeof(struct iwreq));
+    memset(wrq, 0, sizeof(struct iwreq));
     int32_t dbm;
 
     int res;
-
     /* Get current Transmit Power */
     if((res = iw_get_ext(self.sockfd, self.if_name, SIOCGIWTXPOW, wrq)) >= 0) {
         if(wrq->u.txpower.disabled) {
@@ -67,26 +68,30 @@ int8_t get_tx_pwr() {
             return (int8_t) dbm;
         }
     } else {
-        log_error("Could not get current txpower: %s", strerror(errno));
+        log_error("Could not get current txpower: %s", explain_ioctl(self.sockfd, SIOCGIWTXPOW, wrq));
         return (int8_t) res;
     }
 }
 
 int8_t get_max_tx_pwr() {
     int8_t cur_tx_pwr;
+    log_debug("Getting current TX power.");
     if ((cur_tx_pwr = get_tx_pwr()) < 0) {
         return -1;
     }
 
+    log_debug("Setting arbitrary high TX power.");
     if (!set_tx_pwr(INT8_MAX)) {
         return -1;
     }
 
+    log_debug("Getting highest reported TX power.");
     int8_t max_tx_pwr;
     if ((max_tx_pwr = get_tx_pwr()) < 0) {
         return -1;
     }
 
+    log_debug("Setting old tx power.");
     if (!set_tx_pwr(cur_tx_pwr)) {
         return -1;
     }

@@ -1,7 +1,7 @@
 TARGET = btp
 CC = gcc
 INCLUDES = -Iinclude/
-CFLAGS = -liw -DLOG_USE_COLOR -g3 $(INCLUDES)
+CFLAGS = -liw -lexplain -DLOG_USE_COLOR -g3 $(INCLUDES)
 
 SOURCEDIR = src
 BUILDDIR = build

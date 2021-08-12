@@ -5,6 +5,10 @@
 #include <poll.h>
 #include <argp.h>
 
+#include "libexplain/socket.h"
+#include "libexplain/ioctl.h"
+#include <libexplain/poll.h>
+
 #include "log.h"
 #include "tree.h"
 #include "btp.h"
@@ -82,7 +86,7 @@ int init_sock(char *if_name, bool is_source) {
 
     log_debug("Creating socket.");
     if ((tmp_sockfd = socket(AF_PACKET, SOCK_RAW, htons(BTP_ETHERTYPE))) == -1) {
-        log_error("Could not create socket: %s", strerror(errno));
+        log_error("Could not create socket: %s", explain_socket(AF_PACKET, SOCK_RAW, htons(BTP_ETHERTYPE)));
         return tmp_sockfd;
     }
 
@@ -90,14 +94,14 @@ int init_sock(char *if_name, bool is_source) {
     memcpy(if_idx.ifr_name, if_name, IFNAMSIZ - 1);
     ioctl_stat = ioctl(tmp_sockfd, SIOCGIFINDEX, &if_idx);
     if (ioctl_stat < 0) {
-        log_error("Could not get the interface's index: %s", strerror(errno));
+        log_error("Could not get the interface's index: %s", explain_ioctl(tmp_sockfd, SIOCGIFINDEX, &if_idx));
     }
 
     log_debug("Acquiring MAC address.");
     memcpy(if_mac.ifr_name, if_name, IFNAMSIZ - 1);
     ioctl_stat = ioctl(tmp_sockfd, SIOCGIFHWADDR, &if_mac);
     if (ioctl_stat < 0) {
-        log_error("Could not get MAC address: %s", strerror(errno));
+        log_error("Could not get MAC address: %s", explain_ioctl(tmp_sockfd, SIOCGIFHWADDR, &if_mac));
         return ioctl_stat;
     }
 
@@ -107,7 +111,10 @@ int init_sock(char *if_name, bool is_source) {
     log_debug("Initializing self.");
     init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0, is_source, if_name, tmp_sockfd);
 
-    int8_t max_tx_pwr = get_max_tx_pwr();
+    int8_t max_tx_pwr;
+    if ((max_tx_pwr = get_max_tx_pwr()) < 0) {
+        return -1;
+    }
     self.max_pwr = max_tx_pwr;
 
     return tmp_sockfd;
@@ -129,7 +136,7 @@ int event_loop() {
         res = poll(&pfd, 1, POLL_TIMEOUT);
 
         if (res == -1) {
-            log_error("Poll returned an error: %s", strerror(errno));
+            log_error("Poll returned an error: %s", explain_poll(&pfd, 1, POLL_TIMEOUT));
             return res;
         }
 
