@@ -109,7 +109,7 @@ int init_sock(char *if_name, bool is_source) {
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
     log_debug("Initializing self.");
-    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, 0, is_source, if_name, tmp_sockfd);
+    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, is_source, if_name, tmp_sockfd);
 
     int8_t max_tx_pwr;
     if ((max_tx_pwr = get_max_tx_pwr()) < 0) {
@@ -190,6 +190,9 @@ int main (int argc, char **argv) {
     }
 
     if (arguments.source) {
+        if (!set_max_tx_pwr()) {
+            return -1;
+        }
         init_tree_construction();
     }
 

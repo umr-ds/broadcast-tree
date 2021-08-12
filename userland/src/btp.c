@@ -33,11 +33,11 @@ ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #endif
 }
 
-void init_self(mac_addr_t laddr, int8_t max_pwr, bool is_source, char *if_name, int sockfd) {
+void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
     log_debug("Initializing self.");
     self.is_source = is_source;
     self.children = hashmap_new();
-    self.max_pwr = max_pwr;
+    self.max_pwr = 0;
     self.high_pwr = 0;
     self.snd_high_pwr = 0;
     memcpy(self.laddr, laddr, 6);
@@ -55,8 +55,8 @@ void init_tree_construction() {
     build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, gen_tree_id(self.laddr), self.max_pwr);
 
     log_debug(
-            "Sending init tree frame:\n"
-            "  Frame Type: %i\n"
+            "Sending init tree frame: "
+            "  Frame Type: %i; "
             "  TX Power: %i",
             discovery,
             self.max_pwr
@@ -82,9 +82,9 @@ int8_t compute_tx_pwr(eth_radio_btp_t *in_frame) {
 
     int8_t new_tx_power = old_tx_power - (snr - MINIMAL_SNR);
 
-    log_debug("Peer sent with %hhi dBm (RSSI: %hhi, noise: %hhi, SNR: %hhi).\n -> New tx power is %hhi dBm.", old_tx_power, signal, noise, snr, new_tx_power);
+    log_debug("Peer sent with %hhi dBm (RSSI: %hhi, noise: %hhi, SNR: %hhi). New tx power is %hhi dBm.", old_tx_power, signal, noise, snr, new_tx_power);
 
-    return new_tx_power;
+    return new_tx_power < 0 ? 0 : new_tx_power;
 }
 
 bool should_switch(btp_header_t header, int8_t new_parent_tx) {
@@ -134,10 +134,10 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
     build_frame(&child_request_frame, potential_parent_addr, 0, 0, 0, child_request, tree_id, new_parent_tx);
 
     log_debug(
-            "Sending child request:\n"
-            "  Frame Type: %i\n"
-            "  Tree ID: %i\n"
-            "  TX Power: %i",
+            "Sending child request: "
+            "Frame Type: %i; "
+            "Tree ID: %li; "
+            "TX Power: %i",
             discovery,
             tree_id,
             self.max_pwr
@@ -201,7 +201,12 @@ void reject_child(eth_radio_btp_t *in_frame) {
 
     log_warn("Rejecting child.");
 
+    int8_t cur_tx_pwr = get_tx_pwr();
+    set_tx_pwr(self.max_pwr);
+
     send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t));
+
+    set_tx_pwr(cur_tx_pwr);
 }
 
 void handle_child_request(eth_radio_btp_t *in_frame) {
@@ -223,9 +228,13 @@ void disconnect_from_parent() {
     eth_btp_t disconnect_frame = { 0x0 };
     build_frame(&disconnect_frame, self.parent->addr, 0, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
 
-    free(self.parent);
+    int8_t cur_tx_pwr = get_tx_pwr();
+    set_tx_pwr(self.max_pwr);
 
     send_btp_frame((uint8_t *)&disconnect_frame, sizeof(eth_btp_t));
+
+    set_tx_pwr(cur_tx_pwr);
+    free(self.parent);
 }
 
 void handle_child_confirm(eth_radio_btp_t *in_frame) {

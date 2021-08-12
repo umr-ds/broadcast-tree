@@ -33,6 +33,20 @@ uint32_t gen_tree_id(mac_addr_t laddr) {
     return hash;
 }
 
+bool set_max_tx_pwr() {
+    log_info("Setting max TX power.");
+    int8_t max_tx_pwr;
+    if ((max_tx_pwr = get_max_tx_pwr()) < 0) {
+        return false;
+    }
+
+    if (!set_tx_pwr(max_tx_pwr)) {
+        return false;
+    }
+
+    return true;
+}
+
 bool set_tx_pwr(int8_t tx_pwr) {
     struct iwreq wrq;
     wrq.u.txpower.value = (int32_t) tx_pwr;

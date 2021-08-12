@@ -36,5 +36,6 @@ void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t gam
 int8_t get_tx_pwr();
 bool set_tx_pwr(int8_t tx_pwr);
 int8_t get_max_tx_pwr();
+bool set_max_tx_pwr();
 
 #endif // __HELPERS_H__
