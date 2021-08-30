@@ -22,6 +22,8 @@
 
 #define MINIMAL_SNR 15
 
+#define DISCOVERY_BCAST_INTERVAL_MSEC 1000
+
 typedef uint8_t mac_addr_t[6];
 
 typedef enum {
@@ -60,7 +62,7 @@ typedef struct {
  * Common header of all BTP-frames
  */
 typedef struct {
-    uint8_t recv_err:1; // flag set if the channel has been very noisy
+    uint8_t recv_err:1; // flag set if the channel has been very noisy; NOTE: Why? Really needed? Might remove.
     uint8_t game_fin:1; // flag set if the node has already finished its game
     uint8_t mutex:1; // flags set if something-something mutex
     uint8_t unused:2;
@@ -132,10 +134,12 @@ typedef struct {
     mac_addr_t parents[MAX_DEPTH];
 } __attribute__((packed)) eth_btp_pts_t;
 
+bool self_is_connected();
+
 /**
  * Initialises the construction of a new broadcast-tree
  */
-void init_tree_construction();
+void broadcast_discovery();
 
 /**
  * Parse the common btp-header

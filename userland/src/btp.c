@@ -45,22 +45,24 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
     self.pending_parent = NULL;
     self.tree_id = is_source ? gen_tree_id(self.laddr) : 0;
     self.sockfd = sockfd;
+    self.game_fin = false;
     strncpy(self.if_name, if_name, IFNAMSIZ);
 }
 
-void init_tree_construction() {
-    log_info("Starting tree construction.");
+void broadcast_discovery() {
     eth_btp_t discovery_frame = { 0x0 };
     mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-    build_frame(&discovery_frame, bcast_addr, 0, 0, 0, discovery, self.tree_id, self.max_pwr);
+    build_frame(&discovery_frame, bcast_addr, 0, self.game_fin, 0, discovery, self.tree_id, self.max_pwr);
 
     log_debug(
-            "Sending init tree frame: "
+            "Broadcasting discovery: "
             "  Frame Type: %i; "
             "  TX Power: %i",
             discovery,
             self.max_pwr
     );
+
+    set_max_tx_pwr();
 
     /* Send packet */
     send_btp_frame((uint8_t *) &discovery_frame, sizeof(eth_btp_t));
@@ -153,6 +155,7 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
 
     if (self_is_pending()) return;
 
+    // If we receive a discovery from our parent, update our own state.
     if (self_is_connected() && memcmp(in_frame->eth.ether_shost, self.parent->addr, 6) == 0) {
         self.parent->high_pwr = in_frame->btp.high_pwr;
         self.parent->snd_high_pwr = in_frame->btp.snd_high_pwr;

@@ -7,6 +7,11 @@
 
 extern self_t self;
 
+int get_time_msec(struct timeval tval) {
+    gettimeofday(&tval, NULL);
+    return ((tval.tv_sec * 1000000) + tval.tv_usec) / 1000;
+}
+
 bool already_child(mac_addr_t potential_child_addr) {
     child_t child = {0x0};
     if (hashmap_get(self.children, (char *)potential_child_addr, (any_t*)&child) == MAP_OK) {
@@ -34,7 +39,7 @@ uint32_t gen_tree_id(mac_addr_t laddr) {
 }
 
 bool set_max_tx_pwr() {
-    log_info("Setting max TX power.");
+    log_debug("Setting max TX power.");
     int8_t max_tx_pwr;
     if ((max_tx_pwr = get_max_tx_pwr()) < 0) {
         return false;

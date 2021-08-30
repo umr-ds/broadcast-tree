@@ -37,6 +37,7 @@ typedef struct {
     parent_t *parent; // currently connected parent
     parent_t *pending_parent;
     uint32_t tree_id; // the tree to which we belong
+    bool game_fin;
     char if_name[IFNAMSIZ]; // the interface name to be used
     int sockfd;
 } self_t;

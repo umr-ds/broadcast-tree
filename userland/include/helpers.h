@@ -1,7 +1,11 @@
 #ifndef __HELPERS_H__
 #define __HELPERS_H__
 
+#include "time.h"
+
 #include "btp.h"
+
+int get_time_msec(struct timeval tval);
 
 /**
  * Generate a (hopefully unique) id for a new braodcast tree.

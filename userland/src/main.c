@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <poll.h>
 #include <argp.h>
+#include <time.h>
 
 #include "libexplain/socket.h"
 #include "libexplain/ioctl.h"
@@ -125,9 +126,18 @@ int event_loop() {
     uint8_t recv_frame[MTU];
     memset(recv_frame, 0, MTU * sizeof (uint8_t));
 
+    struct timeval tval;
+    int start_time = get_time_msec(tval);
     int res;
     log_info("Waiting for BTP packets.");
     while (1) {
+        int cur_time = get_time_msec(tval);
+        log_debug("cur_time: %i, start_time: %i, diff: %i", cur_time, start_time, cur_time - start_time);
+        if (cur_time - start_time > DISCOVERY_BCAST_INTERVAL_MSEC) {
+            broadcast_discovery();
+            start_time = cur_time;
+        }
+
         struct pollfd pfd = {
             .fd = self.sockfd,
             .events = POLLIN
@@ -190,10 +200,7 @@ int main (int argc, char **argv) {
     }
 
     if (arguments.source) {
-        if (!set_max_tx_pwr()) {
-            return -1;
-        }
-        init_tree_construction();
+        broadcast_discovery();
     }
 
     return event_loop();
