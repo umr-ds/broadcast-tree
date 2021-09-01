@@ -132,9 +132,10 @@ int event_loop() {
     log_info("Waiting for BTP packets.");
     while (1) {
         int cur_time = get_time_msec(tval);
-        log_debug("cur_time: %i, start_time: %i, diff: %i", cur_time, start_time, cur_time - start_time);
         if (cur_time - start_time > DISCOVERY_BCAST_INTERVAL_MSEC) {
-            broadcast_discovery();
+            if (self.is_source || self_is_connected()) {
+                broadcast_discovery();
+            }
             start_time = cur_time;
         }
 

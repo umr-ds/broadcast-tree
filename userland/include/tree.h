@@ -30,6 +30,7 @@ typedef struct {
 typedef struct {
     bool is_source; // whether we are the rood of the broadcast tree
     map_t children; // hashmap of currently connected children
+    map_t parent_blocklist; // parents that refused request are ignored
     int8_t max_pwr; // maximum power at which we are able (or willing) to broadcast
     int8_t high_pwr; // the power at which we currently broadcast data frames
     int8_t snd_high_pwr; // the power at which we WOULD broadacst data frames, if our furthest child were to disconnect

@@ -7,6 +7,8 @@
 
 self_t self = {0x0};
 
+char *dummy = NULL;
+
 extern struct sockaddr_ll L_SOCKADDR;
 
 bool self_is_connected() {
@@ -37,6 +39,7 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
     log_debug("Initializing self.");
     self.is_source = is_source;
     self.children = hashmap_new();
+    self.parent_blocklist = hashmap_new();
     self.max_pwr = 0;
     self.high_pwr = 0;
     self.snd_high_pwr = 0;
@@ -47,6 +50,8 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
     self.sockfd = sockfd;
     self.game_fin = false;
     strncpy(self.if_name, if_name, IFNAMSIZ);
+
+    dummy = (char *) malloc(sizeof(char));
 }
 
 void broadcast_discovery() {
@@ -155,6 +160,12 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
 
     if (self_is_pending()) return;
 
+    // If the address is in the parent blocklist, we won't attempt to connect again
+    if (hashmap_get(self.parent_blocklist, (char *)in_frame->eth.ether_shost, (void **)&dummy) == MAP_OK) {
+        log_debug("Already ignoring potential parent.");
+        return;
+    }
+
     // If we receive a discovery from our parent, update our own state.
     if (self_is_connected() && memcmp(in_frame->eth.ether_shost, self.parent->addr, 6) == 0) {
         self.parent->high_pwr = in_frame->btp.high_pwr;
@@ -241,16 +252,35 @@ void disconnect_from_parent() {
 }
 
 void handle_child_confirm(eth_radio_btp_t *in_frame) {
+    // If we do not wait for an CHILD CONFIRM, ignore.
+    if (!self_is_pending()) return;
+
     // We received a confirmation from a parent we never asked. Ignore.
-    if (self_is_pending() && memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
+    if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
 
     // If we are already connected, disconnect from the current par
     if (self_is_connected()) disconnect_from_parent();
+
+    log_info("Parent confirmed our request.");
 
     self.tree_id = in_frame->btp.tree_id;
 
     self.parent = self.pending_parent;
     self.pending_parent = NULL;
+}
+
+
+void handle_child_reject(eth_radio_btp_t *in_frame) {
+    // If we do not wait for an CHILD CONFIRM, ignore.
+    if (!self_is_pending()) return;
+
+    // We received a confirmation from a parent we never asked. Ignore.
+    if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
+
+    log_info("Parent rejected our request.");
+    free(self.pending_parent);
+    self.pending_parent = NULL;
+    hashmap_put(self.parent_blocklist, (char *)in_frame->eth.ether_shost, (void**) &dummy);
 }
 
 void handle_packet(uint8_t *recv_frame) {
@@ -271,7 +301,8 @@ void handle_packet(uint8_t *recv_frame) {
             handle_child_confirm(&in_frame);
             break;
         case child_reject:
-            log_warn("Received Child Reject. Not implemented, yet.");
+            log_info("Received Child Reject.");
+            handle_child_reject(&in_frame);
             break;
         case parent_revocaction:
             log_warn("Received Parent Revocation. Not implemented, yet.");
