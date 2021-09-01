@@ -110,6 +110,6 @@ namespace ns3
 
 		//NS_LOG_UNCOND("dBm = " << txPowerDbm << ", Current = " << current << ", volt = " << this->voltage);
 
-		return current;
+		return current / 1000;
 	}
 }
