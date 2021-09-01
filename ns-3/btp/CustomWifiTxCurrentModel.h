@@ -16,20 +16,20 @@ namespace ns3
 {
 	class CustomWifiTxCurrentModel : public WifiTxCurrentModel
 	{
-		public:
-			static TypeId GetTypeId (void);
+	public:
+		static TypeId GetTypeId(void);
 
-			CustomWifiTxCurrentModel();
-			virtual ~CustomWifiTxCurrentModel();
-			double CalcTxCurrent (double txPowerDbm) const;
+		CustomWifiTxCurrentModel();
+		virtual ~CustomWifiTxCurrentModel();
+		double CalcTxCurrent(double txPowerDbm) const;
 
-		 private:
-			double eta;
-			double voltage;
-			double idleCurrent;
-			std::string chip;
+	private:
+		double eta;
+		double voltage;
+		double idleCurrent;
+		std::string chip;
 
-			double calcMax2831(double txPower) const;
+		double calcMax2831(double txPower) const;
 	};
 }
 

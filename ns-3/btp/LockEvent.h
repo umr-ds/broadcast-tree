@@ -20,24 +20,23 @@ namespace ns3
 
 	class LockEvent : public EventImpl
 	{
-		public:
-			LockEvent(Ptr<GameState> gs, Ptr<EEBTProtocolMutex> prot, Ptr<EEBTPNode> recipient, Mac48Address originator, Mac48Address newOriginator, Mac48Address unused);
-			~LockEvent();
+	public:
+		LockEvent(Ptr<GameState> gs, Ptr<EEBTProtocolMutex> prot, Ptr<EEBTPNode> recipient, Mac48Address originator, Mac48Address newOriginator, Mac48Address unused);
+		~LockEvent();
 
-			void Notify();
+		void Notify();
 
-			uint32_t getNTimes();
-		private:
-			Ptr<GameState> gs;
-			Ptr<EEBTProtocolMutex> prot;
-			Ptr<EEBTPNode> recipient;
-			Mac48Address originator;
-			Mac48Address newOriginator;
-			Mac48Address unused;
-			uint32_t counter;
+		uint32_t getNTimes();
+
+	private:
+		Ptr<GameState> gs;
+		Ptr<EEBTProtocolMutex> prot;
+		Ptr<EEBTPNode> recipient;
+		Mac48Address originator;
+		Mac48Address newOriginator;
+		Mac48Address unused;
+		uint32_t counter;
 	};
 }
-
-
 
 #endif /* BROADCAST_LOCKEVENT_H_ */

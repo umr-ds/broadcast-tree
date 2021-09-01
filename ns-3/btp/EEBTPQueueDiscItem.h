@@ -15,15 +15,15 @@ namespace ns3
 {
 	class EEBTPQueueDiscItem : public QueueDiscItem
 	{
-		public:
-			EEBTPQueueDiscItem(Ptr<Packet> p, const Address & addr, uint16_t protocol);
-			virtual ~EEBTPQueueDiscItem();
+	public:
+		EEBTPQueueDiscItem(Ptr<Packet> p, const Address &addr, uint16_t protocol);
+		virtual ~EEBTPQueueDiscItem();
 
-			virtual bool Mark();
-			virtual void AddHeader();
-			virtual uint32_t GetSize() const;
+		virtual bool Mark();
+		virtual void AddHeader();
+		virtual uint32_t GetSize() const;
 
-			virtual void Print(std::ostream &os) const;
+		virtual void Print(std::ostream &os) const;
 	};
 }
 

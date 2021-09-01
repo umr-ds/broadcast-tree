@@ -44,12 +44,11 @@ namespace ns3
 
 	SimpleBroadcastProtocol::~SimpleBroadcastProtocol()
 	{
-
 	}
 
 	TypeId SimpleBroadcastProtocol::GetTypeId()
 	{
-		static TypeId tid = TypeId ("ns3::SimpleBroadcastProtocol").SetParent<Object>().AddConstructor<SimpleBroadcastProtocol>();
+		static TypeId tid = TypeId("ns3::SimpleBroadcastProtocol").SetParent<Object>().AddConstructor<SimpleBroadcastProtocol>();
 		return tid;
 	}
 
@@ -86,28 +85,28 @@ namespace ns3
 
 		this->packetsRecv++;
 
-		if(header.GetOriginator() == device->GetAddress())						//Check if we are the originator
+		if (header.GetOriginator() == device->GetAddress()) //Check if we are the originator
 			NS_LOG_DEBUG("We are the originator! Hence we are not allowed to re-broadcast it.");
 		else
 		{
 			bool alreadyReceived = false;
-			for(uint32_t i : this->cache[header.GetOriginator()])
+			for (uint32_t i : this->cache[header.GetOriginator()])
 			{
-				if(i == header.GetSequenceNumber())
+				if (i == header.GetSequenceNumber())
 				{
 					alreadyReceived = true;
 					break;
 				}
 			}
 
-			if(!alreadyReceived)
+			if (!alreadyReceived)
 			{
 				//Update cache
 				this->cache[header.GetOriginator()].push_back(header.GetSequenceNumber());
 				this->uniquePackets++;
 
 				//Check if we have to re-broadcast the packet
-				if(header.GetHopCount() > 0)												//Check if the hop count is zero
+				if (header.GetHopCount() > 0) //Check if the hop count is zero
 				{
 					NS_LOG_DEBUG("Hop count of the packet is 0! Hence we are not allowed to re-broadcast it.");
 					//Create new packet
@@ -215,11 +214,11 @@ namespace ns3
 		wifiPhy->GetAttribute("State", ptr);
 		Ptr<WifiPhyStateHelper> stateHelper = DynamicCast<WifiPhyStateHelper>(ptr.Get<WifiPhyStateHelper>());
 		stateHelper->TraceConnectWithoutContext("State", MakeCallback(&SimpleBroadcastProtocol::onPhyStateChanged, this));
-		this->energySource->TraceConnectWithoutContext("TotalEnergyConsumption",MakeCallback(&SimpleBroadcastProtocol::onEnergyChanged, this));
+		this->energySource->TraceConnectWithoutContext("TotalEnergyConsumption", MakeCallback(&SimpleBroadcastProtocol::onEnergyChanged, this));
 
-		this->device->GetMac()->TraceConnectWithoutContext("TxOkHeader",MakeCallback(&SimpleBroadcastProtocol::onTxSuccessful, this));
-		this->device->GetMac()->TraceConnectWithoutContext("MacTxDrop",MakeCallback(&SimpleBroadcastProtocol::onTxDropped, this));
-		this->device->GetMac()->TraceConnectWithoutContext("TxErrHeader",MakeCallback(&SimpleBroadcastProtocol::onTxFailed, this));
+		this->device->GetMac()->TraceConnectWithoutContext("TxOkHeader", MakeCallback(&SimpleBroadcastProtocol::onTxSuccessful, this));
+		this->device->GetMac()->TraceConnectWithoutContext("MacTxDrop", MakeCallback(&SimpleBroadcastProtocol::onTxDropped, this));
+		this->device->GetMac()->TraceConnectWithoutContext("TxErrHeader", MakeCallback(&SimpleBroadcastProtocol::onTxFailed, this));
 
 		TrafficControlHelper tch = TrafficControlHelper();
 		tch.Install(this->device);
@@ -229,7 +228,6 @@ namespace ns3
 		this->tcl->RegisterProtocolHandler(MakeCallback(&SimpleBroadcastProtocol::Receive, this), SimpleBroadcastProtocol::PROT_NUMBER, this->device);
 		//this->device->GetNode()->RegisterProtocolHandler(MakeCallback(&SimpleBroadcastProtocol::Receive, this), SimpleBroadcastProtocol::PROT_NUMBER, netDevice);
 	}
-
 
 	/*
 	 *
@@ -242,14 +240,14 @@ namespace ns3
 		pkt->RemoveHeader(hdr);
 
 		//If this packet contains data for upper layer protocols
-		if(hdr.IsData())
+		if (hdr.IsData())
 		{
 			//Get protocol ID from snap header
 			LlcSnapHeader lhdr;
 			pkt->RemoveHeader(lhdr);
 
 			//If this packet contains EEBTProtocol data
-			if(lhdr.GetType() == SimpleBroadcastProtocol::PROT_NUMBER)
+			if (lhdr.GetType() == SimpleBroadcastProtocol::PROT_NUMBER)
 			{
 				this->energyAtStart = this->energySource->GetRemainingEnergy();
 			}
@@ -264,14 +262,14 @@ namespace ns3
 		pkt->RemoveHeader(hdr);
 
 		//If this packet contains data for upper layer protocols
-		if(hdr.IsData())
+		if (hdr.IsData())
 		{
 			//Get protocol ID from snap header
 			LlcSnapHeader lhdr;
 			pkt->RemoveHeader(lhdr);
 
 			//If this packet contains EEBTProtocol data
-			if(lhdr.GetType() == SimpleBroadcastProtocol::PROT_NUMBER)
+			if (lhdr.GetType() == SimpleBroadcastProtocol::PROT_NUMBER)
 			{
 				this->energyRecv += (this->energyAtStart - this->energySource->GetRemainingEnergy());
 				this->dataRecv += pkt->GetSize();
@@ -282,7 +280,7 @@ namespace ns3
 	void SimpleBroadcastProtocol::onTxStart(Ptr<const Packet> packet, double txPowerW)
 	{
 		EEBTPTag tag;
-		if(packet->PeekPacketTag(tag))
+		if (packet->PeekPacketTag(tag))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: onTxStart() => packetSize = " << packet->GetSize() << ", energy = " << this->energySource->GetRemainingEnergy());
 			this->energyAtStart = this->energySource->GetRemainingEnergy();
@@ -297,7 +295,7 @@ namespace ns3
 	void SimpleBroadcastProtocol::onTxEnd(Ptr<const Packet> packet)
 	{
 		EEBTPTag tag;
-		if(packet->PeekPacketTag(tag))
+		if (packet->PeekPacketTag(tag))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: onTxEnd() => packetSize = " << packet->GetSize() << ", energy = " << (this->energyAtStart - this->energySource->GetRemainingEnergy()) << ", tx = " << this->device->GetPhy()->GetTxPowerEnd() << "dBm");
 			this->dataSent += packet->GetSize();

@@ -20,18 +20,17 @@ namespace ns3
 
 	class ADSendEvent : public EventImpl
 	{
-		public:
-			ADSendEvent(Ptr<GameState> gs, Ptr<EEBTProtocol> prot, uint16_t seqNo);
-			~ADSendEvent();
+	public:
+		ADSendEvent(Ptr<GameState> gs, Ptr<EEBTProtocol> prot, uint16_t seqNo);
+		~ADSendEvent();
 
-			void Notify();
-		private:
-			uint16_t seqNo;
-			Ptr<GameState> gs;
-			Ptr<EEBTProtocol> prot;
+		void Notify();
+
+	private:
+		uint16_t seqNo;
+		Ptr<GameState> gs;
+		Ptr<EEBTProtocol> prot;
 	};
 }
-
-
 
 #endif /* BROADCAST_AD_SENDEVENT_H_ */

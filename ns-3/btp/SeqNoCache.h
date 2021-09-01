@@ -17,21 +17,20 @@ namespace ns3
 {
 	class SeqNoCache
 	{
-		public:
-			SeqNoCache();
-			virtual ~SeqNoCache();
+	public:
+		SeqNoCache();
+		virtual ~SeqNoCache();
 
-			bool checkForDuplicate(Mac48Address sender, uint16_t seqNo);
+		bool checkForDuplicate(Mac48Address sender, uint16_t seqNo);
 
-			void injectSeqNo(EEBTPHeader *header);
+		void injectSeqNo(EEBTPHeader *header);
 
-		private:
-			uint16_t seqNo;
-			//std::map<Mac48Address,std::pair<std::map<uint16_t, bool>, std::pair<uint16_t, uint16_t>>> cache;
-			std::map<Mac48Address,std::map<uint16_t, bool>> cache;
-			std::map<Mac48Address, std::vector<uint16_t>> cacheX;
+	private:
+		uint16_t seqNo;
+		//std::map<Mac48Address,std::pair<std::map<uint16_t, bool>, std::pair<uint16_t, uint16_t>>> cache;
+		std::map<Mac48Address, std::map<uint16_t, bool>> cache;
+		std::map<Mac48Address, std::vector<uint16_t>> cacheX;
 	};
 }
-
 
 #endif /* BROADCAST_CACHE_SEQNOCACHE_H_ */

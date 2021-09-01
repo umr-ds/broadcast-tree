@@ -26,12 +26,12 @@ namespace ns3
 	TypeId EEBTPDataHeader::GetTypeId()
 	{
 		static TypeId tid = TypeId("ns3::EEBTPDataHeader")
-				.SetParent<Header>()
-				.AddConstructor<EEBTPDataHeader>()
-				.AddAttribute("seqNo", "The sequence number of this packet",
-				                    IntegerValue(0),
-				                    MakeIntegerAccessor(&EEBTPDataHeader::seqNo),
-				                    MakeIntegerChecker<int>());
+								.SetParent<Header>()
+								.AddConstructor<EEBTPDataHeader>()
+								.AddAttribute("seqNo", "The sequence number of this packet",
+											  IntegerValue(0),
+											  MakeIntegerAccessor(&EEBTPDataHeader::seqNo),
+											  MakeIntegerChecker<int>());
 		return tid;
 	}
 
@@ -81,7 +81,6 @@ namespace ns3
 	{
 		this->seqNo = seqNo;
 	}
-
 
 	/*
 	 * Getter and Setter for the sequence number

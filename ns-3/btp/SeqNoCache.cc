@@ -21,16 +21,16 @@ namespace ns3
 
 	bool SeqNoCache::checkForDuplicate(Mac48Address sender, uint16_t seqNo)
 	{
-		for(uint16_t x : this->cacheX[sender])
+		for (uint16_t x : this->cacheX[sender])
 		{
-			if(x == seqNo)
+			if (x == seqNo)
 				return true;
 		}
 
 		this->cacheX[sender].push_back(seqNo);
 
 		//Remove all sequence number from sender while there are more than 1000 stored
-		while(this->cacheX[sender].size() > 1000)
+		while (this->cacheX[sender].size() > 1000)
 			this->cacheX[sender].erase(this->cacheX[sender].begin());
 		return false;
 	}

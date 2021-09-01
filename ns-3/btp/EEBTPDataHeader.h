@@ -14,28 +14,27 @@ namespace ns3
 {
 	class EEBTPDataHeader : public Header
 	{
-		public:
-			EEBTPDataHeader();
-			virtual ~EEBTPDataHeader();
+	public:
+		EEBTPDataHeader();
+		virtual ~EEBTPDataHeader();
 
-			static TypeId GetTypeId();
-			virtual TypeId GetInstanceTypeId() const;
-			virtual void Print(std::ostream &os) const;
-			virtual void Serialize(Buffer::Iterator start) const;
-			virtual uint32_t Deserialize(Buffer::Iterator start);
-			virtual uint32_t GetSerializedSize() const;
+		static TypeId GetTypeId();
+		virtual TypeId GetInstanceTypeId() const;
+		virtual void Print(std::ostream &os) const;
+		virtual void Serialize(Buffer::Iterator start) const;
+		virtual uint32_t Deserialize(Buffer::Iterator start);
+		virtual uint32_t GetSerializedSize() const;
 
-			uint32_t GetSequenceNumber();
-			void SetSequenceNumber(uint32_t seqNo);
+		uint32_t GetSequenceNumber();
+		void SetSequenceNumber(uint32_t seqNo);
 
-			uint32_t GetDataLength();
-			void SetDataLength(uint32_t len);
+		uint32_t GetDataLength();
+		void SetDataLength(uint32_t len);
 
-		protected:
-			uint32_t seqNo;
-			uint32_t dataLen;
+	protected:
+		uint32_t seqNo;
+		uint32_t dataLen;
 	};
 }
-
 
 #endif /* BROADCAST_EEBTPDataHeader_H_ */

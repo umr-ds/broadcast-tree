@@ -18,7 +18,7 @@ namespace ns3
 		this->prot = prot;
 	}
 
-	ParentPathCheckEvent::~ParentPathCheckEvent(){}
+	ParentPathCheckEvent::~ParentPathCheckEvent() {}
 
 	void ParentPathCheckEvent::Notify()
 	{

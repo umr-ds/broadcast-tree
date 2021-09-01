@@ -51,8 +51,8 @@ namespace ns3
 	TypeId EEBTPPacketManager::GetTypeId()
 	{
 		static TypeId tid = TypeId("ns3::GameState")
-							.SetParent<Object>()
-							.AddConstructor<EEBTPPacketManager>();
+								.SetParent<Object>()
+								.AddConstructor<EEBTPPacketManager>();
 		return tid;
 	}
 
@@ -60,7 +60,6 @@ namespace ns3
 	{
 		return GetTypeId();
 	}
-
 
 	void EEBTPPacketManager::setDevice(Ptr<WifiNetDevice> device)
 	{
@@ -76,10 +75,10 @@ namespace ns3
 
 		NS_LOG_DEBUG("EEBTPPacketManager::sendPacket() => " << tag.getTxPower() << "dBm");
 
-		for(uint i = 0; i < this->addrSeqCache[recipient].size(); i++)
+		for (uint i = 0; i < this->addrSeqCache[recipient].size(); i++)
 		{
 			uint16_t seqNo = this->addrSeqCache[recipient][i];
-			if(this->packetsLost[seqNo] || this->packetsAcked[seqNo])
+			if (this->packetsLost[seqNo] || this->packetsAcked[seqNo])
 			{
 				this->addrSeqCache[recipient].erase(this->addrSeqCache[recipient].begin() + i);
 				i--;
@@ -103,23 +102,23 @@ namespace ns3
 		pkt->RemoveHeader(hdr);
 
 		//If this packet contains data for upper layer protocols
-		if(hdr.IsData())
+		if (hdr.IsData())
 		{
 			//Get protocol ID from snap header
 			LlcSnapHeader lhdr;
 			pkt->RemoveHeader(lhdr);
 
 			//If this packet contains EEBTProtocol data
-			if(lhdr.GetType() == EEBTProtocol::PROT_NUMBER)
+			if (lhdr.GetType() == EEBTProtocol::PROT_NUMBER)
 			{
-				EEBTPHeader ehdr;				//=> We can use the regular EEBTPHeader, since we only need the frame type
+				EEBTPHeader ehdr; //=> We can use the regular EEBTPHeader, since we only need the frame type
 				ehdr.setShort(true);
 				pkt->RemoveHeader(ehdr);
 
 				this->seqNoAtStart = hdr.GetSequenceNumber();
 				this->energyAtStart = this->energySource->GetRemainingEnergy();
 
-				if(hdr.GetAddr1() == this->device->GetAddress() || hdr.GetAddr1() == Mac48Address::GetBroadcast())
+				if (hdr.GetAddr1() == this->device->GetAddress() || hdr.GetAddr1() == Mac48Address::GetBroadcast())
 					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: On start of RX (" << Now() << "): MACSeqNo = " << this->seqNoAtStart << " / " << ehdr.GetSequenceNumber() << ", energy = " << this->energyAtStart);
 			}
 		}
@@ -134,20 +133,20 @@ namespace ns3
 		pkt->RemoveHeader(hdr);
 
 		//If this packet contains data for upper layer protocols
-		if(hdr.IsData())
+		if (hdr.IsData())
 		{
 			//Get protocol ID from snap header
 			LlcSnapHeader lhdr;
 			pkt->RemoveHeader(lhdr);
 
 			//If this packet refers to the EEBTProtocol
-			if(lhdr.GetType() == EEBTProtocol::PROT_NUMBER)
+			if (lhdr.GetType() == EEBTProtocol::PROT_NUMBER)
 			{
-				EEBTPHeader ehdr;				//=> We can use the regular EEBTPHeader, since we only need the frame type
+				EEBTPHeader ehdr; //=> We can use the regular EEBTPHeader, since we only need the frame type
 				ehdr.setShort(true);
 				pkt->RemoveHeader(ehdr);
 
-				if(hdr.GetAddr1() == this->device->GetAddress() || hdr.GetAddr1() == Mac48Address::GetBroadcast())
+				if (hdr.GetAddr1() == this->device->GetAddress() || hdr.GetAddr1() == Mac48Address::GetBroadcast())
 				{
 					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: onPacketRx() => MACSeqNo = " << hdr.GetSequenceNumber() << " / " << ehdr.GetSequenceNumber() << ", time = " << Now());
 
@@ -155,7 +154,7 @@ namespace ns3
 					this->packetTag[ehdr.GetSequenceNumber()] = this->createPacketTag(pkt, txVector, signalNoise);
 				}
 			}
-			else if(hdr.GetAddr1() == this->device->GetAddress() || hdr.GetAddr1() == Mac48Address::GetBroadcast())
+			else if (hdr.GetAddr1() == this->device->GetAddress() || hdr.GetAddr1() == Mac48Address::GetBroadcast())
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: onPacketRx() => MACSeqNo = " << hdr.GetSequenceNumber() << " / N/A, time = " << Now());
 		}
 	}
@@ -169,16 +168,16 @@ namespace ns3
 		pkt->RemoveHeader(hdr);
 
 		//If this packet contains data for upper layer protocols
-		if(hdr.IsData())
+		if (hdr.IsData())
 		{
 			//Get protocol ID from snap header
 			LlcSnapHeader lhdr;
 			pkt->RemoveHeader(lhdr);
 
 			//If this packet refers to the EEBTProtocol
-			if(lhdr.GetType() == EEBTProtocol::PROT_NUMBER)
+			if (lhdr.GetType() == EEBTProtocol::PROT_NUMBER)
 			{
-				EEBTPHeader ehdr;				//=> We can use the regular EEBTPHeader, since we only need the frame type
+				EEBTPHeader ehdr; //=> We can use the regular EEBTPHeader, since we only need the frame type
 				ehdr.setShort(true);
 				pkt->RemoveHeader(ehdr);
 
@@ -188,12 +187,11 @@ namespace ns3
 				this->frameDataRecv[ehdr.GetGameId()][ehdr.GetFrameType()] += packet->GetSize();
 				this->frameEnergyRecv[ehdr.GetGameId()][ehdr.GetFrameType()] += (this->energyAtStart - this->energySource->GetRemainingEnergy());
 
-				if(hdr.GetAddr1() == this->device->GetAddress() || hdr.GetAddr1() == Mac48Address::GetBroadcast())
+				if (hdr.GetAddr1() == this->device->GetAddress() || hdr.GetAddr1() == Mac48Address::GetBroadcast())
 					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Reception of " << hdr.GetSequenceNumber() << " / " << ehdr.GetSequenceNumber() << " finished. FRAME_TYPE: " << (uint32_t)ehdr.GetFrameType() << " Time: " << Now());
 			}
 		}
 	}
-
 
 	/*
 	 * TX hooks
@@ -207,12 +205,12 @@ namespace ns3
 		packet->PeekHeader(hdr);
 
 		EEBTPTag tag;
-		if(packet->PeekPacketTag(tag))
+		if (packet->PeekPacketTag(tag))
 		{
 			this->energyAtStart = this->energySource->GetRemainingEnergy();
 
 			std::map<uint16_t, uint16_t>::iterator it = this->packets.find(hdr.GetSequenceNumber());
-			if(it == this->packets.end())
+			if (it == this->packets.end())
 			{
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Transmission of new packet with MACSeqNo = " << hdr.GetSequenceNumber() << " and EEBTPSeqNo = " << tag.getSequenceNumber() << " started at " << Now());
 				this->packets[hdr.GetSequenceNumber()] = tag.getSequenceNumber();
@@ -234,7 +232,7 @@ namespace ns3
 		packet->PeekHeader(hdr);
 
 		EEBTPTag tag;
-		if(packet->PeekPacketTag(tag))
+		if (packet->PeekPacketTag(tag))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Packet with MACSeqNo = " << hdr.GetSequenceNumber() << " and EEBTPSeqNo = " << tag.getSequenceNumber() << " has been dropped at " << Now());
 			this->packetsLost[tag.getSequenceNumber()] = true;
@@ -252,11 +250,11 @@ namespace ns3
 		packet->PeekHeader(hdr);
 
 		EEBTPTag tag;
-		if(packet->PeekPacketTag(tag))
+		if (packet->PeekPacketTag(tag))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Packet with MACSeqNo = " << hdr.GetSequenceNumber() << " and EEBTPSeqNo = " << tag.getSequenceNumber() << " has been transmitted at " << Now());
 
-			if(tag.getFrameType() == APPLICATION_DATA)
+			if (tag.getFrameType() == APPLICATION_DATA)
 				NS_LOG_DEBUG("onTxEnd() => packetSize = " << packet->GetSize() << ", energy = " << (this->energyAtStart - this->energySource->GetRemainingEnergy()));
 
 			this->dataSent[tag.getGameID()] += packet->GetSize();
@@ -270,16 +268,13 @@ namespace ns3
 		}
 	}
 
-
-
-
 	void EEBTPPacketManager::onPacketTx(Ptr<const Packet> packet, uint16_t channelFreqMhz, WifiTxVector txVector, MpduInfo aMpdu)
 	{
 		WifiMacHeader hdr;
 		packet->PeekHeader(hdr);
 
 		EEBTPTag tag;
-		if(packet->PeekPacketTag(tag))
+		if (packet->PeekPacketTag(tag))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: onPacketTx() => MACSeqNo = " << hdr.GetSequenceNumber() << ", EEBTPSeqNo = " << tag.getSequenceNumber() << ", time = " << Now() << ", energy = " << this->energySource->GetRemainingEnergy());
 		}
@@ -295,7 +290,7 @@ namespace ns3
 		packet->PeekHeader(lhdr);
 
 		EEBTPTag tag;
-		if(packet->PeekPacketTag(tag))
+		if (packet->PeekPacketTag(tag))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: onTx() => EEBTPSeqNo = " << tag.getSequenceNumber() << ", time = " << Now());
 		}
@@ -305,13 +300,12 @@ namespace ns3
 		}
 	}
 
-
 	void EEBTPPacketManager::onTxFinalRtsFailed(Mac48Address address)
 	{
 		NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: onTxFinalRtsFailed(" << address << ")");
-		for(uint16_t seqNo : this->addrSeqCache[address])
+		for (uint16_t seqNo : this->addrSeqCache[address])
 		{
-			if(!(this->packetsLost[seqNo] || this->packetsAcked[seqNo]))
+			if (!(this->packetsLost[seqNo] || this->packetsAcked[seqNo]))
 			{
 				this->packetsLost[seqNo] = true;
 				this->packetsAcked[seqNo] = false;
@@ -325,14 +319,13 @@ namespace ns3
 		NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: onTxFinalDataFailed(" << address << ")");
 	}
 
-
 	/*
 	 * Hooks to the MAC layer
 	 */
 	void EEBTPPacketManager::onTxFailed(const WifiMacHeader &header)
 	{
 		std::map<uint16_t, uint16_t>::iterator it = this->packets.find(header.GetSequenceNumber());
-		if(it != this->packets.end())
+		if (it != this->packets.end())
 		{
 			uint16_t seqNo = it->second;
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Transmission of MacSeqNo = " << header.GetSequenceNumber() << " / " << seqNo << " FAILED. Time: " << Now());
@@ -349,7 +342,7 @@ namespace ns3
 		packet->PeekHeader(hdr);
 
 		EEBTPTag tag;
-		if(packet->PeekPacketTag(tag))
+		if (packet->PeekPacketTag(tag))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Packet with MACSeqNo = " << hdr.GetSequenceNumber() << " and EEBTPSeqNo = " << tag.getSequenceNumber() << " has been dropped on MAC layer at " << Now());
 			this->packetsLost[tag.getSequenceNumber()] = true;
@@ -364,7 +357,7 @@ namespace ns3
 	void EEBTPPacketManager::onTxSuccessful(const WifiMacHeader &header)
 	{
 		std::map<uint16_t, uint16_t>::iterator it = this->packets.find(header.GetSequenceNumber());
-		if(it != this->packets.end())
+		if (it != this->packets.end())
 		{
 			uint16_t seqNo = it->second;
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Transmission of MacSeqNo = " << header.GetSequenceNumber() << " / " << seqNo << " successful. Time: " << Now());
@@ -375,11 +368,10 @@ namespace ns3
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Transmission of MacSeqNo = " << header.GetSequenceNumber() << " successful, but is not known. Time: " << Now());
 	}
 
-
 	bool EEBTPPacketManager::isPacketAcked(uint16_t seqNo)
 	{
 		std::map<uint16_t, bool>::iterator it = this->packetsAcked.find(seqNo);
-		if(it != this->packetsAcked.end())
+		if (it != this->packetsAcked.end())
 		{
 			return it->second;
 		}
@@ -389,7 +381,7 @@ namespace ns3
 	bool EEBTPPacketManager::isPacketLost(uint16_t seqNo)
 	{
 		std::map<uint16_t, bool>::iterator it = this->packetsLost.find(seqNo);
-		if(it != this->packetsLost.end())
+		if (it != this->packetsLost.end())
 		{
 			return it->second;
 		}
@@ -399,9 +391,9 @@ namespace ns3
 	void EEBTPPacketManager::deleteSeqNoEntry(uint16_t seqNo)
 	{
 		std::map<uint16_t, uint16_t>::iterator it;
-		for(it = this->packets.begin(); it != this->packets.end(); it++)
+		for (it = this->packets.begin(); it != this->packets.end(); it++)
 		{
-			if(it->second == seqNo)
+			if (it->second == seqNo)
 			{
 				this->packets.erase(it);
 
@@ -416,7 +408,6 @@ namespace ns3
 		}
 	}
 
-
 	/*
 	 * Helper method for the signal info packet tag
 	 */
@@ -426,32 +417,32 @@ namespace ns3
 		WifiMode wm = txVector.GetMode();
 		WifiCodeRate wcr = wm.GetCodeRate();
 		uint16_t cSize = wm.GetConstellationSize();
-		if(cSize == 2)
+		if (cSize == 2)
 		{
-			if(wcr == WIFI_CODE_RATE_1_2)
+			if (wcr == WIFI_CODE_RATE_1_2)
 				minSNR = 5;
-			else if(wcr == WIFI_CODE_RATE_3_4)
+			else if (wcr == WIFI_CODE_RATE_3_4)
 				minSNR = 8;
 		}
-		else if(cSize == 4)
+		else if (cSize == 4)
 		{
-			if(wcr == WIFI_CODE_RATE_1_2)
+			if (wcr == WIFI_CODE_RATE_1_2)
 				minSNR = 10;
-			else if(wcr == WIFI_CODE_RATE_3_4)
+			else if (wcr == WIFI_CODE_RATE_3_4)
 				minSNR = 13;
 		}
-		else if(cSize == 16)
+		else if (cSize == 16)
 		{
-			if(wcr == WIFI_CODE_RATE_1_2)
+			if (wcr == WIFI_CODE_RATE_1_2)
 				minSNR = 16;
-			else if(wcr == WIFI_CODE_RATE_3_4)
+			else if (wcr == WIFI_CODE_RATE_3_4)
 				minSNR = 19;
 		}
-		else if(cSize == 64)
+		else if (cSize == 64)
 		{
-			if(wcr == WIFI_CODE_RATE_2_3)
+			if (wcr == WIFI_CODE_RATE_2_3)
 				minSNR = 22;
-			else if(wcr == WIFI_CODE_RATE_3_4)
+			else if (wcr == WIFI_CODE_RATE_3_4)
 				minSNR = 25;
 		}
 		else
@@ -478,11 +469,10 @@ namespace ns3
 	uint16_t EEBTPPacketManager::getSeqNoByMacSeqNo(uint16_t macSeqNo)
 	{
 		std::map<uint16_t, uint16_t>::iterator it = this->packets.find(macSeqNo);
-		if(it != this->packets.end())
+		if (it != this->packets.end())
 			return it->second;
 		return 0;
 	}
-
 
 	/*
 	 * Getter for statistics
@@ -490,7 +480,7 @@ namespace ns3
 	double EEBTPPacketManager::getTotalEnergyConsumed(uint64_t gid)
 	{
 		double totalEnergy = 0;
-		for(uint8_t i = 0; i < 8; i++)
+		for (uint8_t i = 0; i < 8; i++)
 		{
 			totalEnergy += this->getEnergyByRecvFrame(gid, i);
 			totalEnergy += this->getEnergyBySentFrame(gid, i);

@@ -26,21 +26,22 @@ namespace ns3
 
 	class EEBTProtocolHelper
 	{
-		public:
-			EEBTProtocolHelper();
-			virtual ~EEBTProtocolHelper();
+	public:
+		EEBTProtocolHelper();
+		virtual ~EEBTProtocolHelper();
 
-			void Install(std::string nodeName) const;
-			void Install(Ptr<WifiNetDevice> device) const;
-			void Install(NetDeviceContainer c) const;
+		void Install(std::string nodeName) const;
+		void Install(Ptr<WifiNetDevice> device) const;
+		void Install(NetDeviceContainer c) const;
 
-			CYCLE_PREV_METHOD getCyclePreventionMethod();
-			void setCyclePreventionMethod(CYCLE_PREV_METHOD cpm);
+		CYCLE_PREV_METHOD getCyclePreventionMethod();
+		void setCyclePreventionMethod(CYCLE_PREV_METHOD cpm);
 
-			void setCycleWatchDogCallback(Ptr<CycleWatchDog> cwd);
-		private:
-			CYCLE_PREV_METHOD cpm;
-			Ptr<CycleWatchDog> cwd;
+		void setCycleWatchDogCallback(Ptr<CycleWatchDog> cwd);
+
+	private:
+		CYCLE_PREV_METHOD cpm;
+		Ptr<CycleWatchDog> cwd;
 	};
 }
 

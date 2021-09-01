@@ -24,7 +24,7 @@ namespace ns3
 
 	TypeId SimpleBroadcastHeader::GetTypeId()
 	{
-		static TypeId tid = TypeId ("ns3::SimpleBroadcastHeader").SetParent<Header>().AddConstructor<SimpleBroadcastHeader>();
+		static TypeId tid = TypeId("ns3::SimpleBroadcastHeader").SetParent<Header>().AddConstructor<SimpleBroadcastHeader>();
 		return tid;
 	}
 
@@ -40,13 +40,13 @@ namespace ns3
 
 	uint32_t SimpleBroadcastHeader::GetSerializedSize() const
 	{
-		return 11;// 6 bytes for the originator address and 1 byte for the hop count
+		return 11; // 6 bytes for the originator address and 1 byte for the hop count
 	}
 
 	void SimpleBroadcastHeader::Serialize(Buffer::Iterator start) const
 	{
 		//Write the address of the originator
-		uint8_t addr [6];
+		uint8_t addr[6];
 		this->originator.CopyTo(addr);
 		start.Write(addr, 6);
 
@@ -60,7 +60,7 @@ namespace ns3
 	uint32_t SimpleBroadcastHeader::Deserialize(Buffer::Iterator start)
 	{
 		//Read address of the originator
-		uint8_t addr [6];
+		uint8_t addr[6];
 		start.Read(addr, 6);
 		this->originator = Mac48Address::Allocate();
 		this->originator.CopyFrom(addr);

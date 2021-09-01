@@ -123,11 +123,10 @@ namespace ns3
 
 	void EEBTPNode::setReachPower(double reachPower)
 	{
-		if(this->reachPower < reachPower + 0.0000001 && this->reachPower > reachPower - 0.0000001)
+		if (this->reachPower < reachPower + 0.0000001 && this->reachPower > reachPower - 0.0000001)
 			this->rpChanged = true;
 		this->reachPower = reachPower;
 	}
-
 
 	double EEBTPNode::getNoise()
 	{
@@ -140,7 +139,6 @@ namespace ns3
 		this->rxPower = rxPower;
 	}
 
-
 	bool EEBTPNode::hasReachPowerProblem()
 	{
 		return this->hasRpProblem;
@@ -150,7 +148,6 @@ namespace ns3
 	{
 		this->hasRpProblem = b;
 	}
-
 
 	Mac48Address EEBTPNode::getAddress()
 	{
@@ -179,10 +176,10 @@ namespace ns3
 
 	bool EEBTPNode::isOnPath(Mac48Address addr)
 	{
-		for(uint i = 0; i < this->srcPath.size(); i++)
+		for (uint i = 0; i < this->srcPath.size(); i++)
 		{
 			Mac48Address node = this->srcPath[i];
-			if(node == addr)
+			if (node == addr)
 				return true;
 		}
 		return false;
@@ -196,10 +193,10 @@ namespace ns3
 	void EEBTPNode::setSrcPath(std::vector<Mac48Address> path)
 	{
 		this->pChanged = false;
-		if(path.size() == this->srcPath.size())
+		if (path.size() == this->srcPath.size())
 		{
-			for(uint i = 0; i < path.size(); i++)
-				if(path[i] != this->srcPath[i])
+			for (uint i = 0; i < path.size(); i++)
+				if (path[i] != this->srcPath[i])
 				{
 					this->pChanged = true;
 					break;
@@ -209,7 +206,7 @@ namespace ns3
 			this->pChanged = true;
 
 		this->srcPath.clear();
-		for(uint i = 0; i < path.size(); i++)
+		for (uint i = 0; i < path.size(); i++)
 		{
 			this->srcPath.push_back(path[i]);
 		}
@@ -234,7 +231,6 @@ namespace ns3
 	{
 		this->pChanged = false;
 	}
-
 
 	uint32_t EEBTPNode::getConnCounter()
 	{
@@ -276,7 +272,6 @@ namespace ns3
 		this->secondTxPower = WToDbm(0);
 		this->costOfCurrentConn = FLT_MAX;
 
-
 		this->locked = false;
 		this->childsLocked = 0;
 		this->parentIsWaitingForLock = false;
@@ -309,16 +304,16 @@ namespace ns3
 	TypeId GameState::GetTypeId()
 	{
 		static TypeId tid = TypeId("ns3::GameState")
-				.SetParent<Object>()
-				.AddConstructor<GameState>()
-				.AddAttribute("initiator", "Indicates if the node with this state is the initiator of the game",
-					    BooleanValue(false),
-					    MakeBooleanAccessor(&GameState::initiator),
-					    MakeBooleanChecker())
-				.AddAttribute("gameID", "The gameID this packet corresponds to",
-	                    IntegerValue(0),
-	                    MakeIntegerAccessor(&GameState::gameID),
-	                    MakeIntegerChecker<int>());
+								.SetParent<Object>()
+								.AddConstructor<GameState>()
+								.AddAttribute("initiator", "Indicates if the node with this state is the initiator of the game",
+											  BooleanValue(false),
+											  MakeBooleanAccessor(&GameState::initiator),
+											  MakeBooleanChecker())
+								.AddAttribute("gameID", "The gameID this packet corresponds to",
+											  IntegerValue(0),
+											  MakeIntegerAccessor(&GameState::gameID),
+											  MakeIntegerChecker<int>());
 		return tid;
 	}
 
@@ -326,9 +321,6 @@ namespace ns3
 	{
 		return GetTypeId();
 	}
-
-
-
 
 	//Returns true if this node is the initiator of this game
 	bool GameState::isInitiator()
@@ -342,7 +334,6 @@ namespace ns3
 		return this->gameID;
 	}
 
-
 	bool GameState::needsCycleCheck()
 	{
 		return this->needCycleCheck;
@@ -353,7 +344,6 @@ namespace ns3
 		this->needCycleCheck = cc;
 	}
 
-
 	Mac48Address GameState::getMyAddress()
 	{
 		return this->myAddress;
@@ -363,7 +353,6 @@ namespace ns3
 	{
 		this->myAddress = addr;
 	}
-
 
 	/*
 	 * Finish game
@@ -387,7 +376,6 @@ namespace ns3
 		return this->finishTime;
 	}
 
-
 	/*
 	 * Sequence numbers
 	 * 	- Get the last seen sequence number of a sender and a specific frame type
@@ -402,7 +390,7 @@ namespace ns3
 
 	bool GameState::checkLastFrameType(Mac48Address sender, uint8_t ft, uint16_t seqNo)
 	{
-		if(this->frameTypeCache[sender][ft] < seqNo)
+		if (this->frameTypeCache[sender][ft] < seqNo)
 			return true;
 		return false;
 	}
@@ -411,7 +399,6 @@ namespace ns3
 	{
 		this->frameTypeCache[sender][ft] = seqNo;
 	}
-
 
 	/*
 	 * Unchanged counter - Counts the rounds without any changes
@@ -426,7 +413,7 @@ namespace ns3
 
 	void GameState::incrementUnchangedCounter()
 	{
-		if(!this->locked)
+		if (!this->locked)
 		{
 			this->unchangedCounter++;
 			NS_LOG_DEBUG("\tUnchanged counter incremented: " << this->unchangedCounter);
@@ -438,7 +425,6 @@ namespace ns3
 		this->unchangedCounter = 0;
 		NS_LOG_DEBUG("\tUnchanged counter reset");
 	}
-
 
 	/*
 	 * Parent handling
@@ -455,7 +441,7 @@ namespace ns3
 	void GameState::setParent(Ptr<EEBTPNode> p)
 	{
 		//For mutex mode: If we changed our parent (p != this->parent), our old parent is not waiting for us anymore
-		if(p != this->parent)
+		if (p != this->parent)
 			this->parentIsWaitingForLock = false;
 		this->parent = p;
 	}
@@ -470,7 +456,6 @@ namespace ns3
 		this->contactedParent = p;
 	}
 
-
 	/*
 	 * LastParentStack
 	 */
@@ -481,11 +466,11 @@ namespace ns3
 
 	Ptr<EEBTPNode> GameState::popLastParent()
 	{
-		if(!this->lastParents.empty())
+		if (!this->lastParents.empty())
 		{
-			Ptr<EEBTPNode> node = *(this->lastParents.end()-1);
+			Ptr<EEBTPNode> node = *(this->lastParents.end() - 1);
 			node->resetConnCounter();
-			this->lastParents.erase(this->lastParents.end()-1);
+			this->lastParents.erase(this->lastParents.end() - 1);
 			return node;
 		}
 		else
@@ -494,17 +479,17 @@ namespace ns3
 
 	Ptr<EEBTPNode> GameState::getLastParent()
 	{
-		if(!this->lastParents.empty())
-			return *(this->lastParents.end()-1);
+		if (!this->lastParents.empty())
+			return *(this->lastParents.end() - 1);
 		else
 			return 0;
 	}
 
 	void GameState::pushLastParent(Ptr<EEBTPNode> lastParent)
 	{
-		for(std::vector<Ptr<EEBTPNode>>::iterator it = this->lastParents.begin(); it != this->lastParents.end(); it++)
+		for (std::vector<Ptr<EEBTPNode>>::iterator it = this->lastParents.begin(); it != this->lastParents.end(); it++)
 		{
-			if((*it) == lastParent || (*it)->getAddress() == lastParent->getAddress())
+			if ((*it) == lastParent || (*it)->getAddress() == lastParent->getAddress())
 			{
 				(*it)->incrementConnCounter();
 				this->lastParents.erase(it);
@@ -516,18 +501,17 @@ namespace ns3
 
 	void GameState::clearLastParents()
 	{
-		for(Ptr<EEBTPNode> node : this->lastParents)
+		for (Ptr<EEBTPNode> node : this->lastParents)
 			node->resetConnCounter();
 		this->lastParents.clear();
 	}
-
 
 	/*
 	 * Cost of current connection
 	 */
 	double GameState::getCostOfCurrentConn()
 	{
-		if(this->parent != 0)
+		if (this->parent != 0)
 		{
 			//Difference between the maxTxPower of our parent and the reach power to our parent
 			//If the difference is 0, we are (one of) the nodes that are the farthest away
@@ -553,19 +537,19 @@ namespace ns3
 	{
 		double maxTx = WToDbm(0);
 		double sMaxTx = WToDbm(0);
-		for(uint i = 0; i < this->childList.size(); i++)
+		for (uint i = 0; i < this->childList.size(); i++)
 		{
 			Ptr<EEBTPNode> child = this->childList[i];
 			double reachPower = child->getReachPower();
 
 			//If this child has a higher reach power than the last highest one
-			if(reachPower > maxTx)
+			if (reachPower > maxTx)
 			{
 				sMaxTx = maxTx;
 				maxTx = reachPower;
 			}
 			//else if we already have a highest child but this child is higher than our second highest but lower than our highest child
-			else if(sMaxTx < maxTx && reachPower > sMaxTx && reachPower < maxTx)
+			else if (sMaxTx < maxTx && reachPower > sMaxTx && reachPower < maxTx)
 				sMaxTx = reachPower;
 		}
 
@@ -573,15 +557,14 @@ namespace ns3
 		this->secondTxPower = sMaxTx;
 	}
 
-
 	/*
 	 * NeighborList
 	 */
 	bool GameState::isNeighbor(Mac48Address n)
 	{
-		for(Ptr<EEBTPNode> p : this->neighbors)
+		for (Ptr<EEBTPNode> p : this->neighbors)
 		{
-			if(p->getAddress() == n)
+			if (p->getAddress() == n)
 				return true;
 		}
 		return false;
@@ -589,15 +572,15 @@ namespace ns3
 
 	void GameState::addNeighbor(Mac48Address n)
 	{
-		this->neighbors.push_back(Create<EEBTPNode>(n,FLT_MIN));
+		this->neighbors.push_back(Create<EEBTPNode>(n, FLT_MIN));
 	}
 
 	Ptr<EEBTPNode> GameState::getNeighbor(Mac48Address n)
 	{
-		for(uint i = 0; i < this->neighbors.size(); i++)
+		for (uint i = 0; i < this->neighbors.size(); i++)
 		{
 			Ptr<EEBTPNode> node = this->neighbors[i];
-			if(node->getAddress() == n)
+			if (node->getAddress() == n)
 				return node;
 		}
 		return 0;
@@ -605,7 +588,7 @@ namespace ns3
 
 	Ptr<EEBTPNode> GameState::getNeighbor(uint32_t index)
 	{
-		if(index < this->neighbors.size())
+		if (index < this->neighbors.size())
 			return this->neighbors[index];
 		else
 			return 0;
@@ -614,21 +597,20 @@ namespace ns3
 	void GameState::removeNeighbor(Ptr<EEBTPNode> n)
 	{
 		uint i = 0;
-		for(; i < this->neighbors.size(); i++)
+		for (; i < this->neighbors.size(); i++)
 		{
-			if(this->neighbors[i] == n)
+			if (this->neighbors[i] == n)
 				break;
 		}
 
-		if(i < this->neighbors.size())
-			neighbors.erase(this->neighbors.begin() + i, this->neighbors.begin() + (i+1));
+		if (i < this->neighbors.size())
+			neighbors.erase(this->neighbors.begin() + i, this->neighbors.begin() + (i + 1));
 	}
 
 	uint32_t GameState::getNNeighbors()
 	{
 		return this->neighbors.size();
 	}
-
 
 	/*
 	 * Searches in the local maintained neighbor list for the
@@ -645,38 +627,38 @@ namespace ns3
 		double connCost = this->getCostOfCurrentConn();
 
 		//Only if we are (one of) the nodes that are the farthest away, it is useful to switch (else no savings)
-		if(connCost <= 0.0001 && connCost >= -0.0001)
+		if (connCost <= 0.0001 && connCost >= -0.0001)
 		{
 			//If we have a parent and we are one of the nodes that are the farthest away, our cost are the energy saved by leaving our parent
-			if(this->parent != 0)
+			if (this->parent != 0)
 				cost = DbmToW(this->parent->getHighestMaxTxPower()) - DbmToW(this->parent->getSecondHighestMaxTxPower());
 			NS_LOG_DEBUG("\tCurrent connection cost: " << WToDbm(cost));
 
-			for(uint i = 0; i < this->neighbors.size(); i++)
+			for (uint i = 0; i < this->neighbors.size(); i++)
 			{
 				Ptr<EEBTPNode> node = this->neighbors[i];
 				//TODO: Find better way to submit maxAllowedTxPower
-				if(this->isBlacklisted(node->getAddress(), node->getParentAddress()))
+				if (this->isBlacklisted(node->getAddress(), node->getParentAddress()))
 				{
 					NS_LOG_DEBUG("\t[" << node->getAddress() << "] is blacklisted!");
 				}
-				else if(this->isChild(node))
+				else if (this->isChild(node))
 				{
 					NS_LOG_DEBUG("\t[" << node->getAddress() << "] is a child of mine");
 				}
-				else if(node->getReachPower() > 23.0)
+				else if (node->getReachPower() > 23.0)
 				{
 					NS_LOG_DEBUG("\t[" << node->getAddress() << "] is out of my range: rP = " << node->getReachPower() << "dBm, noise = " << node->getNoise() << "dBm");
 				}
-				else if(node == this->parent)
+				else if (node == this->parent)
 				{
 					NS_LOG_DEBUG("\t[" << node->getAddress() << "] is my parent");
 				}
-				else if(node->isOnPath(this->myAddress))
+				else if (node->isOnPath(this->myAddress))
 				{
 					NS_LOG_DEBUG("\t[" << node->getAddress() << "] uses me to reach the source node");
 				}
-				else if(node->getConnCounter() > 5)
+				else if (node->getConnCounter() > 5)
 				{
 					NS_LOG_DEBUG("\t[" << node->getAddress() << "]'s connection counter exceeds the maximum");
 				}
@@ -688,7 +670,7 @@ namespace ns3
 
 					NS_LOG_DEBUG("\t[" << node->getAddress() << "] => " << WToDbm(costOfNewConn) << "dBm");
 
-					if(costOfNewConn <= cost)
+					if (costOfNewConn <= cost)
 					{
 						neighbor = node;
 						cost = costOfNewConn;
@@ -700,7 +682,6 @@ namespace ns3
 		return neighbor;
 	}
 
-
 	/*
 	 * ChildList
 	 */
@@ -711,23 +692,23 @@ namespace ns3
 
 	bool GameState::isChild(Mac48Address c)
 	{
-		for(Ptr<EEBTPNode> n : this->childList)
-			if(c == n->getAddress())
+		for (Ptr<EEBTPNode> n : this->childList)
+			if (c == n->getAddress())
 				return true;
 		return false;
 	}
 
 	bool GameState::isChild(Ptr<EEBTPNode> c)
 	{
-		for(Ptr<EEBTPNode> n : this->childList)
-			if(c == n)
+		for (Ptr<EEBTPNode> n : this->childList)
+			if (c == n)
 				return true;
 		return false;
 	}
 
 	void GameState::addChild(Ptr<EEBTPNode> c)
 	{
-		if(!this->isChild(c))
+		if (!this->isChild(c))
 			this->childList.push_back(c);
 		this->findHighestTxPowers();
 	}
@@ -735,14 +716,14 @@ namespace ns3
 	void GameState::removeChild(Ptr<EEBTPNode> c)
 	{
 		uint i = 0;
-		for(; i < this->childList.size(); i++)
+		for (; i < this->childList.size(); i++)
 		{
-			if(this->childList[i] == c)
+			if (this->childList[i] == c)
 				break;
 		}
 
-		if(i < this->childList.size())
-			childList.erase(this->childList.begin() + i, this->childList.begin() + (i+1));
+		if (i < this->childList.size())
+			childList.erase(this->childList.begin() + i, this->childList.begin() + (i + 1));
 
 		this->findHighestTxPowers();
 	}
@@ -760,10 +741,10 @@ namespace ns3
 	bool GameState::allChildsFinished()
 	{
 		bool allFinished = true;
-		for(uint i = 0; i < this->childList.size(); i++)
+		for (uint i = 0; i < this->childList.size(); i++)
 		{
 			Ptr<EEBTPNode> child = this->childList[i];
-			if(!child->hasFinished())
+			if (!child->hasFinished())
 			{
 				allFinished = false;
 				break;
@@ -771,7 +752,6 @@ namespace ns3
 		}
 		return allFinished;
 	}
-
 
 	/*
 	 * Blacklist management
@@ -795,10 +775,9 @@ namespace ns3
 	{
 		this->blacklist.clear();
 
-		for(Ptr<EEBTPNode> node : this->neighbors)
+		for (Ptr<EEBTPNode> node : this->neighbors)
 			node->resetConnCounter();
 	}
-
 
 	/*
 	 * This flag is used to increment the unchanged counter
@@ -814,7 +793,6 @@ namespace ns3
 	{
 		this->doIncrementAfterConfirm = v;
 	}
-
 
 	/*
 	 * Events
@@ -832,11 +810,10 @@ namespace ns3
 
 	void GameState::resetNeighborDiscoveryEvent()
 	{
-		if(this->neighborDiscoveryEvent != 0)
+		if (this->neighborDiscoveryEvent != 0)
 			this->neighborDiscoveryEvent->Cancel();
 		this->neighborDiscoveryEvent = 0;
 	}
-
 
 	/*
 	 * Mutex
@@ -848,9 +825,9 @@ namespace ns3
 
 	bool GameState::isLocked(Ptr<EEBTPNode> node)
 	{
-		for(std::vector<Ptr<EEBTPNode>>::iterator it = this->locks.begin(); it != this->locks.end(); ++it)
+		for (std::vector<Ptr<EEBTPNode>>::iterator it = this->locks.begin(); it != this->locks.end(); ++it)
 		{
-			if((*it)->getAddress() == node->getAddress())
+			if ((*it)->getAddress() == node->getAddress())
 				return true;
 		}
 		return false;
@@ -863,22 +840,22 @@ namespace ns3
 
 	void GameState::lock(Ptr<EEBTPNode> node, bool l)
 	{
-		if(l)
+		if (l)
 		{
-			if(!this->isLocked(node))
+			if (!this->isLocked(node))
 				this->locks.push_back(node);
 		}
 		else
 		{
 			uint i = 0;
-			for(std::vector<Ptr<EEBTPNode>>::iterator it = this->locks.begin(); it != this->locks.end(); ++it)
+			for (std::vector<Ptr<EEBTPNode>>::iterator it = this->locks.begin(); it != this->locks.end(); ++it)
 			{
-				if((*it)->getAddress() == node->getAddress())
+				if ((*it)->getAddress() == node->getAddress())
 					break;
 				i++;
 			}
 
-			if(i < this->locks.size())
+			if (i < this->locks.size())
 				this->locks.erase(this->locks.begin() + i);
 		}
 	}
@@ -893,7 +870,6 @@ namespace ns3
 		this->locks.clear();
 	}
 
-
 	Mac48Address GameState::getLockedBy()
 	{
 		return this->lockedByNode;
@@ -903,7 +879,6 @@ namespace ns3
 	{
 		this->lockedByNode = addr;
 	}
-
 
 	bool GameState::isParentWaitingForLock()
 	{
@@ -925,7 +900,6 @@ namespace ns3
 		this->lockOriginator = originator;
 	}
 
-
 	bool GameState::isNewParentWaitingForLock()
 	{
 		return this->newParentIsWaitingForLock;
@@ -946,8 +920,6 @@ namespace ns3
 		this->newParentLockOriginator = originator;
 	}
 
-
-
 	/*
 	 * Application data handler
 	 */
@@ -955,8 +927,6 @@ namespace ns3
 	{
 		return this->adh;
 	}
-
-
 
 	uint32_t GameState::getRejectionCounter()
 	{
@@ -977,8 +947,6 @@ namespace ns3
 	{
 		this->rejectionCounter = 0;
 	}
-
-
 
 	/*
 	 * Path-To-Source

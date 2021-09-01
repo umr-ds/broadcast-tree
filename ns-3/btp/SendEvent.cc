@@ -23,7 +23,7 @@ namespace ns3
 		this->counter = 0;
 	}
 
-	SendEvent::~SendEvent(){}
+	SendEvent::~SendEvent() {}
 
 	void SendEvent::Notify()
 	{

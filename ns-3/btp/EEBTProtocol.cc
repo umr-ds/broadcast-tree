@@ -63,7 +63,7 @@ namespace ns3
 
 	TypeId EEBTProtocol::GetTypeId()
 	{
-		static TypeId tid = TypeId ("ns3::EEBTPProtocol").SetParent<Object>().AddConstructor<EEBTProtocol>();
+		static TypeId tid = TypeId("ns3::EEBTPProtocol").SetParent<Object>().AddConstructor<EEBTProtocol>();
 		return tid;
 	}
 
@@ -72,7 +72,7 @@ namespace ns3
 		return GetTypeId();
 	}
 
-	std::ostream& operator<<(std::ostream& os, EEBTProtocol& prot)
+	std::ostream &operator<<(std::ostream &os, EEBTProtocol &prot)
 	{
 		prot.Print(os);
 		return os;
@@ -84,10 +84,10 @@ namespace ns3
 		uint64_t gid = 0;
 		bool found = false;
 
-		for(uint i = 0; i < this->games.size(); i++)
+		for (uint i = 0; i < this->games.size(); i++)
 		{
 			gs = this->games[i];
-			if(gs->getGameID() == gid)
+			if (gs->getGameID() == gid)
 			{
 				found = true;
 				break;
@@ -96,7 +96,7 @@ namespace ns3
 
 		os << "<===================== Node " << this->device->GetNode()->GetId() << " =====================>\n";
 
-		if(!found)
+		if (!found)
 		{
 			os << "NO INFORMATION AVAILABLE\n";
 			return;
@@ -111,7 +111,7 @@ namespace ns3
 		os << "FINISH TIME:\t" << gs->getTimeFinished() << "\n";
 
 		Ptr<EEBTPNode> parent = gs->getParent();
-		if(parent != 0)
+		if (parent != 0)
 			os << "PARENT:\t\t\t" << parent->getAddress() << "\n";
 		else
 			os << "PARENT:\t\t\tff:ff:ff:ff:ff:ff\n";
@@ -119,16 +119,16 @@ namespace ns3
 
 		os << "FINISHED:\t\t" << (gs->gameFinished() ? "TRUE" : "FALSE") << "\n";
 		os << "WAITING FOR:\t";
-		if(gs->allChildsFinished())
+		if (gs->allChildsFinished())
 			os << "NONE";
 		else
 		{
-			for(int i = 0; i < gs->getNChilds(); i++)
+			for (int i = 0; i < gs->getNChilds(); i++)
 			{
 				os << "\n";
 
 				Ptr<EEBTPNode> child = gs->getChild(i);
-				if(!child->hasFinished())
+				if (!child->hasFinished())
 					os << "\t" << child->getAddress();
 			}
 		}
@@ -149,9 +149,9 @@ namespace ns3
 		os << "CYCLES DURING CONSTRUCTION PHASE:\n";
 		int numCyc = 0;
 		std::vector<Ptr<CycleInfo>> cycles = this->cycleWatchDog->getCycles(gid, this->device->GetNode()->GetId());
-		for(Ptr<CycleInfo> ci : cycles)
+		for (Ptr<CycleInfo> ci : cycles)
 		{
-			if(ci->isRealCycle())
+			if (ci->isRealCycle())
 			{
 				numCyc++;
 				os << "\t\tTIME: start = " << ci->getStartTime() << ", end = " << ci->getEndTime() << ", duration = " << ci->getDuration() << " | ";
@@ -163,7 +163,7 @@ namespace ns3
 		os << "\n";
 
 		os << "MY CHILD NODES:\n";
-		for(int i = 0; i < gs->getNChilds(); i++)
+		for (int i = 0; i < gs->getNChilds(); i++)
 		{
 			Ptr<EEBTPNode> child = gs->getChild(i);
 			os << "\tNODE " << child->getAddress() << " => " << child->getReachPower() << "dBm | " << child->getNoise() << "dBm\n";
@@ -171,7 +171,7 @@ namespace ns3
 		os << "\n";
 
 		os << "REACH POWER FOR NODES:\n";
-		for(uint i = 0; i < gs->getNNeighbors(); i++)
+		for (uint i = 0; i < gs->getNNeighbors(); i++)
 		{
 			Ptr<EEBTPNode> neighbor = gs->getNeighbor(i);
 			os << "\tNODE " << neighbor->getAddress() << " => " << neighbor->getReachPower() << "dBm | " << neighbor->getNoise() << "dBm\n";
@@ -179,7 +179,6 @@ namespace ns3
 			os << "\t\tshTx = " << neighbor->getSecondHighestMaxTxPower() << "dBm\n";
 		}
 		os << "\n";
-
 
 		os << "ENERGY BY FRAME TYPE:\tRECV | SENT\n";
 		os << "\tCYCLE_CHECK:\t\t" << this->packetManager->getEnergyByRecvFrame(gid, 0) << "J | " << this->packetManager->getEnergyBySentFrame(gid, 0) << "J\n";
@@ -193,7 +192,7 @@ namespace ns3
 		os << "TOTAL ENERGY:\t\t\t" << this->packetManager->getTotalEnergyConsumed(gid) << "J\n\n";
 
 		uint32_t allFrameTypesSent = 0;
-		for(int i = 0; i < 8; i++)
+		for (int i = 0; i < 8; i++)
 			allFrameTypesSent += this->packetManager->getFrameTypeSent(gid, i);
 		os << "DATA SENT BY FRAME TYPE:\tCOUNT\t | DATA\n";
 		os << "\tCYCLE_CHECK:\t\t\t" << this->packetManager->getFrameTypeSent(gid, 0) << "\t | " << this->packetManager->getDataSentByFrame(gid, 0) << "B\n";
@@ -206,9 +205,8 @@ namespace ns3
 		os << "\tAPPLICATION_DATA:\t\t" << this->packetManager->getFrameTypeSent(gid, 7) << "\t | " << this->packetManager->getDataSentByFrame(gid, 7) << "B\n";
 		os << "DATA SENT TOTAL:\t\t\t" << allFrameTypesSent << "\t | " << this->packetManager->getDataSent(gid) << "B\n\n";
 
-
 		uint32_t allFrameTypesRecv = 0;
-		for(int i = 0; i < 8; i++)
+		for (int i = 0; i < 8; i++)
 			allFrameTypesRecv += this->packetManager->getFrameTypeRecv(gid, i);
 		os << "DATA RECEIVED BY FRAME TYPE:\tCOUNT\t | DATA\n";
 		os << "\tCYCLE_CHECK:\t\t\t" << this->packetManager->getFrameTypeRecv(gid, 0) << "\t | " << this->packetManager->getDataRecvByFrame(gid, 0) << "B\n";
@@ -219,7 +217,7 @@ namespace ns3
 		os << "\tPARENT_REVOCATION:\t\t" << this->packetManager->getFrameTypeRecv(gid, 5) << "\t | " << this->packetManager->getDataRecvByFrame(gid, 5) << "B\n";
 		os << "\tEND_OF_GAME:\t\t\t" << this->packetManager->getFrameTypeRecv(gid, 6) << "\t | " << this->packetManager->getDataRecvByFrame(gid, 6) << "B\n";
 		os << "\tAPPLICATION_DATA:\t\t" << this->packetManager->getFrameTypeRecv(gid, 7) << "\t | " << this->packetManager->getDataRecvByFrame(gid, 7) << "B\n";
-		os << "DATA RECEIVED TOTAL:\t\t\t" << allFrameTypesRecv << "\t | " <<  this->packetManager->getDataRecv(gid) << "B\n";
+		os << "DATA RECEIVED TOTAL:\t\t\t" << allFrameTypesRecv << "\t | " << this->packetManager->getDataRecv(gid) << "B\n";
 		os << "<==================================================>\n";
 	}
 
@@ -237,7 +235,7 @@ namespace ns3
 	double EEBTProtocol::getEnergyForConstruction(uint64_t gid)
 	{
 		double energy = 0;
-		for(uint8_t i = 0; i < 7; i++)
+		for (uint8_t i = 0; i < 7; i++)
 		{
 			energy += this->packetManager->getEnergyByRecvFrame(gid, i);
 			energy += this->packetManager->getEnergyBySentFrame(gid, i);
@@ -268,9 +266,6 @@ namespace ns3
 		return this->device;
 	}
 
-
-
-
 	/*
 	 * This method searches for the GameState with the gameID `gid`
 	 * If there is no such GameState, it creates a new one and stores
@@ -278,10 +273,10 @@ namespace ns3
 	 */
 	Ptr<GameState> EEBTProtocol::getGameState(uint64_t gid)
 	{
-		for(uint i = 0; i < this->games.size(); i++)
+		for (uint i = 0; i < this->games.size(); i++)
 		{
 			Ptr<GameState> gs = this->games[i];
-			if(gs->getGameID() == gid)
+			if (gs->getGameID() == gid)
 				return gs;
 		}
 
@@ -293,10 +288,10 @@ namespace ns3
 
 	Ptr<GameState> EEBTProtocol::initGameState(uint64_t gid)
 	{
-		for(uint i = 0; i < this->games.size(); i++)
+		for (uint i = 0; i < this->games.size(); i++)
 		{
 			Ptr<GameState> gs = this->games[i];
-			if(gs->getGameID() == gid)
+			if (gs->getGameID() == gid)
 				return gs;
 		}
 
@@ -309,16 +304,15 @@ namespace ns3
 	void EEBTProtocol::removeGameState(uint64_t gid)
 	{
 		uint i = 0;
-		for(; i < this->games.size(); i++)
+		for (; i < this->games.size(); i++)
 		{
-			if(this->games[i]->getGameID() == gid)
+			if (this->games[i]->getGameID() == gid)
 				break;
 		}
 
-		if(i < this->games.size())
-			games.erase(this->games.begin() + i, this->games.begin() + (i+1));
+		if (i < this->games.size())
+			games.erase(this->games.begin() + i, this->games.begin() + (i + 1));
 	}
-
 
 	/*
 	 * Install method to install this protocol on the stack of a node
@@ -335,17 +329,17 @@ namespace ns3
 		this->wifiPhy->SetNTxPower(1);
 
 		//Set the max allowed transmission power according to the selected standard
-		switch(this->wifiPhy->GetStandard())
+		switch (this->wifiPhy->GetStandard())
 		{
-			case WIFI_PHY_STANDARD_80211a:
-			case WIFI_PHY_STANDARD_80211n_5GHZ:
-				this->maxAllowedTxPower = 23.0;
-				break;
-			case WIFI_PHY_STANDARD_80211b:
-			case WIFI_PHY_STANDARD_80211g:
-			case WIFI_PHY_STANDARD_80211n_2_4GHZ:
-			default:
-				this->maxAllowedTxPower = 20.0;
+		case WIFI_PHY_STANDARD_80211a:
+		case WIFI_PHY_STANDARD_80211n_5GHZ:
+			this->maxAllowedTxPower = 23.0;
+			break;
+		case WIFI_PHY_STANDARD_80211b:
+		case WIFI_PHY_STANDARD_80211g:
+		case WIFI_PHY_STANDARD_80211n_2_4GHZ:
+		default:
+			this->maxAllowedTxPower = 20.0;
 			break;
 		}
 
@@ -362,10 +356,10 @@ namespace ns3
 		this->wifiPhy->TraceConnectWithoutContext("PhyTxEnd", MakeCallback(&EEBTPPacketManager::onTxEnd, this->packetManager));
 		this->wifiPhy->TraceConnectWithoutContext("MonitorSnifferRx", MakeCallback(&EEBTPPacketManager::onPacketRx, this->packetManager));
 		this->wifiPhy->TraceConnectWithoutContext("MonitorSnifferTx", MakeCallback(&EEBTPPacketManager::onPacketTx, this->packetManager));
-		this->device->GetMac()->TraceConnectWithoutContext("TxOkHeader",MakeCallback(&EEBTPPacketManager::onTxSuccessful, this->packetManager));
-		this->device->GetMac()->TraceConnectWithoutContext("MacTxDrop",MakeCallback(&EEBTPPacketManager::onTxDropped, this->packetManager));
-		this->device->GetMac()->TraceConnectWithoutContext("MacTx",MakeCallback(&EEBTPPacketManager::onTx, this->packetManager));
-		this->device->GetMac()->TraceConnectWithoutContext("TxErrHeader",MakeCallback(&EEBTPPacketManager::onTxFailed, this->packetManager));
+		this->device->GetMac()->TraceConnectWithoutContext("TxOkHeader", MakeCallback(&EEBTPPacketManager::onTxSuccessful, this->packetManager));
+		this->device->GetMac()->TraceConnectWithoutContext("MacTxDrop", MakeCallback(&EEBTPPacketManager::onTxDropped, this->packetManager));
+		this->device->GetMac()->TraceConnectWithoutContext("MacTx", MakeCallback(&EEBTPPacketManager::onTx, this->packetManager));
+		this->device->GetMac()->TraceConnectWithoutContext("TxErrHeader", MakeCallback(&EEBTPPacketManager::onTxFailed, this->packetManager));
 		this->device->GetMac()->GetWifiRemoteStationManager()->TraceConnectWithoutContext("MacTxFinalRtsFailed", MakeCallback(&EEBTPPacketManager::onTxFinalRtsFailed, this->packetManager));
 		this->device->GetMac()->GetWifiRemoteStationManager()->TraceConnectWithoutContext("MacTxFinalDataFailed", MakeCallback(&EEBTPPacketManager::onTxFinalDataFailed, this->packetManager));
 
@@ -380,7 +374,6 @@ namespace ns3
 		//this->device->GetNode()->RegisterProtocolHandler(MakeCallback(&EEBTProtocol::Receive, this), EEBTProtocol::PROT_NUMBER, this->device);
 	}
 
-
 	/*
 	 * TxPower calculation
 	 * Calculates the required transmission power to reach a given node (reachPower)
@@ -394,12 +387,11 @@ namespace ns3
 		double snr = rxPower - noise;
 		double neededPower = (txPower - (snr - minSNR));
 
-		if(neededPower <= this->maxAllowedTxPower)
+		if (neededPower <= this->maxAllowedTxPower)
 			neededPower = std::min(neededPower + 5, this->maxAllowedTxPower);
 		//NS_LOG_DEBUG("rxPower = " << rxPower << "dBm, txPower = " << txPower << "dBm, noise = " << noise << "dBm, SNR = " << (rxPower - noise) << "dB, minSNR = " << minSNR << "dB, neededPower = " << neededPower);
 		return neededPower;
 	}
-
 
 	/*
 	 * Receive method
@@ -430,7 +422,7 @@ namespace ns3
 		NS_LOG_DEBUG("\thTx: " << header.GetHighestMaxTxPower() << ", shTx: " << header.GetSecondHighestMaxTxPower());
 
 		//Check for duplicated sequence number
-		if(this->cache.checkForDuplicate(sender_addr, header.GetSequenceNumber()))
+		if (this->cache.checkForDuplicate(sender_addr, header.GetSequenceNumber()))
 		{
 			NS_LOG_DEBUG("Received duplicated frame from '" << sender_addr << "' with GID " << header.GetGameId() << " and SeqNo " << header.GetSequenceNumber());
 			return;
@@ -440,9 +432,9 @@ namespace ns3
 		Ptr<GameState> gs = this->getGameState(header.GetGameId());
 
 		//Update frame type seq no
-		if(gs->checkLastFrameType(sender_addr, header.GetFrameType(), header.GetSequenceNumber()))
+		if (gs->checkLastFrameType(sender_addr, header.GetFrameType(), header.GetSequenceNumber()))
 			gs->updateLastFrameType(sender_addr, header.GetFrameType(), header.GetSequenceNumber());
-		else if(header.GetFrameType() != CYCLE_CHECK)
+		else if (header.GetFrameType() != CYCLE_CHECK)
 		{
 			NS_LOG_DEBUG("\tReceived a frame with the same type and a higher sequence number earlier. Ignoring this packet");
 			return;
@@ -452,13 +444,13 @@ namespace ns3
 		gs->updateLastFrameType(sender_addr, header.GetFrameType(), header.GetSequenceNumber());
 
 		//Check if node is in our neighbor list
-		if(!gs->isNeighbor(sender_addr))
+		if (!gs->isNeighbor(sender_addr))
 			gs->addNeighbor(sender_addr);
 
 		//Get the EEBTPNode
 		Ptr<EEBTPNode> node = gs->getNeighbor(sender_addr);
 
-		if(header.GetFrameType() != APPLICATION_DATA)
+		if (header.GetFrameType() != APPLICATION_DATA)
 		{
 			node->setParentAddress(header.GetParent());
 			node->setReachPower(this->calculateTxPower(tag.getSignal(), header.GetTxPower(), tag.getNoise(), tag.getMinSNR()));
@@ -469,7 +461,7 @@ namespace ns3
 			gs->findHighestTxPowers();
 
 			//If the node has a reachpower that is higher than our maximum allowed txPower
-			if(node->getReachPower() > this->maxAllowedTxPower)
+			if (node->getReachPower() > this->maxAllowedTxPower)
 			{
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "/" << Now() << "]: ReachPower for node [" << node->getAddress() << "] is too high: " << node->getReachPower() << "dBm > " << this->maxAllowedTxPower << "dBm; FRAME_TYPE: " << (uint)header.GetFrameType());
 
@@ -477,7 +469,7 @@ namespace ns3
 				node->hasReachPowerProblem(true);
 
 				//If this node is a child of us
-				if(gs->isChild(node) && header.GetFrameType() != PARENT_REVOCATION)
+				if (gs->isChild(node) && header.GetFrameType() != PARENT_REVOCATION)
 				{
 					gs->updateLastFrameType(sender_addr, PARENT_REVOCATION, header.GetSequenceNumber());
 
@@ -496,16 +488,16 @@ namespace ns3
 			}
 
 			//If node had receiving problems
-			if(header.hadReceivingProblems())
+			if (header.hadReceivingProblems())
 			{
 				node->hasReachPowerProblem(true);
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "/" << Now() << "]: Recipient had receive problems. New frame type is " << (uint)(header.GetFrameType() & 0b01111111));
 
 				//and node is a child of us
-				if(gs->isChild(node) && header.GetFrameType() != PARENT_REVOCATION)
+				if (gs->isChild(node) && header.GetFrameType() != PARENT_REVOCATION)
 				{
 					//and its reachpower is too high
-					if(node->getReachPower() > this->maxAllowedTxPower)
+					if (node->getReachPower() > this->maxAllowedTxPower)
 					{
 						gs->updateLastFrameType(sender_addr, PARENT_REVOCATION, header.GetSequenceNumber());
 
@@ -526,50 +518,50 @@ namespace ns3
 			}
 		}
 
-		switch(header.GetFrameType())
+		switch (header.GetFrameType())
 		{
-			case CYCLE_CHECK:
-				//If we are the recipient, we need some information from our neighbor list which intermediate nodes could not have since they don't have these neighbors
-				if(receiver_addr == header.GetOriginator())
-					this->handleCycleCheck(gs,node, Create<EEBTPNode>(header.GetOriginator(), this->maxAllowedTxPower), gs->getNeighbor(header.GetNewParent()), gs->getNeighbor(header.GetOldParent()));
-				else
-				{
-					Ptr<EEBTPNode> newParent = gs->getNeighbor(header.GetNewParent());
-					if(newParent == 0)
-						newParent = Create<EEBTPNode>(header.GetNewParent(), this->maxAllowedTxPower);
-					Ptr<EEBTPNode> oldParent = gs->getNeighbor(header.GetOldParent());
-					if(oldParent == 0)
-						oldParent = Create<EEBTPNode>(header.GetOldParent(), this->maxAllowedTxPower);
+		case CYCLE_CHECK:
+			//If we are the recipient, we need some information from our neighbor list which intermediate nodes could not have since they don't have these neighbors
+			if (receiver_addr == header.GetOriginator())
+				this->handleCycleCheck(gs, node, Create<EEBTPNode>(header.GetOriginator(), this->maxAllowedTxPower), gs->getNeighbor(header.GetNewParent()), gs->getNeighbor(header.GetOldParent()));
+			else
+			{
+				Ptr<EEBTPNode> newParent = gs->getNeighbor(header.GetNewParent());
+				if (newParent == 0)
+					newParent = Create<EEBTPNode>(header.GetNewParent(), this->maxAllowedTxPower);
+				Ptr<EEBTPNode> oldParent = gs->getNeighbor(header.GetOldParent());
+				if (oldParent == 0)
+					oldParent = Create<EEBTPNode>(header.GetOldParent(), this->maxAllowedTxPower);
 
-					if(gs->isChild(header.GetOriginator()))
-						this->handleCycleCheck(gs,node, gs->getNeighbor(header.GetOriginator()), newParent, oldParent);
-					else
-						this->handleCycleCheck(gs,node, Create<EEBTPNode>(header.GetOriginator(), this->maxAllowedTxPower), newParent, oldParent);
-				}
-				break;
-			case NEIGHBOR_DISCOVERY:
-				this->handleNeighborDiscovery(gs,node);
-				break;
-			case CHILD_REQUEST:
-				this->handleChildRequest(gs,node);
-				break;
-			case CHILD_CONFIRMATION:
-				this->handleChildConfirmation(gs,node);
-				break;
-			case CHILD_REJECTION:
-				this->handleChildRejection(gs,node);
-				break;
-			case PARENT_REVOCATION:
-				this->handleParentRevocation(gs,node);
-				break;
-			case END_OF_GAME:
-				this->handleEndOfGame(gs,node);
-				break;
-			case APPLICATION_DATA:
-				this->handleApplicationData(gs, node, packet->Copy());
-				break;
-			default:
-				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Invalid frame type: " << (int) header.GetFrameType());
+				if (gs->isChild(header.GetOriginator()))
+					this->handleCycleCheck(gs, node, gs->getNeighbor(header.GetOriginator()), newParent, oldParent);
+				else
+					this->handleCycleCheck(gs, node, Create<EEBTPNode>(header.GetOriginator(), this->maxAllowedTxPower), newParent, oldParent);
+			}
+			break;
+		case NEIGHBOR_DISCOVERY:
+			this->handleNeighborDiscovery(gs, node);
+			break;
+		case CHILD_REQUEST:
+			this->handleChildRequest(gs, node);
+			break;
+		case CHILD_CONFIRMATION:
+			this->handleChildConfirmation(gs, node);
+			break;
+		case CHILD_REJECTION:
+			this->handleChildRejection(gs, node);
+			break;
+		case PARENT_REVOCATION:
+			this->handleParentRevocation(gs, node);
+			break;
+		case END_OF_GAME:
+			this->handleEndOfGame(gs, node);
+			break;
+		case APPLICATION_DATA:
+			this->handleApplicationData(gs, node, packet->Copy());
+			break;
+		default:
+			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Invalid frame type: " << (int)header.GetFrameType());
 		}
 
 		node->resetReachPowerChanged();
@@ -577,7 +569,6 @@ namespace ns3
 		//Print new line to separate events
 		NS_LOG_DEBUG("\n");
 	}
-
 
 	/*
 	 * Send methods
@@ -598,7 +589,7 @@ namespace ns3
 		EEBTPHeader header = EEBTPHeader();
 		header.SetFrameType(ft);
 
-		if(ft == CHILD_REJECTION && gs->isChild(recipient))
+		if (ft == CHILD_REJECTION && gs->isChild(recipient))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Node [" << recipient << "] is a child of mine, but it is marked as a child...");
 			gs->removeChild(gs->getNeighbor(recipient));
@@ -610,29 +601,29 @@ namespace ns3
 	//Send method for Sendevent to check if a packet needs retransmission or not
 	void EEBTProtocol::Send(Ptr<GameState> gs, FRAME_TYPE ft, Mac48Address recipient, uint16_t seqNo, double txPower, Ptr<SendEvent> event)
 	{
-		if(ft == CHILD_REQUEST || ft == CHILD_CONFIRMATION || ft == CHILD_REJECTION || ft == PARENT_REVOCATION || ft == END_OF_GAME)
+		if (ft == CHILD_REQUEST || ft == CHILD_CONFIRMATION || ft == CHILD_REJECTION || ft == PARENT_REVOCATION || ft == END_OF_GAME)
 		{
 			Ptr<EEBTPNode> node = gs->getNeighbor(recipient);
-			if(node == 0)
+			if (node == 0)
 				node = Create<EEBTPNode>(recipient, this->maxAllowedTxPower);
 
-			if(ft == CHILD_REQUEST && gs->getContactedParent() != node)
+			if (ft == CHILD_REQUEST && gs->getContactedParent() != node)
 			{
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Packet with seqNo " << seqNo << " will not be retransmitted since the recipient is not our contacted parent");
 				return;
 			}
 
-			if(this->packetManager->isPacketAcked(seqNo))
+			if (this->packetManager->isPacketAcked(seqNo))
 			{
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Packet with seqNo " << seqNo << " has been acked. No retransmission, time = " << Now());
 				this->packetManager->deleteSeqNoEntry(seqNo);
 				return;
 			}
-			else if(this->packetManager->isPacketLost(seqNo) || event->getNTimes() > 20)
+			else if (this->packetManager->isPacketLost(seqNo) || event->getNTimes() > 20)
 			{
-				if(event->getNTimes() > 20)
+				if (event->getNTimes() > 20)
 				{
-					if(ft == CHILD_REQUEST && txPower >= this->maxAllowedTxPower)
+					if (ft == CHILD_REQUEST && txPower >= this->maxAllowedTxPower)
 					{
 						NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Packet with seqNo " << seqNo << " has not been acked yet. Cancle..., time = " << Now());
 						this->handleChildRejection(gs, gs->getNeighbor(recipient));
@@ -681,7 +672,7 @@ namespace ns3
 
 		//If we have a parent, send cycle check to our parent
 		//If we are currently switching our parent, it is not necessary since we will send a cycle check after connection successfully
-		if(gs->getParent() != 0)
+		if (gs->getParent() != 0)
 			this->Send(gs, header, gs->getParent()->getAddress(), gs->getParent()->getReachPower());
 		else
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Cannot send cycle check since we have no parent");
@@ -690,15 +681,15 @@ namespace ns3
 	//Send method for CCSendevent to check if a packet needs retransmission or not
 	void EEBTProtocol::Send(Ptr<GameState> gs, Mac48Address originator, Mac48Address newParent, Mac48Address oldParent, uint16_t seqNo, double txPower, Ptr<CCSendEvent> event)
 	{
-		if(this->packetManager->isPacketAcked(seqNo))
+		if (this->packetManager->isPacketAcked(seqNo))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Packet with seqNo " << seqNo << " has been acked. No retransmission, time = " << Now());
 			this->packetManager->deleteSeqNoEntry(seqNo);
 			return;
 		}
-		else if(this->packetManager->isPacketLost(seqNo) || event->getNTimes() > 20)
+		else if (this->packetManager->isPacketLost(seqNo) || event->getNTimes() > 20)
 		{
-			if(event->getNTimes() > 20)
+			if (event->getNTimes() > 20)
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Packet with seqNo " << seqNo << " has not been acked yet. Retransmitting..., time = " << Now());
 			else
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Packet with seqNo " << seqNo << " has been lost. Retransmitting..., time = " << Now());
@@ -714,7 +705,7 @@ namespace ns3
 
 			//If we have a parent, send cycle check to our parent
 			//If we are currently switching our parent, it is not necessary since we will send a cycle check after connection successfully
-			if(gs->getParent() != 0)
+			if (gs->getParent() != 0)
 				this->Send(gs, header, gs->getParent()->getAddress(), gs->getParent()->getReachPower() + 1, true);
 			else
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Cannot send cycle check since we have no parent");
@@ -738,7 +729,7 @@ namespace ns3
 	{
 		//Adjust the transmission power
 		header.setReceivingProblems(false);
-		if(txPower > this->maxAllowedTxPower)
+		if (txPower > this->maxAllowedTxPower)
 		{
 			txPower = this->maxAllowedTxPower;
 			header.setReceivingProblems(true);
@@ -746,12 +737,12 @@ namespace ns3
 		gs->findHighestTxPowers();
 
 		//Set sequence number
-		if(!isRetransmission)
+		if (!isRetransmission)
 			this->cache.injectSeqNo(&header);
 
-		if(header.GetFrameType() == NEIGHBOR_DISCOVERY)					//Check the neighbor discovery event handler (SendEvent)
+		if (header.GetFrameType() == NEIGHBOR_DISCOVERY) //Check the neighbor discovery event handler (SendEvent)
 		{
-			if(!this->checkNeigborDiscoverySendEvent(gs))
+			if (!this->checkNeigborDiscoverySendEvent(gs))
 				return;
 		}
 
@@ -762,7 +753,7 @@ namespace ns3
 		header.SetGameId(gs->getGameID());
 		header.SetTxPower(txPower);
 
-		if(gs->getParent() == 0)
+		if (gs->getParent() == 0)
 			header.SetParent(Mac48Address::GetBroadcast());
 		else
 			header.SetParent(gs->getParent()->getAddress());
@@ -774,14 +765,13 @@ namespace ns3
 
 		packet->AddHeader(header);
 
-		if(header.GetFrameType() == CYCLE_CHECK)
+		if (header.GetFrameType() == CYCLE_CHECK)
 		{
 			Time ttw = this->device->GetMac()->GetAckTimeout() * 100;
 			Simulator::Schedule(ttw, Create<CCSendEvent>(gs, this, header.GetOriginator(), header.GetNewParent(), header.GetOldParent(), txPower, header.GetSequenceNumber()));
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Scheduled CCSendEvent(" << header.GetSequenceNumber() << ") for " << (Now() + ttw));
 		}
-		else if(header.GetFrameType() == CHILD_REQUEST || header.GetFrameType() == CHILD_CONFIRMATION || header.GetFrameType() == CHILD_REJECTION
-				|| header.GetFrameType() == PARENT_REVOCATION || header.GetFrameType() == END_OF_GAME)
+		else if (header.GetFrameType() == CHILD_REQUEST || header.GetFrameType() == CHILD_CONFIRMATION || header.GetFrameType() == CHILD_REJECTION || header.GetFrameType() == PARENT_REVOCATION || header.GetFrameType() == END_OF_GAME)
 		{
 			Time ttw = this->device->GetMac()->GetAckTimeout() * 100;
 			EventId id = Simulator::Schedule(ttw, Create<SendEvent>(gs, this, (FRAME_TYPE)header.GetFrameType(), recipient, txPower, header.GetSequenceNumber()));
@@ -801,9 +791,8 @@ namespace ns3
 		this->packetManager->sendPacket(packet, recipient);
 
 		NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: EEBTProtocol::Send(): " << this->myAddress << " => " << recipient << " / SeqNo: " << header.GetSequenceNumber() << " / FRAME_TYPE: " << (uint)header.GetFrameType() << " / txPower: " << header.GetTxPower() << "/" << this->wifiPhy->GetTxPowerStart() << "|" << this->wifiPhy->GetTxPowerEnd() << "dBm");
-		NS_LOG_DEBUG("\thTx: " << header.GetHighestMaxTxPower() << ", shTx: " << header.GetSecondHighestMaxTxPower() << ", rounds: " << gs->getUnchangedCounter() << "/" << ((gs->getNNeighbors() * 0.5) + 2) );
+		NS_LOG_DEBUG("\thTx: " << header.GetHighestMaxTxPower() << ", shTx: " << header.GetSecondHighestMaxTxPower() << ", rounds: " << gs->getUnchangedCounter() << "/" << ((gs->getNNeighbors() * 0.5) + 2));
 	}
-
 
 	/*
 	 * Handle the cycle check (FrameType 0)
@@ -815,13 +804,13 @@ namespace ns3
 		NS_ASSERT_MSG(oldParent != 0, "oldParent is null");
 		NS_LOG_DEBUG(this->device->GetNode()->GetId() << " => EEBTProtocol::handleCycleCheck() | FROM: " << node->getAddress() << " | ORIG: " << originator->getAddress() << " | nP: " << newParent->getAddress() << " | oP: " << oldParent->getAddress());
 
-		if(gs->isInitiator())
+		if (gs->isInitiator())
 		{
 			//NS_LOG_DEBUG("Ignoring cycle check from " << node->getAddress() << " because I am the initiator");
 		}
-		else if(originator->getAddress() == this->myAddress)
+		else if (originator->getAddress() == this->myAddress)
 		{
-			if(gs->getParent() != 0 && newParent->getAddress() == gs->getParent()->getAddress())
+			if (gs->getParent() != 0 && newParent->getAddress() == gs->getParent()->getAddress())
 			{
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Cycle detected! Connecting to last parent (" << oldParent->getAddress() << ") and blacklisting (" << newParent->getAddress() << "," << newParent->getParentAddress() << ")");
 
@@ -831,36 +820,36 @@ namespace ns3
 				this->disconnectOldParent(gs);
 
 				//Remove all my previous parents from the list until the oldParent occurs
-				if(gs->hasLastParents())
+				if (gs->hasLastParents())
 				{
 					Ptr<EEBTPNode> p = gs->popLastParent();
-					while(p != oldParent && gs->hasLastParents())
+					while (p != oldParent && gs->hasLastParents())
 						p = gs->popLastParent();
 				}
 
 				//Try to connect to one of our last parents
 				//We get automatically disconnected from our current parent
 				Ptr<EEBTPNode> lastParent = gs->popLastParent();
-				while(lastParent != 0)
+				while (lastParent != 0)
 				{
 					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Last parent is also blacklisted, contacting another last parent [" << lastParent->getAddress() << "]");
 					this->contactNode(gs, lastParent);
 
 					//If we cannot contact lastParent, get next lastParent from stack, else break the loop
-					if(gs->getContactedParent() == 0)
+					if (gs->getContactedParent() == 0)
 						lastParent = gs->popLastParent();
 					else
 						break;
 				}
 
 				//If we could not contact a lastParent, search for cheapest neighbor
-				if(gs->getContactedParent() == 0)
+				if (gs->getContactedParent() == 0)
 				{
 					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: None of our last parents is an option, searching cheapest neighbor...");
 					this->contactCheapestNeighbor(gs);
 
 					//If we are not able to find a valid cheapest neighbor, disconnect child nodes and try again
-					if(gs->getContactedParent() == 0)
+					if (gs->getContactedParent() == 0)
 					{
 						NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Unable to connect to any other node. Disconnecting children...");
 
@@ -892,51 +881,51 @@ namespace ns3
 	{
 		NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: EEBTProtocol::handleNeighborDiscovery()");
 
-		if(gs->isInitiator())										//Check if I am the initiator. If yes, we can ignore this packet
+		if (gs->isInitiator()) //Check if I am the initiator. If yes, we can ignore this packet
 		{
 			//NS_LOG_DEBUG("Ignoring neighbor discovery from " << node->getAddress() << " because I am the initiator");
 		}
-		else if(gs->isBlacklisted(node))								//If the sender is on our blacklist due to a cycle, ignore
+		else if (gs->isBlacklisted(node)) //If the sender is on our blacklist due to a cycle, ignore
 		{
 			//NS_LOG_DEBUG("Ignoring neighbor discovery from " << node->getAddress() << " because it and its parent (" << node->getParentAddress() << ") are blacklisted.");
 		}
-		else if(gs->isChild(node))										//Check if sender is child of me
+		else if (gs->isChild(node)) //Check if sender is child of me
 		{
 			//NS_LOG_DEBUG("Ignoring neighbor discovery from " << node->getAddress() << " because it is a child of mine");
 
 			//If the reachpower of this child changed, inform neighbors
-			if(node->reachPowerChanged() && gs->gameFinished())
+			if (node->reachPowerChanged() && gs->gameFinished())
 				this->Send(gs, NEIGHBOR_DISCOVERY, this->maxAllowedTxPower);
 		}
-		else if(node->getReachPower() > this->maxAllowedTxPower)
+		else if (node->getReachPower() > this->maxAllowedTxPower)
 		{
 			//NS_LOG_DEBUG("Ignoring neighbor discovery from " << node->getAddress() << " because I cannot reach it (" << node->getReachPower() << " dBm)");
 		}
-		else if(node->getConnCounter() > 5)
+		else if (node->getConnCounter() > 5)
 		{
 			//NS_LOG_DEBUG("Ignoring neighbor discovery from " << node->getAddress() << " because connection counter exceeds the maximum");
 		}
-		else if(node == gs->getLastParent())
+		else if (node == gs->getLastParent())
 		{
 			//NS_LOG_DEBUG("Ignoring neighbor discovery from " << node->getAddress() << " because it is my last parent");
 		}
-		else if(gs->getContactedParent() == 0)
+		else if (gs->getContactedParent() == 0)
 		{
 			//If we have no parent and are not connecting to on
-			if(gs->getParent() == 0)
+			if (gs->getParent() == 0)
 			{
 				gs->resetRejectionCounter();
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Switching to [" << node->getAddress() << "] because of neighbor discovery");
 				return this->contactNode(gs, node);
 			}
-			else if(gs->getParent() != 0 && node != gs->getParent())
+			else if (gs->getParent() != 0 && node != gs->getParent())
 			{
 				//Cost of current connection (connCost) is 0 if we are (one of) the nodes that are the farthest away
 				Ptr<EEBTPNode> parent = gs->getParent();
 				double connCost = (parent->getHighestMaxTxPower() - parent->getReachPower());
 
 				//Only if we are (one of) the nodes that are the farthest away, it is useful to switch (else no savings)
-				if(connCost <= 0.00001 && connCost >= -0.00001)
+				if (connCost <= 0.00001 && connCost >= -0.00001)
 				{
 					//TX power our parent can save, if we leave
 					double saving = DbmToW(gs->getParent()->getHighestMaxTxPower()) - DbmToW(gs->getParent()->getSecondHighestMaxTxPower());
@@ -945,21 +934,21 @@ namespace ns3
 					double costOfNewConn = DbmToW(node->getReachPower()) - DbmToW(node->getHighestMaxTxPower());
 
 					//If we are actually saving tx power, switch
-					if(costOfNewConn <= saving)
+					if (costOfNewConn <= saving)
 					{
-						if(costOfNewConn < saving + 0.0001 && costOfNewConn > saving - 0.0001 && (gs->gameFinished() || gs->getUnchangedCounter() >= EEBTProtocol::MAX_UNCHANGED_ROUNDS))
+						if (costOfNewConn < saving + 0.0001 && costOfNewConn > saving - 0.0001 && (gs->gameFinished() || gs->getUnchangedCounter() >= EEBTProtocol::MAX_UNCHANGED_ROUNDS))
 							NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Ignoring neighbor discovery from [" << node->getAddress() << "] since we cannot realy save energy an we had too many unchanged roundes");
 						else
 						{
 							NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Switching to [" << node->getAddress() << "] because of neighbor discovery");
 							NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: "
-										<<"rp(" << node->getAddress() << ") = " << node->getReachPower() << ", "
-										<<"hTx(" << node->getAddress() << ") = " << node->getHighestMaxTxPower() << ", "
-										<<"shTx(" << node->getAddress() << ") = " << node->getSecondHighestMaxTxPower());
+												  << "rp(" << node->getAddress() << ") = " << node->getReachPower() << ", "
+												  << "hTx(" << node->getAddress() << ") = " << node->getHighestMaxTxPower() << ", "
+												  << "shTx(" << node->getAddress() << ") = " << node->getSecondHighestMaxTxPower());
 							NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: "
-										<<"rp(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getReachPower() << ", "
-										<<"hTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getHighestMaxTxPower() << ", "
-										<<"shTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getSecondHighestMaxTxPower());
+												  << "rp(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getReachPower() << ", "
+												  << "hTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getHighestMaxTxPower() << ", "
+												  << "shTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getSecondHighestMaxTxPower());
 							NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: saving = " << saving << "W, costOfNewConn = " << costOfNewConn << "W");
 
 							this->contactNode(gs, node);
@@ -969,24 +958,24 @@ namespace ns3
 					{
 						NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << " / " << Now() << "]: [" << node->getAddress() << "] is NOT a better choice than our current parent");
 						NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: "
-									<<"rp(" << node->getAddress() << ") = " << node->getReachPower() << ", "
-									<<"hTx(" << node->getAddress() << ") = " << node->getHighestMaxTxPower() << ", "
-									<<"shTx(" << node->getAddress() << ") = " << node->getSecondHighestMaxTxPower());
+											  << "rp(" << node->getAddress() << ") = " << node->getReachPower() << ", "
+											  << "hTx(" << node->getAddress() << ") = " << node->getHighestMaxTxPower() << ", "
+											  << "shTx(" << node->getAddress() << ") = " << node->getSecondHighestMaxTxPower());
 						NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: "
-									<<"rp(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getReachPower() << ", "
-									<<"hTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getHighestMaxTxPower() << ", "
-									<<"shTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getSecondHighestMaxTxPower());
+											  << "rp(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getReachPower() << ", "
+											  << "hTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getHighestMaxTxPower() << ", "
+											  << "shTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getSecondHighestMaxTxPower());
 						NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: saving = " << saving << ", costOfNewConn = " << costOfNewConn);
 					}
 				}
 				else
 				{
-					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << " / " << Now() <<  "]: Ignoring neighbor discovery from [" << node->getAddress() << "] since we cannot save energy by leaving our parent: "
-							<< DbmToW(gs->getParent()->getHighestMaxTxPower()) << " - " << DbmToW(gs->getParent()->getSecondHighestMaxTxPower()) << " = " << gs->getCostOfCurrentConn());
+					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << " / " << Now() << "]: Ignoring neighbor discovery from [" << node->getAddress() << "] since we cannot save energy by leaving our parent: "
+										  << DbmToW(gs->getParent()->getHighestMaxTxPower()) << " - " << DbmToW(gs->getParent()->getSecondHighestMaxTxPower()) << " = " << gs->getCostOfCurrentConn());
 					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: "
-								<<"rp(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getReachPower() << ", "
-								<<"hTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getHighestMaxTxPower() << ", "
-								<<"shTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getSecondHighestMaxTxPower());
+										  << "rp(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getReachPower() << ", "
+										  << "hTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getHighestMaxTxPower() << ", "
+										  << "shTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getSecondHighestMaxTxPower());
 				}
 			}
 		}
@@ -1002,20 +991,20 @@ namespace ns3
 		//NS_LOG_DEBUG(this->device->GetNode()->GetId() << " => EEBTProtocol::handleChildRequest()");
 
 		//Check if we received a parent revocation after this child request
-		if(gs->checkLastFrameType(node->getAddress(), CHILD_REQUEST, gs->getLastSeqNo(node->getAddress(), PARENT_REVOCATION)))
+		if (gs->checkLastFrameType(node->getAddress(), CHILD_REQUEST, gs->getLastSeqNo(node->getAddress(), PARENT_REVOCATION)))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Child request from [" << node->getAddress() << "] dismissed because we received a PARENT_REVOCATION with a higher sequence number earlier.");
 			return;
 		}
 
 		//Reject child request if the reach power for this node exceeds our maxAllowedTxPower
-		if(node->getReachPower() > this->maxAllowedTxPower)
+		if (node->getReachPower() > this->maxAllowedTxPower)
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Child request from [" << node->getAddress() << "] dismissed because of reach power (" << node->getReachPower() << ")");
 			return this->Send(gs, CHILD_REJECTION, node->getAddress(), node->getReachPower());
 		}
 
-		if(gs->getParent() == node || gs->getContactedParent() == node)
+		if (gs->getParent() == node || gs->getContactedParent() == node)
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Child request from [" << node->getAddress() << "] dismissed because it's my parent");
 			return EEBTProtocol::Send(gs, CHILD_REJECTION, node->getAddress(), node->getReachPower());
@@ -1023,13 +1012,13 @@ namespace ns3
 
 		//This should never happen but it is implemented for a more stable process
 		//If we are not the initiator and we are not connected to the source node and did not mark any other node to connect to...
-		if(!gs->isInitiator() && (gs->getParent() == 0 && gs->getContactedParent() == 0))
+		if (!gs->isInitiator() && (gs->getParent() == 0 && gs->getContactedParent() == 0))
 		{
 			//...reject request
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Child request from [" << node->getAddress() << "] dismissed because I am not connected to a parent");
 			this->Send(gs, CHILD_REJECTION, node->getAddress(), node->getReachPower());
 
-			if(gs->getRejectionCounter() > (gs->getNNeighbors() * 2) && gs->getParent() == 0)
+			if (gs->getRejectionCounter() > (gs->getNNeighbors() * 2) && gs->getParent() == 0)
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Do not search for new parent since we failed to many times. Waiting for new neighbor");
 			else
 			{
@@ -1038,9 +1027,8 @@ namespace ns3
 			}
 		}
 
-
 		//NS_ASSERT_MSG(!gs->isChild(node), "Child sent CHILD_REQUEST but it is already a child of mine");
-		if(gs->isChild(node))
+		if (gs->isChild(node))
 		{
 			NS_LOG_WARN("[Node " << this->device->GetNode()->GetId() << "]: Node [" << node->getAddress() << "] sent a child request but is already a child of mine");
 			this->Send(gs, CHILD_CONFIRMATION, node->getAddress(), node->getReachPower());
@@ -1057,19 +1045,19 @@ namespace ns3
 			this->Send(gs, CHILD_CONFIRMATION, node->getAddress(), node->getReachPower());
 
 			//Reset the unchanged counter since the topology changed
-			if(!gs->gameFinished())
+			if (!gs->gameFinished())
 				gs->resetUnchangedCounter();
-			else		//else, force new child to finish its game since application data may arrive soon
+			else //else, force new child to finish its game since application data may arrive soon
 				this->handleEndOfGame(gs, node);
 
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Child request from [" << node->getAddress() << "] accepted");
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: My current child nodes:");
-			for(int i = 0; i < gs->getNChilds(); i++)
+			for (int i = 0; i < gs->getNChilds(); i++)
 				NS_LOG_DEBUG("\t\t[" << gs->getChild(i)->getAddress() << "]: rP = " << gs->getChild(i)->getReachPower() << "dBm, finished: " << (gs->getChild(i)->hasFinished() ? "true" : "false"));
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: hTx = " << gs->getHighestTxPower() << ", shTx = " << gs->getSecondHighestTxPower());
 
 			//If game is finished, we already sent application data frames and now have one child, continue sending application data
-			if(gs->gameFinished() && gs->getApplicationDataHandler()->getLastSeqNo() > 0 && gs->getNChilds() == 1)
+			if (gs->gameFinished() && gs->getApplicationDataHandler()->getLastSeqNo() > 0 && gs->getNChilds() == 1)
 				this->sendApplicationData(gs, gs->getApplicationDataHandler()->getLastSeqNo());
 		}
 	}
@@ -1081,19 +1069,19 @@ namespace ns3
 	 */
 	void EEBTProtocol::handleChildConfirmation(Ptr<GameState> gs, Ptr<EEBTPNode> node)
 	{
-		if(gs->checkLastFrameType(node->getAddress(), CHILD_CONFIRMATION, gs->getLastSeqNo(node->getAddress(), CHILD_REJECTION)))
+		if (gs->checkLastFrameType(node->getAddress(), CHILD_CONFIRMATION, gs->getLastSeqNo(node->getAddress(), CHILD_REJECTION)))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Child confirmation from [" << node->getAddress() << "] dismissed because we received a CHILD_REJECTION with a higher sequence number earlier.");
 			return this->Send(gs, PARENT_REVOCATION, node->getAddress(), node->getReachPower());
 		}
 
 		//If we have a parent... (!Assertion)
-		if(gs->getParent() != 0)
+		if (gs->getParent() != 0)
 		{
 			//...and we did not contact a new one, send parent revocation to sender
-			if(gs->getContactedParent() != node)
+			if (gs->getContactedParent() != node)
 			{
-				if(gs->getParent() == node)
+				if (gs->getParent() == node)
 				{
 					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Child confirmation from [" << node->getAddress() << "] ignored because we already connected to that node");
 					return;
@@ -1101,12 +1089,12 @@ namespace ns3
 				else
 					return this->Send(gs, PARENT_REVOCATION, node->getAddress(), node->getReachPower());
 			}
-			else if(gs->gameFinished())		//...and the game is already finished, disconnect from old parent
+			else if (gs->gameFinished()) //...and the game is already finished, disconnect from old parent
 			{
 				this->disconnectOldParent(gs);
 			}
 		}
-		else if(node != gs->getContactedParent())
+		else if (node != gs->getContactedParent())
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Child confirmation from [" << node->getAddress() << "] dismissed because we did not ask him to be our parent");
 			return this->Send(gs, PARENT_REVOCATION, node->getAddress(), node->getReachPower());
@@ -1118,7 +1106,7 @@ namespace ns3
 
 		NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Connected to [" << node->getAddress() << "]");
 		NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: rP(" << node->getAddress() << ") = " << node->getReachPower() << ", hTx(" << node->getAddress() << ") = " << node->getHighestMaxTxPower() << ", shTx(" << node->getAddress() << ") = " << node->getSecondHighestMaxTxPower());
-		for(uint i = 0; i < gs->getNNeighbors(); i++)
+		for (uint i = 0; i < gs->getNNeighbors(); i++)
 		{
 			Ptr<EEBTPNode> neighbor = gs->getNeighbor(i);
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]:\trP(" << neighbor->getAddress() << ") = " << neighbor->getReachPower() << ", hTx(" << neighbor->getAddress() << ") = " << neighbor->getHighestMaxTxPower() << ", shTx(" << neighbor->getAddress() << ") = " << neighbor->getSecondHighestMaxTxPower());
@@ -1129,42 +1117,42 @@ namespace ns3
 		//Reset contacted parent
 		gs->setContactedParent(0);
 
-		if(gs->doIncrAfterConfirm())
+		if (gs->doIncrAfterConfirm())
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Incrementing unchanged counter");
 			gs->incrementUnchangedCounter();
 		}
 
-		if(gs->getUnchangedCounter() < EEBTProtocol::MAX_UNCHANGED_ROUNDS)
+		if (gs->getUnchangedCounter() < EEBTProtocol::MAX_UNCHANGED_ROUNDS)
 		{
 			//Check if we note a possible better parent in the past
 			this->contactCheapestNeighbor(gs);
 		}
 
 		//If we did not contact another node...
-		if(gs->getContactedParent() == 0)
+		if (gs->getContactedParent() == 0)
 		{
 			node->resetConnCounter();
 
 			//...and have child nodes, do a cycle check
-			if(gs->hasChilds())
+			if (gs->hasChilds())
 			{
 				NS_LOG_DEBUG("Sending cycle_check: " << node->getParentAddress() << ", reachPower: " << node->getReachPower());
 				//NS_ASSERT_MSG(gs->hasLastParents(), "We never had a parent but should have, since we have child nodes");
-				if(gs->hasLastParents())
+				if (gs->hasLastParents())
 					this->Send(gs, this->myAddress, gs->getParent()->getAddress(), gs->getLastParent()->getAddress());
 				else
 					this->Send(gs, this->myAddress, gs->getParent()->getAddress(), gs->getParent()->getAddress());
 				gs->setCycleCheckNeeded(false);
 			}
 
-			if(node->hasFinished())
+			if (node->hasFinished())
 				this->handleEndOfGame(gs, node);
-			else if(gs->gameFinished())	//If we finished our game earlier, send END_OF_GAME to our parent
+			else if (gs->gameFinished()) //If we finished our game earlier, send END_OF_GAME to our parent
 				this->Send(gs, END_OF_GAME, gs->getParent()->getAddress(), gs->getParent()->getReachPower());
 
 			//Reset the unchanged counter, since our topology changed
-			if(!gs->doIncrAfterConfirm() && gs->getUnchangedCounter() < EEBTProtocol::MAX_UNCHANGED_ROUNDS)
+			if (!gs->doIncrAfterConfirm() && gs->getUnchangedCounter() < EEBTProtocol::MAX_UNCHANGED_ROUNDS)
 			{
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Resetting unchanged counter");
 				gs->resetUnchangedCounter();
@@ -1188,34 +1176,34 @@ namespace ns3
 	 */
 	void EEBTProtocol::handleChildRejection(Ptr<GameState> gs, Ptr<EEBTPNode> node)
 	{
-		if(gs->checkLastFrameType(node->getAddress(), CHILD_REJECTION, gs->getLastSeqNo(node->getAddress(), CHILD_CONFIRMATION)))
+		if (gs->checkLastFrameType(node->getAddress(), CHILD_REJECTION, gs->getLastSeqNo(node->getAddress(), CHILD_CONFIRMATION)))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Child rejection from [" << node->getAddress() << "] dismissed because we received a CHILD_CONFIRMATION with a higher sequence number earlier.");
 			return;
 		}
 
 		//Check if node is our parent
-		if(node != gs->getParent() && node != gs->getContactedParent())
+		if (node != gs->getParent() && node != gs->getContactedParent())
 		{
 			NS_LOG_DEBUG("Ignoring child rejection from [" << node->getAddress() << "] since it is not our parent nor the node we want to connect to!");
 			return;
 		}
 
-		if(node == gs->getParent())
+		if (node == gs->getParent())
 		{
 			gs->setParent(0);
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: My parent [" << node->getAddress() << "] disconnected me");
 
 			//Check our last cycle and set the finish time
 			std::vector<Ptr<CycleInfo>> cycles = this->cycleWatchDog->getCycles(gs->getGameID(), this->device->GetNode()->GetId());
-			if(cycles.size() > 0)
+			if (cycles.size() > 0)
 			{
-				Ptr<CycleInfo> ci = *(cycles.end()-1);
-				if(ci->getEndTime().GetNanoSeconds() == 0)
+				Ptr<CycleInfo> ci = *(cycles.end() - 1);
+				if (ci->getEndTime().GetNanoSeconds() == 0)
 					ci->setEndTime(Now());
 			}
 
-			if(gs->gameFinished() && gs->getContactedParent() != 0)
+			if (gs->gameFinished() && gs->getContactedParent() != 0)
 			{
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: I am connecting to [" << gs->getContactedParent()->getAddress() << "]...");
 				return;
@@ -1230,13 +1218,13 @@ namespace ns3
 		gs->resetNeighborDiscoveryEvent();
 
 		//Add contacted parent to blacklist (only if is was not a reach power problem)
-		if(!node->hasReachPowerProblem())
+		if (!node->hasReachPowerProblem())
 			gs->updateBlacklist(node);
 
 		//Reset contacted parent
 		gs->setContactedParent(0);
 
-		if(gs->getRejectionCounter() > (gs->getNNeighbors() * 2) && gs->getParent() == 0)
+		if (gs->getRejectionCounter() > (gs->getNNeighbors() * 2) && gs->getParent() == 0)
 		{
 			gs->resetBlacklist();
 			this->disconnectAllChildNodes(gs);
@@ -1245,19 +1233,19 @@ namespace ns3
 		}
 
 		//If our game is not finished yet
-		if(!gs->gameFinished())
+		if (!gs->gameFinished())
 		{
 			//If the new parent rejects us and we have a last parent, connect to the old one
-			if(gs->hasLastParents())
+			if (gs->hasLastParents())
 			{
 				Ptr<EEBTPNode> lastParent = gs->popLastParent();
-				while(lastParent != 0)
+				while (lastParent != 0)
 				{
 					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Contacting last parent [" << lastParent->getAddress() << "]");
 					this->contactNode(gs, lastParent);
 
 					//If we cannot contact lastParent, get next lastParent from stack, else break the loop
-					if(gs->getContactedParent() == 0)
+					if (gs->getContactedParent() == 0)
 						lastParent = gs->popLastParent();
 					else
 						break;
@@ -1266,22 +1254,22 @@ namespace ns3
 		}
 
 		//If we did not found a not blacklisted old parent, contact cheapest neighbor
-		if(gs->getContactedParent() == 0)
+		if (gs->getContactedParent() == 0)
 		{
 			//Contact cheapest neighbor
 			this->contactCheapestNeighbor(gs);
 
-			if(gs->getContactedParent() == 0)
+			if (gs->getContactedParent() == 0)
 			{
 				//If the game is already finished and we did not disconnect our old parent
-				if(gs->gameFinished() && gs->getParent() != 0)
+				if (gs->gameFinished() && gs->getParent() != 0)
 				{
 					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: We already finished our game and did not disconnect from our old parent.");
-					if(gs->needsCycleCheck() && gs->hasChilds())
+					if (gs->needsCycleCheck() && gs->hasChilds())
 					{
 						NS_LOG_DEBUG("Sending cycle_check: " << node->getParentAddress() << ", reachPower: " << node->getReachPower());
 						//NS_ASSERT_MSG(gs->hasLastParents(), "We never had a parent but should have, since we have child nodes");
-						if(gs->hasLastParents())
+						if (gs->hasLastParents())
 							this->Send(gs, this->myAddress, gs->getParent()->getAddress(), gs->getLastParent()->getAddress());
 						else
 							this->Send(gs, this->myAddress, gs->getParent()->getAddress(), gs->getParent()->getAddress());
@@ -1319,30 +1307,30 @@ namespace ns3
 	{
 		//NS_LOG_DEBUG(this->device->GetNode()->GetId() << " => EEBTProtocol::handleParentRevocation()");
 
-		if(gs->checkLastFrameType(node->getAddress(), PARENT_REVOCATION, gs->getLastSeqNo(node->getAddress(), CHILD_REQUEST)))
+		if (gs->checkLastFrameType(node->getAddress(), PARENT_REVOCATION, gs->getLastSeqNo(node->getAddress(), CHILD_REQUEST)))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Parent revocation from [" << node->getAddress() << "] dismissed because we received a CHILD_REQUEST with a higher sequence number earlier.");
 			return;
 		}
 
 		//Assertion
-		if(gs->isChild(node->getAddress()))
+		if (gs->isChild(node->getAddress()))
 		{
 			gs->removeChild(node);
 
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Child [" << node->getAddress() << "] disconnected");
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: My current child nodes:");
-			for(int i = 0; i < gs->getNChilds(); i++)
+			for (int i = 0; i < gs->getNChilds(); i++)
 				NS_LOG_DEBUG("\t\t[" << gs->getChild(i)->getAddress() << "]: rP = " << gs->getChild(i)->getReachPower());
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: hTx = " << gs->getHighestTxPower() << ", shTx = " << gs->getSecondHighestTxPower());
 
-			if(!gs->gameFinished())
+			if (!gs->gameFinished())
 			{
 				gs->resetUnchangedCounter();
 				gs->resetNeighborDiscoveryEvent();
 			}
 
-			if(gs->getParent() != 0 || gs->isInitiator())
+			if (gs->getParent() != 0 || gs->isInitiator())
 				this->Send(gs, NEIGHBOR_DISCOVERY, this->maxAllowedTxPower);
 		}
 	}
@@ -1356,14 +1344,14 @@ namespace ns3
 	{
 		//NS_LOG_DEBUG(this->device->GetNode()->GetId() << " => EEBTProtocol::handleEndOfGame()");
 
-		if(node == gs->getParent() && gs->getContactedParent() == 0)
+		if (node == gs->getParent() && gs->getContactedParent() == 0)
 		{
 			gs->resetNeighborDiscoveryEvent();
 
 			NS_LOG_DEBUG("New parent is finished. finishing my game. my children: " << gs->getNChilds());
-			if(gs->hasChilds() && !gs->allChildsFinished())
+			if (gs->hasChilds() && !gs->allChildsFinished())
 			{
-				for(int i = 0; i < gs->getNChilds(); i++)
+				for (int i = 0; i < gs->getNChilds(); i++)
 				{
 					Ptr<EEBTPNode> child = gs->getChild(i);
 					this->Send(gs, END_OF_GAME, child->getAddress(), child->getReachPower());
@@ -1374,7 +1362,7 @@ namespace ns3
 			node->setFinished(true);
 			gs->finishGame();
 		}
-		else if(gs->isChild(node->getAddress()))
+		else if (gs->isChild(node->getAddress()))
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: A child [" << node->getAddress() << "] finished the game.");
 			node->setFinished(true);
@@ -1393,12 +1381,11 @@ namespace ns3
 		packet->RemoveHeader(hdr);
 
 		//Store data
-		if(gs->getApplicationDataHandler()->handleApplicationData(packet) && gs->hasChilds())
+		if (gs->getApplicationDataHandler()->handleApplicationData(packet) && gs->hasChilds())
 		{
 			this->sendApplicationData(gs, packet);
 		}
 	}
-
 
 	/*
 	 * Helper methods
@@ -1414,21 +1401,21 @@ namespace ns3
 		Ptr<EEBTPNode> cheapestNeighbor = gs->getCheapestNeighbor();
 
 		//If the cheapest neighbor is not our parent
-		if(cheapestNeighbor != gs->getParent())
+		if (cheapestNeighbor != gs->getParent())
 		{
-			if(gs->getParent() != 0)
+			if (gs->getParent() != 0)
 			{
 				double saving = DbmToW(gs->getParent()->getHighestMaxTxPower()) - DbmToW(gs->getParent()->getSecondHighestMaxTxPower());
 				double costOfNewConn = DbmToW(cheapestNeighbor->getReachPower()) - DbmToW(cheapestNeighbor->getHighestMaxTxPower());
 
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: "
-							<<"rp(" << cheapestNeighbor->getAddress() << ") = " << cheapestNeighbor->getReachPower() << ", "
-							<<"hTx(" << cheapestNeighbor->getAddress() << ") = " << cheapestNeighbor->getHighestMaxTxPower() << ", "
-							<<"shTx(" << cheapestNeighbor->getAddress() << ") = " << cheapestNeighbor->getSecondHighestMaxTxPower());
+									  << "rp(" << cheapestNeighbor->getAddress() << ") = " << cheapestNeighbor->getReachPower() << ", "
+									  << "hTx(" << cheapestNeighbor->getAddress() << ") = " << cheapestNeighbor->getHighestMaxTxPower() << ", "
+									  << "shTx(" << cheapestNeighbor->getAddress() << ") = " << cheapestNeighbor->getSecondHighestMaxTxPower());
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: "
-							<<"rp(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getReachPower() << ", "
-							<<"hTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getHighestMaxTxPower() << ", "
-							<<"shTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getSecondHighestMaxTxPower());
+									  << "rp(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getReachPower() << ", "
+									  << "hTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getHighestMaxTxPower() << ", "
+									  << "shTx(" << gs->getParent()->getAddress() << ") = " << gs->getParent()->getSecondHighestMaxTxPower());
 				NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: saving = " << saving << "W, costOfNewConn = " << costOfNewConn << "W");
 			}
 
@@ -1443,27 +1430,27 @@ namespace ns3
 	void EEBTProtocol::contactNode(Ptr<GameState> gs, Ptr<EEBTPNode> node)
 	{
 		//First check, if this node is blacklisted
-		if(gs->isBlacklisted(node))
+		if (gs->isBlacklisted(node))
 		{
 			NS_LOG_DEBUG("Node [" << node->getAddress() << "] with its parent [" << node->getParentAddress() << "] is blacklisted");
 			return;
 		}
 
 		//Check if the node is a child of us
-		if(gs->isChild(node))
+		if (gs->isChild(node))
 		{
 			NS_LOG_DEBUG("Node [" << node->getAddress() << "] is a child of mine");
 			return;
 		}
 
 		//If our parent is the node, return. We don't want to connect to it again
-		if(gs->getParent() == node)
+		if (gs->getParent() == node)
 		{
 			NS_LOG_DEBUG("Node is our parent!");
 			return;
 		}
 
-		if(node->getReachPower() > this->maxAllowedTxPower)
+		if (node->getReachPower() > this->maxAllowedTxPower)
 		{
 			NS_LOG_DEBUG("Cannot contact [" << node->getAddress() << "] because I cannot reach it (" << node->getReachPower() << " dBm)");
 			return;
@@ -1471,7 +1458,7 @@ namespace ns3
 
 		//If we are in the process of contacting another node, we note that
 		//we should check our neighbors after finishing that process
-		if(gs->getContactedParent() != 0)
+		if (gs->getContactedParent() != 0)
 		{
 			NS_LOG_DEBUG("Cannot contact [" << node->getAddress() << "] while waiting for response of contacted node [" << gs->getContactedParent()->getAddress() << "]");
 			return;
@@ -1481,7 +1468,7 @@ namespace ns3
 
 		gs->resetNeighborDiscoveryEvent();
 
-		if(parent != 0)
+		if (parent != 0)
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Switching from [" << parent->getAddress() << "] to [" << node->getAddress() << "]");
 
@@ -1492,10 +1479,10 @@ namespace ns3
 			double costOfNewConn = DbmToW(node->getReachPower()) - DbmToW(node->getHighestMaxTxPower());
 
 			//Only if we are one of the farthest nodes away, we can save energy
-			if(costOfCurrentConn < 0.0001 && costOfCurrentConn > -0.0001)
+			if (costOfCurrentConn < 0.0001 && costOfCurrentConn > -0.0001)
 			{
 				//If the amount of energy we save is the same as the new costs of energy, set 'doIncr' flag
-				if(saving < costOfNewConn + 0.0001 && saving > costOfNewConn - 0.0001)
+				if (saving < costOfNewConn + 0.0001 && saving > costOfNewConn - 0.0001)
 				{
 					NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Setting doIncrAfterConfirm since saving ~= costOfNewConn => " << saving << " ~= " << costOfNewConn);
 					gs->setDoIncrAfterConfirm(true);
@@ -1506,7 +1493,7 @@ namespace ns3
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Connecting to [" << node->getAddress() << "]");
 
 		//Check if we have a parent or not
-		if(!gs->gameFinished())
+		if (!gs->gameFinished())
 			this->disconnectOldParent(gs);
 		else
 			NS_LOG_DEBUG("\tGame has finished. We disconnect after the next successful connection");
@@ -1520,7 +1507,7 @@ namespace ns3
 
 	void EEBTProtocol::finishGame(Ptr<GameState> gs)
 	{
-		if(gs->getContactedParent() != 0)
+		if (gs->getContactedParent() != 0)
 		{
 			//NS_LOG_DEBUG("Cannot finish game, because we are waiting for a response...");
 			return;
@@ -1536,12 +1523,12 @@ namespace ns3
 		Ptr<EEBTPNode> parent = gs->getParent();
 
 		//If we have a parent (Assertion)
-		if(parent != 0)
+		if (parent != 0)
 		{
 			//inform parent that we have finished the game
 			this->Send(gs, END_OF_GAME, parent->getAddress(), parent->getReachPower());
 		}
-		else if(gs->isInitiator())
+		else if (gs->isInitiator())
 		{
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: I am the initiator and all nodes have finished the game at " << Now() << ". Start sending application data...");
 			this->sendApplicationData(gs, 0);
@@ -1551,22 +1538,22 @@ namespace ns3
 	bool EEBTProtocol::checkNeigborDiscoverySendEvent(Ptr<GameState> gs)
 	{
 		//If the event handler is not set, create one
-		if(gs->getNeighborDiscoveryEvent() == 0)
+		if (gs->getNeighborDiscoveryEvent() == 0)
 			gs->setNeighborDiscoveryEvent(Create<SendEvent>(gs, this, NEIGHBOR_DISCOVERY, Mac48Address::GetBroadcast(), this->maxAllowedTxPower, 0));
 
 		//If we sent more than MAX_UNCHANGED_ROUNDS times a neighbor discovery...
 		//uint32_t maxUnchangedCounter = ((gs->getNNeighbors() * 0.5) + 2);
-		if((gs->getUnchangedCounter() >= EEBTProtocol::MAX_UNCHANGED_ROUNDS && gs->allChildsFinished()) && (!gs->isInitiator() || gs->getNChilds() > 0))
+		if ((gs->getUnchangedCounter() >= EEBTProtocol::MAX_UNCHANGED_ROUNDS && gs->allChildsFinished()) && (!gs->isInitiator() || gs->getNChilds() > 0))
 		{
 			//Check for the cheapest neighbor, if we are not the initiator
-			if(!gs->isInitiator())
+			if (!gs->isInitiator())
 				this->contactCheapestNeighbor(gs);
 
 			//and deactivate the handler
 			gs->resetNeighborDiscoveryEvent();
 
 			//If we did not contact a new node, finish the game
-			if(gs->getContactedParent() == 0)
+			if (gs->getContactedParent() == 0)
 				this->finishGame(gs);
 		}
 		else
@@ -1585,7 +1572,7 @@ namespace ns3
 	{
 		Ptr<EEBTPNode> parent = gs->getParent();
 
-		if(parent != 0)
+		if (parent != 0)
 		{
 			//Send parent revocation to current parent
 			this->Send(gs, PARENT_REVOCATION, parent->getAddress(), parent->getReachPower());
@@ -1593,10 +1580,10 @@ namespace ns3
 			//Check our last cycle and set the finish time
 			std::vector<Ptr<CycleInfo>> cycles = this->cycleWatchDog->getCycles(gs->getGameID(), this->device->GetNode()->GetId());
 			NS_LOG_DEBUG("[Node " << this->device->GetNode()->GetId() << "]: Cycles stored: " << cycles.size());
-			if(cycles.size() > 0)
+			if (cycles.size() > 0)
 			{
-				Ptr<CycleInfo> ci = *(cycles.end()-1);
-				if(ci->getEndTime().GetNanoSeconds() == 0)
+				Ptr<CycleInfo> ci = *(cycles.end() - 1);
+				if (ci->getEndTime().GetNanoSeconds() == 0)
 				{
 					NS_LOG_DEBUG("\tEnding last cycle...");
 					ci->setEndTime(Now());
@@ -1606,7 +1593,7 @@ namespace ns3
 			}
 
 			//Add parent to last parent stack
-			if(!gs->isBlacklisted(parent))
+			if (!gs->isBlacklisted(parent))
 				gs->pushLastParent(parent);
 
 			parent->setHighestMaxTxPower(WToDbm(0));
@@ -1619,7 +1606,7 @@ namespace ns3
 
 	void EEBTProtocol::disconnectAllChildNodes(Ptr<GameState> gs)
 	{
-		while(gs->getNChilds() > 0)
+		while (gs->getNChilds() > 0)
 		{
 			Ptr<EEBTPNode> child = gs->getChild(0);
 			child->setSrcPath(std::vector<Mac48Address>());
@@ -1641,7 +1628,7 @@ namespace ns3
 		//Set sequence number
 		this->cache.injectSeqNo(&header);
 
-		if(gs->isInitiator())
+		if (gs->isInitiator())
 			Simulator::Schedule(MilliSeconds(10), Create<ADSendEvent>(gs, this, header.GetSequenceNumber()));
 
 		header.SetFrameType(APPLICATION_DATA);
@@ -1649,7 +1636,7 @@ namespace ns3
 		header.SetTxPower(gs->getHighestTxPower());
 		//header.SetTxPower(this->maxAllowedTxPower);
 
-		if(gs->getParent() == 0)
+		if (gs->getParent() == 0)
 			header.SetParent(Mac48Address::GetBroadcast());
 		else
 			header.SetParent(gs->getParent()->getAddress());
@@ -1676,17 +1663,17 @@ namespace ns3
 
 	void EEBTProtocol::sendApplicationData(Ptr<GameState> gs, uint16_t seqNo)
 	{
-		if(gs->isInitiator() && gs->hasChilds())
+		if (gs->isInitiator() && gs->hasChilds())
 		{
-			if(this->sendCounter < this->maxPackets)
+			if (this->sendCounter < this->maxPackets)
 			{
-				if(this->packetManager->isPacketAcked(seqNo) || this->sendCounter == 0)
+				if (this->packetManager->isPacketAcked(seqNo) || this->sendCounter == 0)
 				{
 					EEBTPDataHeader dataHeader;
 					dataHeader.SetDataLength(this->dataLength);
 					dataHeader.SetSequenceNumber(gs->getApplicationDataHandler()->getLastSeqNo());
 					gs->getApplicationDataHandler()->incrementSeqNo();
-					uint8_t* data = new uint8_t[dataHeader.GetDataLength()];
+					uint8_t *data = new uint8_t[dataHeader.GetDataLength()];
 
 					Ptr<Packet> packet = Create<Packet>(data, dataHeader.GetDataLength());
 					packet->AddHeader(dataHeader);

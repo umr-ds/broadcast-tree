@@ -17,13 +17,13 @@ namespace ns3
 {
 	class SimpleBroadcastProtocolHelper
 	{
-		public:
-			SimpleBroadcastProtocolHelper();
-			virtual ~SimpleBroadcastProtocolHelper();
+	public:
+		SimpleBroadcastProtocolHelper();
+		virtual ~SimpleBroadcastProtocolHelper();
 
-			void Install(std::string nodeName) const;
-			void Install(Ptr<WifiNetDevice> device) const;
-			void Install(NetDeviceContainer c) const;
+		void Install(std::string nodeName) const;
+		void Install(Ptr<WifiNetDevice> device) const;
+		void Install(NetDeviceContainer c) const;
 	};
 }
 

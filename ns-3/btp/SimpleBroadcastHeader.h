@@ -15,33 +15,32 @@ namespace ns3
 {
 	class SimpleBroadcastHeader : public Header
 	{
-		public:
-			SimpleBroadcastHeader(uint8_t hopCount = 1);
-			virtual ~SimpleBroadcastHeader();
+	public:
+		SimpleBroadcastHeader(uint8_t hopCount = 1);
+		virtual ~SimpleBroadcastHeader();
 
-			static TypeId GetTypeId();
-			virtual TypeId GetInstanceTypeId() const;
-			virtual void Print(std::ostream &os) const;
-			virtual void Serialize(Buffer::Iterator start) const;
-			virtual uint32_t Deserialize(Buffer::Iterator start);
-			virtual uint32_t GetSerializedSize() const;
+		static TypeId GetTypeId();
+		virtual TypeId GetInstanceTypeId() const;
+		virtual void Print(std::ostream &os) const;
+		virtual void Serialize(Buffer::Iterator start) const;
+		virtual uint32_t Deserialize(Buffer::Iterator start);
+		virtual uint32_t GetSerializedSize() const;
 
-			void SetOriginator(Mac48Address address);
-			Mac48Address GetOriginator();
+		void SetOriginator(Mac48Address address);
+		Mac48Address GetOriginator();
 
-			uint8_t GetHopCount();
-			void SetHopCount(uint8_t hopCount);
-			void DecrementHopCount();
+		uint8_t GetHopCount();
+		void SetHopCount(uint8_t hopCount);
+		void DecrementHopCount();
 
-			uint32_t GetSequenceNumber();
-			void SetSequenceNumber(uint32_t seqNo);
+		uint32_t GetSequenceNumber();
+		void SetSequenceNumber(uint32_t seqNo);
 
-		private:
-			uint32_t seqNo;
-			uint8_t hopCount;
-			Mac48Address originator;
+	private:
+		uint32_t seqNo;
+		uint8_t hopCount;
+		Mac48Address originator;
 	};
 }
-
 
 #endif /* BROADCAST_SIMPLEBROADCASTHEADER_H_ */

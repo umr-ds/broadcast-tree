@@ -30,9 +30,9 @@ namespace ns3
 
 	TypeId ApplicationDataHandler::GetTypeId()
 	{
-		static TypeId tid = TypeId ("ns3::ApplicationDataHandler")
-				.SetParent<Object>()
-				.AddConstructor<ApplicationDataHandler>();
+		static TypeId tid = TypeId("ns3::ApplicationDataHandler")
+								.SetParent<Object>()
+								.AddConstructor<ApplicationDataHandler>();
 		return tid;
 	}
 
@@ -40,8 +40,6 @@ namespace ns3
 	{
 		return GetTypeId();
 	}
-
-
 
 	/*
 	 * Application data handler
@@ -51,16 +49,16 @@ namespace ns3
 		EEBTPDataHeader header;
 		packet->PeekHeader(header);
 
-		if(header.GetSequenceNumber() > this->currentSeqNo + 16)
+		if (header.GetSequenceNumber() > this->currentSeqNo + 16)
 		{
 			NS_LOG_DEBUG("Dropping data packet with seqNo " << header.GetSequenceNumber() << " because it is out of our sliding window (" << this->currentSeqNo << " -> " << (this->currentSeqNo + 16) << ")");
 		}
 		else
 		{
 			bool isMissing = false;
-			for(uint i = 0; i < this->missingSeqNos.size(); i++)
+			for (uint i = 0; i < this->missingSeqNos.size(); i++)
 			{
-				if(this->missingSeqNos[i] == header.GetSequenceNumber())
+				if (this->missingSeqNos[i] == header.GetSequenceNumber())
 				{
 					isMissing = true;
 					this->missingSeqNos.erase(this->missingSeqNos.begin() + i);
@@ -68,15 +66,15 @@ namespace ns3
 				}
 			}
 
-			if(!isMissing)
+			if (!isMissing)
 			{
-				if(this->currentSeqNo < header.GetSequenceNumber())
+				if (this->currentSeqNo < header.GetSequenceNumber())
 				{
 					NS_LOG_DEBUG("Received data packet with dSeqNo = " << header.GetSequenceNumber());
 					this->packetCount++;
 
 					this->currentSeqNo++;
-					while(this->currentSeqNo != header.GetSequenceNumber())
+					while (this->currentSeqNo != header.GetSequenceNumber())
 					{
 						this->missingSeqNos.push_back(this->currentSeqNo);
 						this->currentSeqNo++;
@@ -95,7 +93,6 @@ namespace ns3
 		}
 		return false;
 	}
-
 
 	/*Ptr<Packet> ApplicationDataHandler::getLastPacket()
 	{
@@ -118,7 +115,6 @@ namespace ns3
 	{
 		return this->missingSeqNos;
 	}
-
 
 	/*
 	 * For the initiator to count sequence numbers

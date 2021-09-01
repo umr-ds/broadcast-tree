@@ -20,30 +20,29 @@ namespace ns3
 
 	class SendEvent : public EventImpl
 	{
-		public:
-			SendEvent(Ptr<GameState> gs, Ptr<EEBTProtocol> prot, FRAME_TYPE ft, Mac48Address recipient, double txPower, uint16_t seqNo);
-			~SendEvent();
+	public:
+		SendEvent(Ptr<GameState> gs, Ptr<EEBTProtocol> prot, FRAME_TYPE ft, Mac48Address recipient, double txPower, uint16_t seqNo);
+		~SendEvent();
 
-			void Notify();
+		void Notify();
 
-			uint32_t getNTimes();
-			void updateTxPower(double txPower);
+		uint32_t getNTimes();
+		void updateTxPower(double txPower);
 
-			uint16_t getSeqNo();
-			void setSeqNo(uint16_t seqNo);
-		private:
-			Ptr<GameState> gs;
-			Ptr<EEBTProtocol> prot;
+		uint16_t getSeqNo();
+		void setSeqNo(uint16_t seqNo);
 
-			FRAME_TYPE ft;
-			uint16_t seqNo;
-			Mac48Address recipient;
+	private:
+		Ptr<GameState> gs;
+		Ptr<EEBTProtocol> prot;
 
-			double txPower;
-			uint32_t counter;
+		FRAME_TYPE ft;
+		uint16_t seqNo;
+		Mac48Address recipient;
+
+		double txPower;
+		uint32_t counter;
 	};
 }
-
-
 
 #endif /* BROADCAST_SENDEVENT_H_ */

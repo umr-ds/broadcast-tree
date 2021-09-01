@@ -9,11 +9,11 @@
 
 namespace ns3
 {
-	EEBTPQueueDiscItem::EEBTPQueueDiscItem(Ptr<Packet> packet, const Address & addr, uint16_t proto) : QueueDiscItem(packet, addr, proto)
+	EEBTPQueueDiscItem::EEBTPQueueDiscItem(Ptr<Packet> packet, const Address &addr, uint16_t proto) : QueueDiscItem(packet, addr, proto)
 	{
 	}
 
-	EEBTPQueueDiscItem::~EEBTPQueueDiscItem(){}
+	EEBTPQueueDiscItem::~EEBTPQueueDiscItem() {}
 
 	void EEBTPQueueDiscItem::AddHeader() {}
 
@@ -24,11 +24,11 @@ namespace ns3
 
 	bool EEBTPQueueDiscItem::Mark()
 	{
-	   return true;
+		return true;
 	}
 
-	void EEBTPQueueDiscItem::Print(std::ostream& os) const
+	void EEBTPQueueDiscItem::Print(std::ostream &os) const
 	{
-	   os << GetPacket();
+		os << GetPacket();
 	}
 }

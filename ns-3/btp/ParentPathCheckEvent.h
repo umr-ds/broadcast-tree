@@ -20,17 +20,16 @@ namespace ns3
 
 	class ParentPathCheckEvent : public EventImpl
 	{
-		public:
-			ParentPathCheckEvent(Ptr<GameState> gs, Ptr<EEBTProtocolSrcPath> prot);
-			~ParentPathCheckEvent();
+	public:
+		ParentPathCheckEvent(Ptr<GameState> gs, Ptr<EEBTProtocolSrcPath> prot);
+		~ParentPathCheckEvent();
 
-			void Notify();
-		private:
-			Ptr<GameState> gs;
-			Ptr<EEBTProtocolSrcPath> prot;
+		void Notify();
+
+	private:
+		Ptr<GameState> gs;
+		Ptr<EEBTProtocolSrcPath> prot;
 	};
 }
-
-
 
 #endif /* BROADCAST_PPC_EVENT_H_ */

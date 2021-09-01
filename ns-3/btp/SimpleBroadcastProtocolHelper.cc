@@ -14,12 +14,10 @@ namespace ns3
 
 	SimpleBroadcastProtocolHelper::SimpleBroadcastProtocolHelper()
 	{
-
 	}
 
 	SimpleBroadcastProtocolHelper::~SimpleBroadcastProtocolHelper()
 	{
-
 	}
 
 	void SimpleBroadcastProtocolHelper::Install(Ptr<WifiNetDevice> device) const
@@ -30,7 +28,7 @@ namespace ns3
 		device->AggregateObject(protocol);
 
 		Ptr<SimpleBroadcastProtocol> sbp = device->GetObject<SimpleBroadcastProtocol>();
-		if(sbp != 0)
+		if (sbp != 0)
 			sbp->Install(device);
 		else
 			NS_FATAL_ERROR("Failed to install SimpleBroadcastProtocol on node " << device->GetNode()->GetId());
@@ -41,7 +39,7 @@ namespace ns3
 		for (NetDeviceContainer::Iterator i = c.Begin(); i != c.End(); i++)
 		{
 			Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice>(*i);
-			if(device != 0)
+			if (device != 0)
 				this->Install(device);
 			else
 				NS_LOG_ERROR("Failed to cast NetDevice to WifiNetDevice");

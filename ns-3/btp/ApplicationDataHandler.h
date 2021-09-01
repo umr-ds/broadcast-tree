@@ -17,27 +17,27 @@ namespace ns3
 {
 	class ApplicationDataHandler : public Object
 	{
-		public:
-			ApplicationDataHandler();
-			virtual ~ApplicationDataHandler();
+	public:
+		ApplicationDataHandler();
+		virtual ~ApplicationDataHandler();
 
-			static TypeId GetTypeId();
-			virtual TypeId GetInstanceTypeId() const;
+		static TypeId GetTypeId();
+		virtual TypeId GetInstanceTypeId() const;
 
-			bool handleApplicationData(Ptr<Packet> packet);
+		bool handleApplicationData(Ptr<Packet> packet);
 
-			uint32_t getLastSeqNo();
-			void incrementSeqNo();
+		uint32_t getLastSeqNo();
+		void incrementSeqNo();
 
-			std::vector<uint32_t> getMissingSeqNos();
+		std::vector<uint32_t> getMissingSeqNos();
 
-			uint32_t getPacketCount();
+		uint32_t getPacketCount();
 
-		private:
-			uint32_t currentSeqNo;
-			uint32_t packetCount;
+	private:
+		uint32_t currentSeqNo;
+		uint32_t packetCount;
 
-			std::vector<uint32_t> missingSeqNos;
+		std::vector<uint32_t> missingSeqNos;
 	};
 }
 

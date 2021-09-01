@@ -28,7 +28,7 @@ namespace ns3
 		this->unused = unused;
 	}
 
-	MutexSendEvent::~MutexSendEvent(){}
+	MutexSendEvent::~MutexSendEvent() {}
 
 	void MutexSendEvent::Notify()
 	{

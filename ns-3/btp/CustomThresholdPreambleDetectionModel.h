@@ -16,18 +16,17 @@ namespace ns3
 {
 	class CustomThresholdPreambleDetectionModel : public PreambleDetectionModel
 	{
-		public:
-			CustomThresholdPreambleDetectionModel ();
-			~CustomThresholdPreambleDetectionModel ();
+	public:
+		CustomThresholdPreambleDetectionModel();
+		~CustomThresholdPreambleDetectionModel();
 
-			static TypeId GetTypeId (void);
+		static TypeId GetTypeId(void);
 
-			bool IsPreambleDetected (double rssi, double snr, double channelWidth) const;
+		bool IsPreambleDetected(double rssi, double snr, double channelWidth) const;
 
-
-		private:
-			double minSNR;
-			double minRssi;
+	private:
+		double minSNR;
+		double minRssi;
 	};
 }
 

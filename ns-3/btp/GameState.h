@@ -31,71 +31,71 @@ namespace ns3
 	 */
 	class EEBTPNode : public Object
 	{
-		public:
-			EEBTPNode();
-			EEBTPNode(Mac48Address addr, double power);
-			virtual ~EEBTPNode();
+	public:
+		EEBTPNode();
+		EEBTPNode(Mac48Address addr, double power);
+		virtual ~EEBTPNode();
 
-			//static TypeId GetTypeId();
-			//virtual TypeId GetInstanceTypeId() const;
+		//static TypeId GetTypeId();
+		//virtual TypeId GetInstanceTypeId() const;
 
-			double getHighestMaxTxPower();
-			void setHighestMaxTxPower(double maxTxPower);
+		double getHighestMaxTxPower();
+		void setHighestMaxTxPower(double maxTxPower);
 
-			double getSecondHighestMaxTxPower();
-			void setSecondHighestMaxTxPower(double maxTxPower);
+		double getSecondHighestMaxTxPower();
+		void setSecondHighestMaxTxPower(double maxTxPower);
 
-			double getReachPower();
-			void setReachPower(double minTxPower);
+		double getReachPower();
+		void setReachPower(double minTxPower);
 
-			double getNoise();
-			void updateRxInfo(double rxPower, double noise);
+		double getNoise();
+		void updateRxInfo(double rxPower, double noise);
 
-			bool hasReachPowerProblem();
-			void hasReachPowerProblem(bool b);
+		bool hasReachPowerProblem();
+		void hasReachPowerProblem(bool b);
 
-			Mac48Address getAddress();
+		Mac48Address getAddress();
 
-			Mac48Address getParentAddress();
-			void setParentAddress(Mac48Address addr);
+		Mac48Address getParentAddress();
+		void setParentAddress(Mac48Address addr);
 
-			bool hasFinished();
-			void setFinished(bool f);
+		bool hasFinished();
+		void setFinished(bool f);
 
-			bool isOnPath(Mac48Address addr);
-			std::vector<Mac48Address> getSrcPath();
-			void setSrcPath(std::vector<Mac48Address> path);
+		bool isOnPath(Mac48Address addr);
+		std::vector<Mac48Address> getSrcPath();
+		void setSrcPath(std::vector<Mac48Address> path);
 
-			bool reachPowerChanged();
-			void resetReachPowerChanged();
+		bool reachPowerChanged();
+		void resetReachPowerChanged();
 
-			bool pathChanged();
-			void resetPathChanged();
+		bool pathChanged();
+		void resetPathChanged();
 
-			uint32_t getConnCounter();
-			void incrementConnCounter();
-			void resetConnCounter();
+		uint32_t getConnCounter();
+		void incrementConnCounter();
+		void resetConnCounter();
 
-		private:
-			bool finished;
+	private:
+		bool finished;
 
-			bool hasRpProblem;
+		bool hasRpProblem;
 
-			bool rpChanged;
-			bool pChanged;
+		bool rpChanged;
+		bool pChanged;
 
-			double noise;
-			double rxPower;
-			double reachPower;
-			double highest_maxTxPower;
-			double second_maxTxPower;
+		double noise;
+		double rxPower;
+		double reachPower;
+		double highest_maxTxPower;
+		double second_maxTxPower;
 
-			uint32_t connCounter;
+		uint32_t connCounter;
 
-			Mac48Address parent;
-			Mac48Address address;
+		Mac48Address parent;
+		Mac48Address address;
 
-			std::vector<Mac48Address> srcPath;
+		std::vector<Mac48Address> srcPath;
 	};
 
 	/*
@@ -104,180 +104,176 @@ namespace ns3
 	 */
 	class GameState : public Object
 	{
-		public:
-			GameState();
-			GameState(bool initiator, uint64_t gid);
-			virtual ~GameState();
+	public:
+		GameState();
+		GameState(bool initiator, uint64_t gid);
+		virtual ~GameState();
 
-			static TypeId GetTypeId();
-			virtual TypeId GetInstanceTypeId() const;
+		static TypeId GetTypeId();
+		virtual TypeId GetInstanceTypeId() const;
 
-			bool isInitiator();
-			uint64_t getGameID();
+		bool isInitiator();
+		uint64_t getGameID();
 
-			bool needsCycleCheck();
-			void setCycleCheckNeeded(bool cc);
+		bool needsCycleCheck();
+		void setCycleCheckNeeded(bool cc);
 
-			Mac48Address getMyAddress();
-			void setMyAddress(Mac48Address addr);
+		Mac48Address getMyAddress();
+		void setMyAddress(Mac48Address addr);
 
-			void finishGame();
-			bool gameFinished();
-			Time getTimeFinished();
+		void finishGame();
+		bool gameFinished();
+		Time getTimeFinished();
 
-			uint16_t getLastSeqNo(Mac48Address sender, uint8_t ft);
-			bool checkLastFrameType(Mac48Address sender, uint8_t ft, uint16_t seqNo);
-			void updateLastFrameType(Mac48Address sender, uint8_t ft, uint16_t seqNo);
+		uint16_t getLastSeqNo(Mac48Address sender, uint8_t ft);
+		bool checkLastFrameType(Mac48Address sender, uint8_t ft, uint16_t seqNo);
+		void updateLastFrameType(Mac48Address sender, uint8_t ft, uint16_t seqNo);
 
-			uint32_t getUnchangedCounter();
-			void incrementUnchangedCounter();
-			void resetUnchangedCounter();
+		uint32_t getUnchangedCounter();
+		void incrementUnchangedCounter();
+		void resetUnchangedCounter();
 
-			Ptr<EEBTPNode> getParent();
-			void setParent(Ptr<EEBTPNode> p);
+		Ptr<EEBTPNode> getParent();
+		void setParent(Ptr<EEBTPNode> p);
 
-			Ptr<EEBTPNode> getContactedParent();
-			void setContactedParent(Ptr<EEBTPNode> p);
+		Ptr<EEBTPNode> getContactedParent();
+		void setContactedParent(Ptr<EEBTPNode> p);
 
-			bool hasLastParents();
-			Ptr<EEBTPNode> popLastParent();
-			Ptr<EEBTPNode> getLastParent();
-			uint32_t getLastParentConnCounter();
-			void pushLastParent(Ptr<EEBTPNode> parent);
-			void clearLastParents();
+		bool hasLastParents();
+		Ptr<EEBTPNode> popLastParent();
+		Ptr<EEBTPNode> getLastParent();
+		uint32_t getLastParentConnCounter();
+		void pushLastParent(Ptr<EEBTPNode> parent);
+		void clearLastParents();
 
-			void findHighestTxPowers();
-			double getCostOfCurrentConn();
-			double getHighestTxPower();
-			double getSecondHighestTxPower();
+		void findHighestTxPowers();
+		double getCostOfCurrentConn();
+		double getHighestTxPower();
+		double getSecondHighestTxPower();
 
-			bool isNeighbor(Mac48Address n);
-			void addNeighbor(Mac48Address n);
-			Ptr<EEBTPNode> getNeighbor(uint32_t index);
-			Ptr<EEBTPNode> getNeighbor(Mac48Address n);
-			Ptr<EEBTPNode> getCheapestNeighbor();
-			void removeNeighbor(Ptr<EEBTPNode> n);
-			uint32_t getNNeighbors();
+		bool isNeighbor(Mac48Address n);
+		void addNeighbor(Mac48Address n);
+		Ptr<EEBTPNode> getNeighbor(uint32_t index);
+		Ptr<EEBTPNode> getNeighbor(Mac48Address n);
+		Ptr<EEBTPNode> getCheapestNeighbor();
+		void removeNeighbor(Ptr<EEBTPNode> n);
+		uint32_t getNNeighbors();
 
-			bool hasChilds();
-			bool isChild(Mac48Address c);
-			bool isChild(Ptr<EEBTPNode> c);
-			void addChild(Ptr<EEBTPNode> c);
-			void removeChild(Ptr<EEBTPNode> c);
-			int getNChilds();
-			Ptr<EEBTPNode> getChild(int index);
-			bool allChildsFinished();
+		bool hasChilds();
+		bool isChild(Mac48Address c);
+		bool isChild(Ptr<EEBTPNode> c);
+		void addChild(Ptr<EEBTPNode> c);
+		void removeChild(Ptr<EEBTPNode> c);
+		int getNChilds();
+		Ptr<EEBTPNode> getChild(int index);
+		bool allChildsFinished();
 
-			bool isBlacklisted(Ptr<EEBTPNode> node);
-			void updateBlacklist(Ptr<EEBTPNode> node);
-			void resetBlacklist();
-			bool isBlacklisted(Mac48Address node, Mac48Address parent);
+		bool isBlacklisted(Ptr<EEBTPNode> node);
+		void updateBlacklist(Ptr<EEBTPNode> node);
+		void resetBlacklist();
+		bool isBlacklisted(Mac48Address node, Mac48Address parent);
 
-			bool doIncrAfterConfirm();
-			void setDoIncrAfterConfirm(bool v);
+		bool doIncrAfterConfirm();
+		void setDoIncrAfterConfirm(bool v);
 
-			Ptr<SendEvent> getNeighborDiscoveryEvent();
-			void setNeighborDiscoveryEvent(Ptr<SendEvent> evt);
-			void resetNeighborDiscoveryEvent();
+		Ptr<SendEvent> getNeighborDiscoveryEvent();
+		void setNeighborDiscoveryEvent(Ptr<SendEvent> evt);
+		void resetNeighborDiscoveryEvent();
 
-
-			/*
+		/*
 			 * Mutex
 			 */
-			bool isLocked();
-			bool isLocked(Ptr<EEBTPNode> node);
-			void lock(bool l);
-			void lock(Ptr<EEBTPNode> node, bool l);
+		bool isLocked();
+		bool isLocked(Ptr<EEBTPNode> node);
+		void lock(bool l);
+		void lock(Ptr<EEBTPNode> node, bool l);
 
-			int getNChildsLocked();
-			void resetChildLocks();
+		int getNChildsLocked();
+		void resetChildLocks();
 
-			Mac48Address getLockedBy();
-			void setLockedBy(Mac48Address addr);
+		Mac48Address getLockedBy();
+		void setLockedBy(Mac48Address addr);
 
-			bool isParentWaitingForLock();
-			void setParentWaitingForLock(bool b);
-			Ptr<EEBTPNode> getParentWaitingLockOriginator();
-			void setParentWaitingLockOriginator(Ptr<EEBTPNode> originator);
+		bool isParentWaitingForLock();
+		void setParentWaitingForLock(bool b);
+		Ptr<EEBTPNode> getParentWaitingLockOriginator();
+		void setParentWaitingLockOriginator(Ptr<EEBTPNode> originator);
 
-			bool isNewParentWaitingForLock();
-			void setNewParentWaitingForLock(bool b);
-			Ptr<EEBTPNode> getNewParentWaitingLockOriginator();
-			void setNewParentWaitingLockOriginator(Ptr<EEBTPNode> originator);
+		bool isNewParentWaitingForLock();
+		void setNewParentWaitingForLock(bool b);
+		Ptr<EEBTPNode> getNewParentWaitingLockOriginator();
+		void setNewParentWaitingLockOriginator(Ptr<EEBTPNode> originator);
 
+		Ptr<ApplicationDataHandler> getApplicationDataHandler();
 
-			Ptr<ApplicationDataHandler> getApplicationDataHandler();
+		uint32_t getRejectionCounter();
+		void incrementRejectionCounter();
+		void resetRejectionCounter();
+		void setRejectionCounter(uint32_t rj);
 
+		Time getLastParentUpdate();
+		void setLastParentUpdate(Time t);
 
-			uint32_t getRejectionCounter();
-			void incrementRejectionCounter();
-			void resetRejectionCounter();
-			void setRejectionCounter(uint32_t rj);
+		void resetParentUnchangedCounter();
+		uint32_t getParentUnchangedCounter();
+		void incrementParentUnchangedCounter();
 
-			Time getLastParentUpdate();
-			void setLastParentUpdate(Time t);
+		Ptr<ParentPathCheckEvent> getPPCEvent();
+		void setPPCEvent(Ptr<ParentPathCheckEvent>);
 
-			void resetParentUnchangedCounter();
-			uint32_t getParentUnchangedCounter();
-			void incrementParentUnchangedCounter();
+		bool hadEmptyPathOnConnect();
+		void setEmptyPathOnConnect(bool b);
 
-			Ptr<ParentPathCheckEvent> getPPCEvent();
-			void setPPCEvent(Ptr<ParentPathCheckEvent>);
+	private:
+		bool initiator;
+		bool endOfGame;
+		bool doIncrementAfterConfirm;
+		Mac48Address myAddress;
 
-			bool hadEmptyPathOnConnect();
-			void setEmptyPathOnConnect(bool b);
+		bool needCycleCheck;
 
-		private:
-			bool initiator;
-			bool endOfGame;
-			bool doIncrementAfterConfirm;
-			Mac48Address myAddress;
+		uint32_t rejectionCounter;
 
-			bool needCycleCheck;
+		Time lastParentUpdate;
+		bool emptyPathOnConnect;
+		uint32_t parentUnchangedCounter;
+		Ptr<ParentPathCheckEvent> ppcEvent;
 
-			uint32_t rejectionCounter;
+		Time finishTime;
 
-			Time lastParentUpdate;
-			bool emptyPathOnConnect;
-			uint32_t parentUnchangedCounter;
-			Ptr<ParentPathCheckEvent> ppcEvent;
+		Ptr<EEBTPNode> parent;
+		Ptr<EEBTPNode> contactedParent;
 
-			Time finishTime;
+		uint64_t gameID;
+		uint32_t unchangedCounter;
 
-			Ptr<EEBTPNode> parent;
-			Ptr<EEBTPNode> contactedParent;
+		double highestTxPower;
+		double secondTxPower;
+		double costOfCurrentConn;
 
-			uint64_t gameID;
-			uint32_t unchangedCounter;
+		std::vector<Ptr<EEBTPNode>> neighbors;
+		std::vector<Ptr<EEBTPNode>> childList;
 
-			double highestTxPower;
-			double secondTxPower;
-			double costOfCurrentConn;
+		std::map<Mac48Address, std::map<uint8_t, uint16_t>> frameTypeCache;
 
-			std::vector<Ptr<EEBTPNode>> neighbors;
-			std::vector<Ptr<EEBTPNode>> childList;
+		std::map<Mac48Address, Mac48Address> blacklist;
+		std::vector<Ptr<EEBTPNode>> lastParents;
 
-			std::map<Mac48Address,std::map<uint8_t, uint16_t>> frameTypeCache;
+		Ptr<SendEvent> neighborDiscoveryEvent;
 
-			std::map<Mac48Address,Mac48Address> blacklist;
-			std::vector<Ptr<EEBTPNode>> lastParents;
+		bool locked;
+		std::vector<Ptr<EEBTPNode>> locks;
 
-			Ptr<SendEvent> neighborDiscoveryEvent;
+		int childsLocked;
+		bool parentIsWaitingForLock;
+		bool newParentIsWaitingForLock;
+		Ptr<EEBTPNode> lockOriginator;
+		Ptr<EEBTPNode> newParentLockOriginator;
+		Mac48Address lockedByNode;
 
-			bool locked;
-			std::vector<Ptr<EEBTPNode>> locks;
+		std::vector<Mac48Address> srcPath;
 
-			int childsLocked;
-			bool parentIsWaitingForLock;
-			bool newParentIsWaitingForLock;
-			Ptr<EEBTPNode> lockOriginator;
-			Ptr<EEBTPNode> newParentLockOriginator;
-			Mac48Address lockedByNode;
-
-			std::vector<Mac48Address> srcPath;
-
-
-			Ptr<ApplicationDataHandler> adh;
+		Ptr<ApplicationDataHandler> adh;
 	};
 }
 #endif /* BROADCAST_GAMESTATE_H_ */

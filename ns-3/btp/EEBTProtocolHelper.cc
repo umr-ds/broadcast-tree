@@ -27,39 +27,39 @@ namespace ns3
 	{
 		ObjectFactory factory;
 
-		switch(this->cpm)
+		switch (this->cpm)
 		{
-			case MUTEX:
-				factory.SetTypeId("ns3::EEBTProtocolMutex");
-				break;
-			case PATH_TO_SRC:
-				factory.SetTypeId("ns3::EEBTProtocolSrcPath");
-				break;
-			case CYCLE_TEST_ASYNC:
-			default:
-				factory.SetTypeId("ns3::EEBTPProtocol");
-				break;
+		case MUTEX:
+			factory.SetTypeId("ns3::EEBTProtocolMutex");
+			break;
+		case PATH_TO_SRC:
+			factory.SetTypeId("ns3::EEBTProtocolSrcPath");
+			break;
+		case CYCLE_TEST_ASYNC:
+		default:
+			factory.SetTypeId("ns3::EEBTPProtocol");
+			break;
 		}
 
 		Ptr<Object> protocol = factory.Create<Object>();
 		device->AggregateObject(protocol);
 
 		Ptr<EEBTProtocol> eebtp = 0;
-		switch(this->cpm)
+		switch (this->cpm)
 		{
-			case MUTEX:
-				eebtp = device->GetObject<EEBTProtocolMutex>();
-				break;
-			case PATH_TO_SRC:
-				eebtp = device->GetObject<EEBTProtocolSrcPath>();
-				break;
-			case CYCLE_TEST_ASYNC:
-			default:
-				eebtp = device->GetObject<EEBTProtocol>();
-				break;
+		case MUTEX:
+			eebtp = device->GetObject<EEBTProtocolMutex>();
+			break;
+		case PATH_TO_SRC:
+			eebtp = device->GetObject<EEBTProtocolSrcPath>();
+			break;
+		case CYCLE_TEST_ASYNC:
+		default:
+			eebtp = device->GetObject<EEBTProtocol>();
+			break;
 		}
 
-		if(eebtp != 0)
+		if (eebtp != 0)
 			eebtp->Install(device, this->cwd);
 		else
 			NS_FATAL_ERROR("Failed to install EEBTPProtocol on node " << device->GetNode()->GetId());
@@ -70,7 +70,7 @@ namespace ns3
 		for (NetDeviceContainer::Iterator i = c.Begin(); i != c.End(); i++)
 		{
 			Ptr<WifiNetDevice> device = DynamicCast<WifiNetDevice>(*i);
-			if(device != 0)
+			if (device != 0)
 				this->Install(device);
 			else
 				NS_LOG_ERROR("Failed to cast NetDevice to WifiNetDevice");

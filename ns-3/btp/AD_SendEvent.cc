@@ -21,7 +21,7 @@ namespace ns3
 		this->seqNo = seqNo;
 	}
 
-	ADSendEvent::~ADSendEvent(){}
+	ADSendEvent::~ADSendEvent() {}
 
 	void ADSendEvent::Notify()
 	{

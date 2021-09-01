@@ -26,8 +26,8 @@ namespace ns3
 	TypeId EEBTPHeaderSrcPath::GetTypeId()
 	{
 		static TypeId tid = TypeId("ns3::EEBTPHeaderSrcPath")
-				.SetParent<EEBTPHeader>()
-				.AddConstructor<EEBTPHeaderSrcPath>();
+								.SetParent<EEBTPHeader>()
+								.AddConstructor<EEBTPHeaderSrcPath>();
 		return tid;
 	}
 
@@ -43,9 +43,9 @@ namespace ns3
 
 	uint32_t EEBTPHeaderSrcPath::GetSerializedSize() const
 	{
-		uint32_t sSize = 21;			//Minimum header size
+		uint32_t sSize = 21; //Minimum header size
 
-		if(this->frameType < 2 || this->frameType == 3)
+		if (this->frameType < 2 || this->frameType == 3)
 		{
 			sSize += 1;
 			sSize += this->path.size() * 6;
@@ -59,10 +59,10 @@ namespace ns3
 		//Write the frame type
 		uint8_t ft = this->frameType;
 
-		if(this->receivingProblems)
+		if (this->receivingProblems)
 			ft |= 0b10000000;
 
-		if(this->gameFinished)
+		if (this->gameFinished)
 			ft |= 0b01000000;
 
 		start.WriteU8(ft);
@@ -74,30 +74,30 @@ namespace ns3
 		//Write current transmission power
 		uint8_t buff[4];
 		memcpy(&buff, &this->txPower_dBm, sizeof(this->txPower_dBm));
-		start.Write(buff,4);
+		start.Write(buff, 4);
 
 		//Write highest maxTxPower
 		memcpy(&buff, &this->highest_maxTxPower_dBm, sizeof(this->highest_maxTxPower_dBm));
-		start.Write(buff,4);
+		start.Write(buff, 4);
 
 		//Write second highest maxTxPower
 		memcpy(&buff, &this->second_maxTxPower_dBm, sizeof(this->second_maxTxPower_dBm));
-		start.Write(buff,4);
+		start.Write(buff, 4);
 
-		uint8_t addr [6];
-		if(this->frameType < 2)
+		uint8_t addr[6];
+		if (this->frameType < 2)
 		{
 			//Write length of the node list
 			start.WriteU8(this->path.size());
 
 			//Write path
-			for(uint i = 0; i < this->path.size(); i++)
+			for (uint i = 0; i < this->path.size(); i++)
 			{
 				this->path[i].CopyTo(addr);
 				start.Write(addr, 6);
 			}
 		}
-		else if(this->frameType == 3)
+		else if (this->frameType == 3)
 		{
 			this->recipient.CopyTo(addr);
 			start.Write(addr, 6);
@@ -112,13 +112,13 @@ namespace ns3
 		this->frameType = start.ReadU8();
 
 		//Check for receiving problem flag
-		if((this->frameType & 0b10000000) == 0b10000000)
+		if ((this->frameType & 0b10000000) == 0b10000000)
 			this->receivingProblems = true;
 		else
 			this->receivingProblems = false;
 
 		//Check for game finished flag
-		if((this->frameType & 0b01000000) == 0b01000000)
+		if ((this->frameType & 0b01000000) == 0b01000000)
 			this->gameFinished = true;
 		else
 			this->gameFinished = false;
@@ -133,20 +133,20 @@ namespace ns3
 
 		//Read the current transmission power of the remote node
 		uint8_t buff[4];
-		start.Read(buff,4);
+		start.Read(buff, 4);
 		memcpy(&this->txPower_dBm, &buff, sizeof(this->txPower_dBm));
 
 		//Read highest maxTxPower
-		start.Read(buff,4);
+		start.Read(buff, 4);
 		memcpy(&this->highest_maxTxPower_dBm, &buff, sizeof(this->highest_maxTxPower_dBm));
 
 		//Read second highest maxTxPower
-		start.Read(buff,4);
+		start.Read(buff, 4);
 		memcpy(&this->second_maxTxPower_dBm, &buff, sizeof(this->second_maxTxPower_dBm));
 
 		//Only frame type 0 and 1 have a src path
-		uint8_t addr [6];
-		if(this->frameType == 1 || this->frameType == 3)
+		uint8_t addr[6];
+		if (this->frameType == 1 || this->frameType == 3)
 		{
 			//Read length of the node list
 			uint length = start.ReadU8();
@@ -154,7 +154,7 @@ namespace ns3
 
 			//Read path
 			Mac48Address node;
-			for(uint i = 0; i < length; i++)
+			for (uint i = 0; i < length; i++)
 			{
 				start.Read(addr, 6);
 				node.CopyFrom(addr);
@@ -166,7 +166,6 @@ namespace ns3
 
 		return bytesRead;
 	}
-
 
 	void EEBTPHeaderSrcPath::addNodeToPath(Mac48Address addr)
 	{

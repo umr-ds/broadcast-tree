@@ -27,7 +27,7 @@ namespace ns3
 		this->oldParent = oldParent;
 	}
 
-	CCSendEvent::~CCSendEvent(){}
+	CCSendEvent::~CCSendEvent() {}
 
 	void CCSendEvent::Notify()
 	{

@@ -68,20 +68,20 @@ namespace ns3
 	TypeId EEBTPHeader::GetTypeId()
 	{
 		static TypeId tid = TypeId("ns3::EEBTPHeader")
-				.SetParent<Header>()
-				.AddConstructor<EEBTPHeader>()
-				.AddAttribute("FrameType", "The type of frame this packet should represent",
-				                    IntegerValue(1),
-				                    MakeIntegerAccessor(&EEBTPHeader::frameType),
-				                    MakeIntegerChecker<int>())
-				.AddAttribute("seqNo", "The sequence number of this packet",
-				                    IntegerValue(0),
-				                    MakeIntegerAccessor(&EEBTPHeader::seqNo),
-				                    MakeIntegerChecker<int>())
-				.AddAttribute("gameID", "The gameID this packet corresponds to",
-				                    IntegerValue(0),
-				                    MakeIntegerAccessor(&EEBTPHeader::gameID),
-				                    MakeIntegerChecker<int>());
+								.SetParent<Header>()
+								.AddConstructor<EEBTPHeader>()
+								.AddAttribute("FrameType", "The type of frame this packet should represent",
+											  IntegerValue(1),
+											  MakeIntegerAccessor(&EEBTPHeader::frameType),
+											  MakeIntegerChecker<int>())
+								.AddAttribute("seqNo", "The sequence number of this packet",
+											  IntegerValue(0),
+											  MakeIntegerAccessor(&EEBTPHeader::seqNo),
+											  MakeIntegerChecker<int>())
+								.AddAttribute("gameID", "The gameID this packet corresponds to",
+											  IntegerValue(0),
+											  MakeIntegerAccessor(&EEBTPHeader::gameID),
+											  MakeIntegerChecker<int>());
 		return tid;
 	}
 
@@ -102,21 +102,21 @@ namespace ns3
 
 	uint32_t EEBTPHeader::GetSerializedSize() const
 	{
-		if(this->isShort)
+		if (this->isShort)
 			return 9;
 
-		uint32_t sSize = 27;						//Minimum header size
+		uint32_t sSize = 27; //Minimum header size
 
-		if(this->frameType == 0)
+		if (this->frameType == 0)
 		{
-			sSize += 18;					//originator, newParent and oldParent are 3 * 48 bits large (18 bytes) // @suppress("No break at end of case")
+			sSize += 18; //originator, newParent and oldParent are 3 * 48 bits large (18 bytes) // @suppress("No break at end of case")
 		}
-		else if(this->frameType == 3)
+		else if (this->frameType == 3)
 		{
 			//sSize += 6;						//Recipient
 
-			if(this->needLockUpdate)
-				sSize += 6;					//New lockholder
+			if (this->needLockUpdate)
+				sSize += 6; //New lockholder
 		}
 
 		return sSize;
@@ -127,13 +127,13 @@ namespace ns3
 		//Write the frame type
 		uint8_t ft = this->frameType;
 
-		if(this->receivingProblems)
+		if (this->receivingProblems)
 			ft |= 0b10000000;
 
-		if(this->gameFinished)
+		if (this->gameFinished)
 			ft |= 0b01000000;
 
-		if(this->needLockUpdate)
+		if (this->needLockUpdate)
 			ft |= 0b00100000;
 
 		start.WriteU8(ft);
@@ -142,28 +142,28 @@ namespace ns3
 		uint64_t seqNo_gid = ((uint64_t)this->seqNo << 48) | this->gameID;
 		start.WriteU64(seqNo_gid);
 
-		if(this->isShort)
+		if (this->isShort)
 			return;
 
 		//Write current transmission power
 		uint8_t buff[4];
 		memcpy(&buff, &this->txPower_dBm, sizeof(this->txPower_dBm));
-		start.Write(buff,4);
+		start.Write(buff, 4);
 
 		//Write the current parent
-		uint8_t addr [6];
+		uint8_t addr[6];
 		this->parent.CopyTo(addr);
 		start.Write(addr, 6);
 
 		//Write highest maxTxPower
 		memcpy(&buff, &this->highest_maxTxPower_dBm, sizeof(this->highest_maxTxPower_dBm));
-		start.Write(buff,4);
+		start.Write(buff, 4);
 
 		//Write second highest maxTxPower
 		memcpy(&buff, &this->second_maxTxPower_dBm, sizeof(this->second_maxTxPower_dBm));
-		start.Write(buff,4);
+		start.Write(buff, 4);
 
-		if(this->frameType == 0)
+		if (this->frameType == 0)
 		{
 			this->originator.CopyTo(addr);
 			start.Write(addr, 6);
@@ -174,9 +174,9 @@ namespace ns3
 			this->oldParent.CopyTo(addr);
 			start.Write(addr, 6);
 		}
-		else if(this->frameType == 3)
+		else if (this->frameType == 3)
 		{
-			if(this->needLockUpdate)
+			if (this->needLockUpdate)
 			{
 				this->originator.CopyTo(addr);
 				start.Write(addr, 6);
@@ -192,19 +192,19 @@ namespace ns3
 		this->frameType = start.ReadU8();
 
 		//Check for receiving problem flag
-		if((this->frameType & 0b10000000) == 0b10000000)
+		if ((this->frameType & 0b10000000) == 0b10000000)
 			this->receivingProblems = true;
 		else
 			this->receivingProblems = false;
 
 		//Check for game finished flag
-		if((this->frameType & 0b01000000) == 0b01000000)
+		if ((this->frameType & 0b01000000) == 0b01000000)
 			this->gameFinished = true;
 		else
 			this->gameFinished = false;
 
 		//Check if the recipient should update its lock
-		if((this->frameType & 0b00100000) == 0b00100000)
+		if ((this->frameType & 0b00100000) == 0b00100000)
 			this->needLockUpdate = true;
 		else
 			this->needLockUpdate = false;
@@ -217,29 +217,28 @@ namespace ns3
 		this->seqNo = this->gameID >> 48;
 		this->gameID &= ((uint64_t)-1) >> 16;
 
-		if(this->isShort)
+		if (this->isShort)
 			return 9;
 
 		//Read the current transmission power of the remote node
 		uint8_t buff[4];
-		start.Read(buff,4);
+		start.Read(buff, 4);
 		memcpy(&this->txPower_dBm, &buff, sizeof(this->txPower_dBm));
 
 		//Read current parent
-		uint8_t addr [6];
+		uint8_t addr[6];
 		start.Read(addr, 6);
 		this->parent.CopyFrom(addr);
 
 		//Read highest maxTxPower
-		start.Read(buff,4);
+		start.Read(buff, 4);
 		memcpy(&this->highest_maxTxPower_dBm, &buff, sizeof(this->highest_maxTxPower_dBm));
 
 		//Read second highest maxTxPower
-		start.Read(buff,4);
+		start.Read(buff, 4);
 		memcpy(&this->second_maxTxPower_dBm, &buff, sizeof(this->second_maxTxPower_dBm));
 
-
-		if(this->frameType == 0)
+		if (this->frameType == 0)
 		{
 			start.Read(addr, 6);
 			this->originator.CopyFrom(addr);
@@ -252,9 +251,9 @@ namespace ns3
 
 			bytesRead += 18;
 		}
-		else if(this->frameType == 3)
+		else if (this->frameType == 3)
 		{
-			if(this->needLockUpdate)
+			if (this->needLockUpdate)
 			{
 				start.Read(addr, 6);
 				this->originator.CopyFrom(addr);
@@ -264,7 +263,6 @@ namespace ns3
 
 		return bytesRead;
 	}
-
 
 	/*
 	 * Getter and Setter for the frame type ID field
@@ -334,7 +332,6 @@ namespace ns3
 	{
 		this->needLockUpdate = b;
 	}
-
 
 	Mac48Address EEBTPHeader::GetParent()
 	{

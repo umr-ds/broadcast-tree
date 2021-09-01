@@ -20,31 +20,30 @@ namespace ns3
 
 	class CCSendEvent : public EventImpl
 	{
-		public:
-			CCSendEvent(Ptr<GameState> gs, Ptr<EEBTProtocol> prot, Mac48Address originator, Mac48Address newParent, Mac48Address oldParent, double txPower, uint16_t seqNo);
-			~CCSendEvent();
+	public:
+		CCSendEvent(Ptr<GameState> gs, Ptr<EEBTProtocol> prot, Mac48Address originator, Mac48Address newParent, Mac48Address oldParent, double txPower, uint16_t seqNo);
+		~CCSendEvent();
 
-			void Notify();
+		void Notify();
 
-			uint32_t getNTimes();
-			void updateTxPower(double txPower);
+		uint32_t getNTimes();
+		void updateTxPower(double txPower);
 
-			uint16_t getSeqNo();
-			void setSeqNo(uint16_t seqNo);
-		private:
-			Ptr<GameState> gs;
-			Ptr<EEBTProtocol> prot;
+		uint16_t getSeqNo();
+		void setSeqNo(uint16_t seqNo);
 
-			uint16_t seqNo;
-			uint32_t counter;
-			Mac48Address originator;
-			Mac48Address newParent;
-			Mac48Address oldParent;
+	private:
+		Ptr<GameState> gs;
+		Ptr<EEBTProtocol> prot;
 
-			double txPower;
+		uint16_t seqNo;
+		uint32_t counter;
+		Mac48Address originator;
+		Mac48Address newParent;
+		Mac48Address oldParent;
+
+		double txPower;
 	};
 }
-
-
 
 #endif /* BROADCAST_CC_SENDEVENT_H_ */

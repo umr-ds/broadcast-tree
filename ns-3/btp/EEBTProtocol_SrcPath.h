@@ -28,37 +28,36 @@ namespace ns3
 
 	class EEBTProtocolSrcPath : public EEBTProtocol
 	{
-		public:
-			EEBTProtocolSrcPath();
-			virtual ~EEBTProtocolSrcPath();
+	public:
+		EEBTProtocolSrcPath();
+		virtual ~EEBTProtocolSrcPath();
 
-			static TypeId GetTypeId();
-			virtual TypeId GetInstanceTypeId() const;
+		static TypeId GetTypeId();
+		virtual TypeId GetInstanceTypeId() const;
 
-			void Install(Ptr<WifiNetDevice> netDevice, Ptr<CycleWatchDog> cwd);
+		void Install(Ptr<WifiNetDevice> netDevice, Ptr<CycleWatchDog> cwd);
 
-			void Send(Ptr<GameState> gs, FRAME_TYPE ft, Mac48Address recipient, double txPower);
-			void Send(Ptr<GameState> gs, FRAME_TYPE ft, Mac48Address recipient, uint16_t seqNo, double txPower, Ptr<SendEvent> event);
-			void Send(Ptr<GameState> gs, EEBTPHeaderSrcPath header, Mac48Address recipient, double txPower, bool isRetransmission);
+		void Send(Ptr<GameState> gs, FRAME_TYPE ft, Mac48Address recipient, double txPower);
+		void Send(Ptr<GameState> gs, FRAME_TYPE ft, Mac48Address recipient, uint16_t seqNo, double txPower, Ptr<SendEvent> event);
+		void Send(Ptr<GameState> gs, EEBTPHeaderSrcPath header, Mac48Address recipient, double txPower, bool isRetransmission);
 
-			void Receive(Ptr<NetDevice> device, Ptr<const Packet> packet, uint16_t pID, const Address &sender, const Address &receiver, NetDevice::PacketType pType);
+		void Receive(Ptr<NetDevice> device, Ptr<const Packet> packet, uint16_t pID, const Address &sender, const Address &receiver, NetDevice::PacketType pType);
 
-			void checkParentPathStatus(Ptr<GameState> gs);
+		void checkParentPathStatus(Ptr<GameState> gs);
 
-		protected:
-			void handleCycleCheck(Ptr<GameState> gs, Ptr<EEBTPNode> node);
-			void handleNeighborDiscovery(Ptr<GameState> gs, Ptr<EEBTPNode> node);
-			void handleChildRequest(Ptr<GameState> gs, Ptr<EEBTPNode> node);
-			void handleChildConfirmation(Ptr<GameState> gs, Ptr<EEBTPNode> node);
+	protected:
+		void handleCycleCheck(Ptr<GameState> gs, Ptr<EEBTPNode> node);
+		void handleNeighborDiscovery(Ptr<GameState> gs, Ptr<EEBTPNode> node);
+		void handleChildRequest(Ptr<GameState> gs, Ptr<EEBTPNode> node);
+		void handleChildConfirmation(Ptr<GameState> gs, Ptr<EEBTPNode> node);
 
-			void contactNode(Ptr<GameState> gs, Ptr<EEBTPNode> node);
+		void contactNode(Ptr<GameState> gs, Ptr<EEBTPNode> node);
 
-			bool checkParentPath(Ptr<GameState> gs);
+		bool checkParentPath(Ptr<GameState> gs);
 
-		private:
-			uint32_t timeToWait;
+	private:
+		uint32_t timeToWait;
 	};
 }
-
 
 #endif /* BROADCAST_EEBTPPROTOCOL_SRCPATH_H_ */
