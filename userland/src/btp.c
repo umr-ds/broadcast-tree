@@ -283,6 +283,40 @@ void handle_child_reject(eth_radio_btp_t *in_frame) {
     hashmap_put(self.parent_blocklist, (char *)in_frame->eth.ether_shost, (void**) &dummy);
 }
 
+void handle_parent_revocation(eth_radio_btp_t *in_frame) {
+    child_t *child = (child_t *) malloc(sizeof(child_t));
+
+    if (hashmap_get(self.children, (char *)in_frame->eth.ether_shost, (void **)&child) == MAP_MISSING) {
+        log_warn("%x%x%x%x%x%x is not our child. Ignoring.",
+                 in_frame->eth.ether_shost[0],
+                 in_frame->eth.ether_shost[1],
+                 in_frame->eth.ether_shost[2],
+                 in_frame->eth.ether_shost[3],
+                 in_frame->eth.ether_shost[4],
+                 in_frame->eth.ether_shost[5]
+                 );
+        return;
+    }
+
+    if (hashmap_remove(self.children, (char *)in_frame->eth.ether_shost) == MAP_MISSING) {
+        log_warn("Could not remove child %x%x%x%x%x%x",
+                 in_frame->eth.ether_shost[0],
+                 in_frame->eth.ether_shost[1],
+                 in_frame->eth.ether_shost[2],
+                 in_frame->eth.ether_shost[3],
+                 in_frame->eth.ether_shost[4],
+                 in_frame->eth.ether_shost[5]
+                 );
+    }
+
+    if (child->tx_pwr == self.high_pwr) {
+        self.high_pwr = self.snd_high_pwr;
+        self.snd_high_pwr = get_snd_pwr();
+    } else if (child->tx_pwr == self.snd_high_pwr) {
+        self.snd_high_pwr = get_snd_pwr();
+    }
+}
+
 void handle_packet(uint8_t *recv_frame) {
     eth_radio_btp_t in_frame = {0x0};
     parse_header(&in_frame, recv_frame);
@@ -305,7 +339,8 @@ void handle_packet(uint8_t *recv_frame) {
             handle_child_reject(&in_frame);
             break;
         case parent_revocaction:
-            log_warn("Received Parent Revocation. Not implemented, yet.");
+            log_info("Received Parent Revocation.");
+            handle_parent_revocation(&in_frame);
             break;
 
         default:

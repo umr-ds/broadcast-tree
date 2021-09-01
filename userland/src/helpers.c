@@ -7,6 +7,36 @@
 
 extern self_t self;
 
+int8_t get_snd_pwr() {
+    int num_children = hashmap_length(self.children);
+    char **keys = (char **) malloc(num_children);
+
+    if (hashmap_get_keys(self.children, keys) != MAP_OK) {
+        log_warn("Could not get children.");
+        return -1;
+    }
+
+    int i;
+    int8_t high_tmp = 0;
+    int8_t snd_high_tmp = 0;
+    child_t *tmp_child = malloc(sizeof(child_t));
+    for (i = 0; i < num_children; i++) {
+        if(hashmap_get(self.children, keys[i], (void **) tmp_child) != MAP_MISSING) {
+            log_warn("For some reason this child could not be found.");
+            continue;
+        }
+
+        if (tmp_child->tx_pwr > high_tmp) {
+            snd_high_tmp = high_tmp;
+            high_tmp = tmp_child->tx_pwr;
+        } else if (tmp_child->tx_pwr > snd_high_tmp) {
+            snd_high_tmp = tmp_child->tx_pwr;
+        }
+    }
+
+    return snd_high_tmp;
+}
+
 int get_time_msec(struct timeval tval) {
     gettimeofday(&tval, NULL);
     return ((tval.tv_sec * 1000000) + tval.tv_usec) / 1000;

@@ -78,4 +78,9 @@ extern void hashmap_free(map_t in);
  */
 extern int hashmap_length(map_t in);
 
+/*
+ * Get array of all keys
+ */
+extern int hashmap_get_keys(map_t in, char **out);
+
 #endif // __HASHMAP_H__

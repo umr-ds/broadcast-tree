@@ -346,6 +346,29 @@ int hashmap_iterate(map_t in, PFany f, any_t item) {
 }
 
 /*
+ * Get array of all keys
+ */
+int hashmap_get_keys(map_t in, char **out) {
+    int i;
+
+    /* Cast the hashmap */
+    hashmap_map* m = (hashmap_map*) in;
+
+    /* On empty hashmap, return immediately */
+    if (hashmap_length(m) <= 0)
+        return MAP_MISSING;
+
+    /* Linear probing */
+    for(i = 0; i< m->table_size; i++) {
+        if(m->data[i].in_use != 0) {
+            out[i] = m->data[i].key;
+        }
+    }
+
+    return MAP_OK;
+}
+
+/*
  * Remove an element with that key from the map
  */
 int hashmap_remove(map_t in, char* key){
