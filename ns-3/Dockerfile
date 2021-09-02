@@ -36,15 +36,28 @@ RUN pip3 install cxxfilt
 
 WORKDIR /root
 
-# Fetch NS-3 source
-RUN wget http://www.nsnam.org/release/ns-allinone-3.31.tar.bz2 \
-    && tar -xf ns-allinone-3.31.tar.bz2 \
-    && cd ns-allinone-3.31 \
-    && ./build.py --enable-examples --enable-tests \
-    && cd ns-3.31 \
-    && ./waf install
-    
-ENV LD_LIBRARY_PATH=/usr/local/lib 
+ARG NS3_VERSION=3.31
 
-WORKDIR /worker
-ENTRYPOINT "/bin/bash"
+# Fetch and install ns-3
+RUN wget http://www.nsnam.org/release/ns-allinone-$NS3_VERSION.tar.bz2 \
+    && tar -xf ns-allinone-$NS3_VERSION.tar.bz2 \
+    && cd ns-allinone-$NS3_VERSION \
+    && ./build.py --enable-examples --enable-tests \
+    && cd ns-$NS3_VERSION \
+    && ./waf install
+
+# ns-3 does not use default library paths, so we have to add this one
+ENV LD_LIBRARY_PATH=/usr/local/lib
+
+WORKDIR /root/ns-allinone-$NS3_VERSION/ns-$NS3_VERSION
+
+# Install the EE-BTP implementation
+COPY btp/ scratch/broadcast/
+RUN mv $PWD/scratch/broadcast/EEBTPTag.h src/wifi/model/; \
+    mv $PWD/scratch/broadcast/EEBTPTag.cc src/wifi/model/
+RUN sed -i "/obj.source =/a 'model/EEBTPTag.cc'," src/wifi/wscript; \
+    sed -i "/headers.source = /a 'model/EEBTPTag.h'," src/wifi/wscript
+
+# Add the experiment stuff
+COPY experiment/ /root/experiment/
+ENTRYPOINT ["/root/experiment/entrypoint.sh"]
