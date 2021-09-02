@@ -24,6 +24,8 @@
 
 #define DISCOVERY_BCAST_INTERVAL_MSEC 1000
 
+#define MAX_UNCHANGED_ROUNDS 10
+
 typedef uint8_t mac_addr_t[6];
 
 typedef enum {

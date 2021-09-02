@@ -49,6 +49,7 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
     self.tree_id = is_source ? gen_tree_id(self.laddr) : 0;
     self.sockfd = sockfd;
     self.game_fin = false;
+    self.round_unchanged_cnt = 0;
     strncpy(self.if_name, if_name, IFNAMSIZ);
 
     dummy = (char *) malloc(sizeof(char));
@@ -235,6 +236,7 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
         reject_child(in_frame);
     } else {
         accept_child(in_frame, potential_child_send_pwr);
+        self.round_unchanged_cnt = 0;
     }
 }
 
@@ -267,6 +269,8 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
 
     self.parent = self.pending_parent;
     self.pending_parent = NULL;
+
+    self.round_unchanged_cnt = 0;
 }
 
 
@@ -297,6 +301,8 @@ void handle_parent_revocation(eth_radio_btp_t *in_frame) {
                  );
         return;
     }
+
+    self.round_unchanged_cnt = 0;
 
     if (hashmap_remove(self.children, (char *)in_frame->eth.ether_shost) == MAP_MISSING) {
         log_warn("Could not remove child %x%x%x%x%x%x",

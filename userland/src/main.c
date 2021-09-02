@@ -136,6 +136,15 @@ int event_loop() {
             if (self.is_source || self_is_connected()) {
                 broadcast_discovery();
             }
+
+            if (self.round_unchanged_cnt >= MAX_UNCHANGED_ROUNDS) {
+                self.game_fin = true;
+            }
+
+            if (!self.game_fin) {
+                self.round_unchanged_cnt++;
+            }
+
             start_time = cur_time;
         }
 

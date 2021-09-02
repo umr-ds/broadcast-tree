@@ -41,6 +41,7 @@ typedef struct {
     bool game_fin;
     char if_name[IFNAMSIZ]; // the interface name to be used
     int sockfd;
+    uint8_t round_unchanged_cnt;
 } self_t;
 
 #endif // __TREE_H__
