@@ -211,3 +211,5 @@ pimod/.cache
 pimod/*.img
 pimod/.bash_history
 
+*.log
+

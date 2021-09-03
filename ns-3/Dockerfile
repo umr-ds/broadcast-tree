@@ -58,6 +58,9 @@ RUN mv $PWD/scratch/broadcast/EEBTPTag.h src/wifi/model/; \
 RUN sed -i "/obj.source =/a 'model/EEBTPTag.cc'," src/wifi/wscript; \
     sed -i "/headers.source = /a 'model/EEBTPTag.h'," src/wifi/wscript
 
+# To build the EE-BTP code, we have to call a dummy run with simple parameters
+RUN ./waf --run="broadcast --nWifi=1"
+
 # Add the experiment stuff
 COPY experiment/ /root/experiment/
 ENTRYPOINT ["/root/experiment/entrypoint.sh"]

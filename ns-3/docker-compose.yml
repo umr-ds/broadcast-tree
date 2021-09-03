@@ -1,0 +1,11 @@
+version: "3"
+services:
+    btp:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        volumes:
+            - ./results:/results
+            - ./experiment:/root/experiment
+        environment:
+            - RUN
