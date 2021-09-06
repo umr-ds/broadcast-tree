@@ -22,6 +22,7 @@ typedef struct {
 typedef struct {
     mac_addr_t addr;
     int8_t tx_pwr; // minimum power with which we have to broadcast to reach this child
+    bool game_fin; // whether the child has finished its part of the game
 } child_t;
 
 /**
@@ -36,12 +37,12 @@ typedef struct {
     int8_t snd_high_pwr; // the power at which we WOULD broadacst data frames, if our furthest child were to disconnect
     mac_addr_t laddr; // local mac address
     parent_t *parent; // currently connected parent
-    parent_t *pending_parent;
+    parent_t *pending_parent; // a new parent to which we are currently trying to connect
     uint32_t tree_id; // the tree to which we belong
-    bool game_fin;
+    bool game_fin; // whether we have finished our part of the game
+    uint8_t round_unchanged_cnt; // counter for game rounds without topology changes. if reaches max, game ends
     char if_name[IFNAMSIZ]; // the interface name to be used
     int sockfd;
-    uint8_t round_unchanged_cnt;
 } self_t;
 
 #endif // __TREE_H__

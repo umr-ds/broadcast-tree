@@ -58,7 +58,7 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
 void broadcast_discovery() {
     eth_btp_t discovery_frame = { 0x0 };
     mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-    build_frame(&discovery_frame, bcast_addr, 0, self.game_fin, 0, discovery, self.tree_id, self.max_pwr);
+    build_frame(&discovery_frame, bcast_addr, 0, 0, discovery, self.tree_id, self.max_pwr);
 
     log_debug(
             "Broadcasting discovery: "
@@ -139,7 +139,7 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
     set_tx_pwr(new_parent_tx);
 
     eth_btp_t child_request_frame = { 0x0 };
-    build_frame(&child_request_frame, potential_parent_addr, 0, 0, 0, child_request, tree_id, new_parent_tx);
+    build_frame(&child_request_frame, potential_parent_addr, 0, 0, child_request, tree_id, new_parent_tx);
 
     log_debug(
             "Sending child request: "
@@ -155,11 +155,15 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
 }
 
 void handle_discovery(eth_radio_btp_t *in_frame) {
-    log_info("Received Discovery frame.");
+    log_debug("Received Discovery frame.");
     // if we are the tree's source, we don't want to connect to anyone
     if (self.is_source) return;
 
-    if (self_is_pending()) return;
+    // if we are currently trying to connect to a new parent node, we ignore other announcements
+    if (self_is_pending()) {
+        log_debug("Already waiting for connection");
+        return;
+    }
 
     // If the address is in the parent blocklist, we won't attempt to connect again
     if (hashmap_get(self.parent_blocklist, (char *)in_frame->eth.ether_shost, (void **)&dummy) == MAP_OK) {
@@ -169,8 +173,15 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
 
     // If we receive a discovery from our parent, update our own state.
     if (self_is_connected() && memcmp(in_frame->eth.ether_shost, self.parent->addr, 6) == 0) {
+        log_debug("Updating parent information.");
         self.parent->high_pwr = in_frame->btp.high_pwr;
         self.parent->snd_high_pwr = in_frame->btp.snd_high_pwr;
+        return;
+    }
+
+    // if we are connected to a parent, and have finished "the game", we don't try to switch anymore
+    if (self_is_connected() && self.game_fin) {
+        log_debug("Game finished, doing nothing.");
         return;
     }
 
@@ -190,6 +201,13 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
     memcpy(new_child->addr, in_frame->eth.ether_shost, 6);
     new_child->tx_pwr = child_tx_pwr;
 
+    // if we have already finished the game, all our children will also finish theirs. Otherwise, we save the child's current state
+    if (self.game_fin) {
+        new_child->game_fin = true;
+    } else {
+        new_child->game_fin = in_frame->btp.game_fin;
+    }
+
     hashmap_put(self.children, (char *)in_frame->eth.ether_shost, new_child);
 
     if (child_tx_pwr > self.high_pwr) {
@@ -202,7 +220,7 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
     set_tx_pwr(child_tx_pwr);
 
     eth_btp_t child_confirm_frame = { 0x0 };
-    build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, 0, child_confirm, in_frame->btp.tree_id, child_tx_pwr);
+    build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, child_confirm, in_frame->btp.tree_id, child_tx_pwr);
 
     log_info("Accepting child.");
 
@@ -212,9 +230,9 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
 void reject_child(eth_radio_btp_t *in_frame) {
     log_info("Sending Child Reject frame.");
     eth_btp_t child_rejection_frame = { 0x0 };
-    build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, 0, child_reject, in_frame->btp.tree_id, self.max_pwr);
+    build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, child_reject, in_frame->btp.tree_id, self.max_pwr);
 
-    log_warn("Rejecting child.");
+    log_info("Rejecting child.");
 
     int8_t cur_tx_pwr = get_tx_pwr();
     set_tx_pwr(self.max_pwr);
@@ -242,7 +260,7 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
 
 void disconnect_from_parent() {
     eth_btp_t disconnect_frame = { 0x0 };
-    build_frame(&disconnect_frame, self.parent->addr, 0, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
+    build_frame(&disconnect_frame, self.parent->addr, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
 
     int8_t cur_tx_pwr = get_tx_pwr();
     set_tx_pwr(self.max_pwr);
@@ -270,7 +288,11 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
     self.parent = self.pending_parent;
     self.pending_parent = NULL;
 
-    self.round_unchanged_cnt = 0;
+    // if we have not yet finished our part of the game, reset the unchanged-round-counter and assume our parent's fin-state
+    if (!self.game_fin) {
+        self.round_unchanged_cnt = 0;
+        self.game_fin = in_frame->btp.game_fin;
+    }
 }
 
 
@@ -323,30 +345,93 @@ void handle_parent_revocation(eth_radio_btp_t *in_frame) {
     }
 }
 
+void handle_end_of_game(eth_radio_btp_t *in_frame) {
+    child_t *child = { 0x0 };
+
+    if (hashmap_get(self.children, (char *)in_frame->eth.ether_shost, (void **)&child) == MAP_MISSING) {
+        log_warn("%x%x%x%x%x%x is not our child. Ignoring.",
+                 in_frame->eth.ether_shost[0],
+                 in_frame->eth.ether_shost[1],
+                 in_frame->eth.ether_shost[2],
+                 in_frame->eth.ether_shost[3],
+                 in_frame->eth.ether_shost[4],
+                 in_frame->eth.ether_shost[5]
+        );
+        return;
+    }
+
+    log_warn("Child %x%x%x%x%x%x has finished its game.",
+             in_frame->eth.ether_shost[0],
+             in_frame->eth.ether_shost[1],
+             in_frame->eth.ether_shost[2],
+             in_frame->eth.ether_shost[3],
+             in_frame->eth.ether_shost[4],
+             in_frame->eth.ether_shost[5]
+    );
+
+    // FIXME: since this is a pointer, are we done? Or do we have to hashmap_put the new state?
+    child->game_fin = true;
+}
+
+void game_round() {
+    // if we are currently waiting to connect to a new parent, we don't modify our state, since we are about to change the topology
+    if (self_is_pending()) {
+        log_debug("Currently pending new connection");
+        return;
+    }
+
+    // the end-of-game-state is final and once we reach it, we never switch back out of it
+    if (self.game_fin) {
+        log_debug("Game already finished, doing nothing");
+        return;
+    }
+
+    self.round_unchanged_cnt++;
+
+    if (self.round_unchanged_cnt >= MAX_UNCHANGED_ROUNDS) {
+        log_info("Unchanged-round-counter reached max, ending game.");
+        self.game_fin = true;
+
+        eth_btp_t eog = { 0x0 };
+        build_frame(&eog, self.parent->addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
+
+        int8_t cur_tx_pwr = get_tx_pwr();
+        set_tx_pwr(self.max_pwr);
+
+        send_btp_frame((uint8_t *)&eog, sizeof(eth_btp_t));
+
+        set_tx_pwr(cur_tx_pwr);
+    }
+}
+
 void handle_packet(uint8_t *recv_frame) {
     eth_radio_btp_t in_frame = {0x0};
     parse_header(&in_frame, recv_frame);
 
     switch (in_frame.btp.frame_type) {
         case discovery:
-            log_info("Received Discovery");
+            log_debug("Received Discovery");
             handle_discovery(&in_frame);
             break;
         case child_request:
-            log_info("Received Child Request.");
+            log_debug("Received Child Request.");
             handle_child_request(&in_frame);
             break;
         case child_confirm:
-            log_info("Received Child Confirm.");
+            log_debug("Received Child Confirm.");
             handle_child_confirm(&in_frame);
             break;
         case child_reject:
-            log_info("Received Child Reject.");
+            log_debug("Received Child Reject.");
             handle_child_reject(&in_frame);
             break;
         case parent_revocaction:
-            log_info("Received Parent Revocation.");
+            log_debug("Received Parent Revocation.");
             handle_parent_revocation(&in_frame);
+            break;
+        case end_of_game:
+            log_debug("Received End of Game.");
+            handle_end_of_game(&in_frame);
             break;
 
         default:

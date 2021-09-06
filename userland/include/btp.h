@@ -168,5 +168,9 @@ void handle_packet(uint8_t *recv_frame);
  */
 void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd);
 
+/**
+ * Performs the bookkeeping at the end of a game round
+ */
+void game_round();
 
 #endif // __BTP_H__

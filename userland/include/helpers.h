@@ -34,7 +34,7 @@ bool already_child(mac_addr_t potential_child_addr);
  * This function builds a btp frame from the given fields.
  * The result is in the out parameter.
  */
-void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t game_fin, uint8_t mutex,
+void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t mutex,
                  frame_t frame_type, uint32_t tree_id, int8_t tx_pwr);
 
 int8_t get_tx_pwr();

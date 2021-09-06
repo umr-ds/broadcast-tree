@@ -122,6 +122,8 @@ int init_sock(char *if_name, bool is_source) {
 }
 
 int event_loop() {
+    // TODO: what happens if we send a child-request to a potential parent but never receive an answer?
+
     ssize_t read_bytes;
     uint8_t recv_frame[MTU];
     memset(recv_frame, 0, MTU * sizeof (uint8_t));
@@ -137,15 +139,9 @@ int event_loop() {
                 broadcast_discovery();
             }
 
-            if (self.round_unchanged_cnt >= MAX_UNCHANGED_ROUNDS) {
-                self.game_fin = true;
-            }
-
-            if (!self.game_fin) {
-                self.round_unchanged_cnt++;
-            }
-
             start_time = cur_time;
+
+            game_round();
         }
 
         struct pollfd pfd = {

@@ -22,6 +22,7 @@ int8_t get_snd_pwr() {
     child_t *tmp_child = malloc(sizeof(child_t));
     for (i = 0; i < num_children; i++) {
         if(hashmap_get(self.children, keys[i], (void **) tmp_child) != MAP_MISSING) {
+            // FIXME: shouldn't we be checking for (== MAP_MISSING) or (!= MAP_OK)?
             log_warn("For some reason this child could not be found.");
             continue;
         }
@@ -243,10 +244,10 @@ void pprint_frame(eth_radio_btp_t *in_frame) {
     );
 }
 
-void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t game_fin, uint8_t mutex,
+void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t mutex,
             frame_t frame_type, uint32_t tree_id, int8_t tx_pwr) {
     out->btp.recv_err = recv_err;
-    out->btp.game_fin = game_fin;
+    out->btp.game_fin = self.game_fin;
     out->btp.mutex = mutex;
     out->btp.frame_type = frame_type;
     out->btp.tree_id = tree_id;
