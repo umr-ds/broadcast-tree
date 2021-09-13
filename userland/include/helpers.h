@@ -43,5 +43,6 @@ int8_t get_max_tx_pwr();
 bool set_max_tx_pwr();
 
 int8_t get_snd_pwr();
+bool all_children_fin();
 
 #endif // __HELPERS_H__

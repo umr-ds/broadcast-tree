@@ -7,6 +7,31 @@
 
 extern self_t self;
 
+bool all_children_fin() {
+    int num_children = hashmap_length(self.children);
+    char **keys = (char **) malloc(num_children);
+
+    if (hashmap_get_keys(self.children, keys) != MAP_OK) {
+        log_warn("Could not get children.");
+        return -1;
+    }
+
+    int i;
+    child_t *tmp_child = malloc(sizeof(child_t));
+    for (i = 0; i < num_children; i++) {
+        if(hashmap_get(self.children, keys[i], (void **) tmp_child) == MAP_MISSING) {
+            log_warn("For some reason this child could not be found.");
+            continue;
+        }
+
+        if (!tmp_child->game_fin) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 int8_t get_snd_pwr() {
     int num_children = hashmap_length(self.children);
     char **keys = (char **) malloc(num_children);
@@ -21,8 +46,7 @@ int8_t get_snd_pwr() {
     int8_t snd_high_tmp = 0;
     child_t *tmp_child = malloc(sizeof(child_t));
     for (i = 0; i < num_children; i++) {
-        if(hashmap_get(self.children, keys[i], (void **) tmp_child) != MAP_MISSING) {
-            // FIXME: shouldn't we be checking for (== MAP_MISSING) or (!= MAP_OK)?
+        if(hashmap_get(self.children, keys[i], (void **) tmp_child) == MAP_MISSING) {
             log_warn("For some reason this child could not be found.");
             continue;
         }

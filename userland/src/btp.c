@@ -369,7 +369,6 @@ void handle_end_of_game(eth_radio_btp_t *in_frame) {
              in_frame->eth.ether_shost[5]
     );
 
-    // FIXME: since this is a pointer, are we done? Or do we have to hashmap_put the new state?
     child->game_fin = true;
 }
 
@@ -388,7 +387,7 @@ void game_round() {
 
     self.round_unchanged_cnt++;
 
-    if (self.round_unchanged_cnt >= MAX_UNCHANGED_ROUNDS) {
+    if (self.round_unchanged_cnt >= MAX_UNCHANGED_ROUNDS && all_children_fin()) {
         log_info("Unchanged-round-counter reached max, ending game.");
         self.game_fin = true;
 
