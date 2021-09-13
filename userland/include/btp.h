@@ -37,7 +37,7 @@ typedef enum {
     child_confirm,
     child_request,
     discovery,
-    path_to_source
+    ping_to_source
 } frame_t;
 
 /**
@@ -119,22 +119,22 @@ typedef struct {
 } __attribute__((packed)) eth_btp_payload_t;
 
 /**
- * Frame for the Path-to-Source cycle avoidance scheme
+ * Frame for the Ping-to-Source cycle avoidance scheme
  * WITH RADIOTAP
  */
 typedef struct {
     eth_radio_btp_t btp_frame;
-    uint8_t depth;
-    mac_addr_t parents[MAX_DEPTH];
+    mac_addr_t old_parent;
+    mac_addr_t new_parent;
 } __attribute__((packed)) eth_radio_btp_pts_t;
 
 /**
- * Frame for the Path-to-Source cycle avoidance scheme
+ * Frame for the Ping-to-Source cycle avoidance scheme
  */
 typedef struct {
     eth_btp_t btp_frame;
-    uint8_t depth;
-    mac_addr_t parents[MAX_DEPTH];
+    mac_addr_t old_parent;
+    mac_addr_t new_parent;
 } __attribute__((packed)) eth_btp_pts_t;
 
 bool self_is_connected();

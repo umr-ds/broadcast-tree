@@ -19,6 +19,10 @@ bool self_is_pending() {
     return self.pending_parent;
 }
 
+bool self_has_children() {
+    return hashmap_length(self.children) != 0;
+}
+
 ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #ifdef NEXMON
     // TODO implement with nexmon.
@@ -53,6 +57,33 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
     strncpy(self.if_name, if_name, IFNAMSIZ);
 
     dummy = (char *) malloc(sizeof(char));
+}
+
+void cycle_detection_ping() {
+    eth_btp_t pts_base = { 0x0 };
+    build_frame(&pts_base, self.parent->addr, 0, 0, ping_to_source, self.tree_id, self.max_pwr);
+
+    eth_btp_pts_t pts_frame = { 0x0 };
+    pts_frame.btp_frame = pts_base;
+
+    memcpy(pts_frame.new_parent, self.parent->addr, 6);
+    memcpy(pts_frame.old_parent, self.prev_parent->addr, 6);
+
+    log_debug(
+            "Checking for cycle with ping to source: "
+            "  Frame Type: %i; "
+            "  TX Power: %i",
+            ping_to_source,
+            self.max_pwr
+    );
+
+
+    int8_t cur_tx_pwr = get_tx_pwr();
+    set_max_tx_pwr();
+
+    /* Send packet */
+    send_btp_frame((uint8_t *) &pts_frame, sizeof(eth_btp_pts_t));
+    set_tx_pwr(cur_tx_pwr);
 }
 
 void broadcast_discovery() {
@@ -288,9 +319,14 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
 
     self.tree_id = in_frame->btp.tree_id;
 
+    self.prev_parent = self.parent;
     self.parent = self.pending_parent;
     self.parent->last_seen = get_time_msec();
     self.pending_parent = NULL;
+
+    if (self_has_children()) {
+        cycle_detection_ping();
+    }
 
     // if we have not yet finished our part of the game, reset the unchanged-round-counter and assume our parent's fin-state
     if (!self.game_fin) {
