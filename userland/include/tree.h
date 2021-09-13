@@ -14,6 +14,7 @@ typedef struct {
     int8_t high_pwr; // the power at which the parent does currently broadcast data frames
     int8_t snd_high_pwr; // the power at which the parent WOULD broadacst data frames, if its furthest child were to disconnect
     int8_t own_pwr; // the minimum power with which the parent has to broadcast to reach us
+    int last_seen; // When did we last receive any frame from this node
 } parent_t;
 
 /**

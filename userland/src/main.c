@@ -128,12 +128,11 @@ int event_loop() {
     uint8_t recv_frame[MTU];
     memset(recv_frame, 0, MTU * sizeof (uint8_t));
 
-    struct timeval tval;
-    int start_time = get_time_msec(tval);
+    int start_time = get_time_msec();
     int res;
     log_info("Waiting for BTP packets.");
     while (1) {
-        int cur_time = get_time_msec(tval);
+        int cur_time = get_time_msec();
         if (cur_time - start_time > DISCOVERY_BCAST_INTERVAL_MSEC) {
             if (self.is_source || self_is_connected()) {
                 broadcast_discovery();
@@ -141,7 +140,7 @@ int event_loop() {
 
             start_time = cur_time;
 
-            game_round();
+            game_round(cur_time);
         }
 
         struct pollfd pfd = {

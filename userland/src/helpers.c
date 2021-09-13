@@ -62,7 +62,8 @@ int8_t get_snd_pwr() {
     return snd_high_tmp;
 }
 
-int get_time_msec(struct timeval tval) {
+int get_time_msec() {
+    struct timeval tval;
     gettimeofday(&tval, NULL);
     return ((tval.tv_sec * 1000000) + tval.tv_usec) / 1000;
 }

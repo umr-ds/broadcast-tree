@@ -135,6 +135,7 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
 
     memcpy(self.pending_parent->addr, potential_parent_addr, 6);
     self.pending_parent->own_pwr = new_parent_tx;
+    self.pending_parent->last_seen = get_time_msec();
 
     set_tx_pwr(new_parent_tx);
 
@@ -176,6 +177,7 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
         log_debug("Updating parent information.");
         self.parent->high_pwr = in_frame->btp.high_pwr;
         self.parent->snd_high_pwr = in_frame->btp.snd_high_pwr;
+        self.parent->last_seen = get_time_msec();
         return;
     }
 
@@ -269,6 +271,7 @@ void disconnect_from_parent() {
 
     set_tx_pwr(cur_tx_pwr);
     free(self.parent);
+    self.parent = NULL;
 }
 
 void handle_child_confirm(eth_radio_btp_t *in_frame) {
@@ -286,6 +289,7 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
     self.tree_id = in_frame->btp.tree_id;
 
     self.parent = self.pending_parent;
+    self.parent->last_seen = get_time_msec();
     self.pending_parent = NULL;
 
     // if we have not yet finished our part of the game, reset the unchanged-round-counter and assume our parent's fin-state
@@ -372,9 +376,15 @@ void handle_end_of_game(eth_radio_btp_t *in_frame) {
     child->game_fin = true;
 }
 
-void game_round() {
+void game_round(int cur_time) {
+
     // if we are currently waiting to connect to a new parent, we don't modify our state, since we are about to change the topology
     if (self_is_pending()) {
+        if (cur_time >= self.pending_parent->last_seen + PENDING_TIMEOUT) {
+            log_warn("Pending parent did not respond in time. Removing pending parent.");
+            free(self.pending_parent);
+            self.pending_parent = NULL;
+        }
         log_debug("Currently pending new connection");
         return;
     }

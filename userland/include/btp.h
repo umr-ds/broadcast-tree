@@ -23,6 +23,7 @@
 #define MINIMAL_SNR 15
 
 #define DISCOVERY_BCAST_INTERVAL_MSEC 1000
+#define PENDING_TIMEOUT 1000
 
 #define MAX_UNCHANGED_ROUNDS 10
 
@@ -171,6 +172,6 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd);
 /**
  * Performs the bookkeeping at the end of a game round
  */
-void game_round();
+void game_round(int cur_time);
 
 #endif // __BTP_H__

@@ -5,7 +5,7 @@
 
 #include "btp.h"
 
-int get_time_msec(struct timeval tval);
+int get_time_msec();
 
 /**
  * Generate a (hopefully unique) id for a new braodcast tree.

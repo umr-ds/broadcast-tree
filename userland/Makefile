@@ -1,7 +1,8 @@
 TARGET = btp
 CC = gcc
 INCLUDES = -Iinclude/
-CFLAGS = -liw -lexplain -DLOG_USE_COLOR -g3 $(INCLUDES)
+WARN_AS_ERROR = -Wall -Werror -Wpedantic -Wl,--fatal-warnings
+CFLAGS = $(WARN_AS_ERROR) -liw -lexplain -DLOG_USE_COLOR -g3 $(INCLUDES)
 
 SOURCEDIR = src
 BUILDDIR = build
@@ -23,7 +24,7 @@ $(OBJECTS): $(BUILDDIR)/%.o: $(SOURCEDIR)/%.c
 .PRECIOUS: $(TARGET) $(OBJECTS)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) $(OBJECTS) -Wall -o $@
+	$(CC) $(CFLAGS) $(OBJECTS) -o $@
 
 clean:
 	-rm -rf $(BUILDDIR)
