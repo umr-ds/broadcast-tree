@@ -5,7 +5,7 @@ if [ -n "$RUN" ]; then
     echo "# Starting experiments from path $RUN"
     source "$RUN"
 
-    exp_folder=$(date +"%d%m%Y_%H%M%S")
+    exp_folder=$(date +"%Y-%m-%d_%H%M%S")
     log_path="/results/$exp_folder"
 
     mkdir -p "$log_path"

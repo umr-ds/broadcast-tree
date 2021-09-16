@@ -62,5 +62,5 @@ RUN sed -i "/obj.source =/a 'model/EEBTPTag.cc'," src/wifi/wscript; \
 RUN ./waf --run="broadcast --nWifi=1"
 
 # Add the experiment stuff
-COPY experiment/ /root/experiment/
-ENTRYPOINT ["/root/experiment/entrypoint.sh"]
+COPY experiment/ experiment/
+ENTRYPOINT ["experiment/entrypoint.sh"]

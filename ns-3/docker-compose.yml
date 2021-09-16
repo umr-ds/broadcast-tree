@@ -6,6 +6,6 @@ services:
             dockerfile: Dockerfile
         volumes:
             - ./results:/results
-            - ./experiment:/root/experiment
+            - ./experiment:/root/ns-allinone-3.31/ns-3.31/experiment
         environment:
             - RUN
