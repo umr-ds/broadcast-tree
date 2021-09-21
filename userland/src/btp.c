@@ -60,6 +60,7 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
 }
 
 void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
+    log_info("Initializing Ping to Source cycle detection.");
     eth_btp_t pts_base = { 0x0 };
     build_frame(&pts_base, self.parent->addr, 0, 0, ping_to_source, self.tree_id, self.max_pwr);
 
@@ -69,13 +70,17 @@ void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
     // If the in_frame is given, we are ment to forward a ping to source to our parent.
     // Thus, copy the ping to source relevant stuff.
     if (in_frame) {
+        log_debug("Forwarding Ping to Source frame.");
         memcpy(pts_frame.sender, in_frame->sender, 6);
         memcpy(pts_frame.new_parent, in_frame->new_parent, 6);
         memcpy(pts_frame.old_parent, in_frame->old_parent, 6);
     } else {
+        log_debug("Adding missing parts to ping to source frame.");
         memcpy(pts_frame.sender, self.laddr, 6);
         memcpy(pts_frame.new_parent, self.parent->addr, 6);
-        memcpy(pts_frame.old_parent, self.prev_parent->addr, 6);
+        if (self.prev_parent){
+            memcpy(pts_frame.old_parent, self.prev_parent->addr, 6);
+        }
     }
 
     log_debug(
