@@ -1,4 +1,5 @@
 #include <iwlib.h>
+#include <sys/stat.h>
 
 #include "log.h"
 #include "btp.h"
@@ -39,9 +40,12 @@ ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
 #endif
 }
 
-void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
+void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
     log_debug("Initializing self.");
+    bool is_source = strlen(payload) == 0 ? false : true;
+
     self.is_source = is_source;
+    self.payload = payload;
     self.children = hashmap_new();
     self.parent_blocklist = hashmap_new();
     self.max_pwr = 0;
@@ -57,6 +61,46 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
     strncpy(self.if_name, if_name, IFNAMSIZ);
 
     dummy = (char *) malloc(sizeof(char));
+}
+
+void send_payload() {
+    int payload_fd;
+    int bytes_read = 1;
+    uint16_t seq_num = 0;
+
+    size_t total_frame_size_base = sizeof(eth_btp_t) + sizeof(uint16_t) + sizeof(uint16_t);
+
+    if ((payload_fd = open(self.payload,O_CREAT | O_WRONLY,S_IRUSR | S_IWUSR))== -1) {
+        log_error("Could not read open file: %s", strerror(errno));
+    }
+
+    struct stat file_stats;
+    fstat(payload_fd, &file_stats);
+
+    eth_btp_t payload_base = { 0x0 };
+    build_frame(&payload_base, self.parent->addr, 0, 0, data, self.tree_id, self.high_pwr);
+
+    eth_btp_payload_t payload_frame = { 0x0 };
+    payload_frame.btp_frame = payload_base;
+    payload_frame.payload_len = file_stats.st_size;
+
+    while (bytes_read > 0) {
+        if ((bytes_read = read(payload_fd, payload_frame.payload, MAX_PAYLOAD)) < 0) {
+            log_error("Could not read from file: %s", strerror(errno));
+            return;
+        }
+
+        log_debug("Read %d bytes from file.", bytes_read);
+
+        payload_frame.seq_num = seq_num++;
+
+        if (send_btp_frame((uint8_t *) &payload_frame, total_frame_size_base + payload_frame.payload_len) < 0) {
+            return;
+        }
+
+    }
+
+    close(payload_fd);
 }
 
 void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
@@ -491,7 +535,17 @@ void game_round(int cur_time) {
         send_btp_frame((uint8_t *)&eog, sizeof(eth_btp_t));
 
         set_tx_pwr(cur_tx_pwr);
+
+        if (self.is_source) {
+            send_payload();
+        }
+
+
     }
+}
+
+void handle_data(uint8_t *recv_frame) {
+    
 }
 
 void handle_packet(uint8_t *recv_frame) {
@@ -526,6 +580,10 @@ void handle_packet(uint8_t *recv_frame) {
         case ping_to_source:
             log_debug("Received Ping to Source cycle detection.");
             handle_cycle_detection_ping(recv_frame);
+            break;
+        case data:
+            log_debug("Received data.");
+            handle_data(recv_frame);
             break;
 
         default:

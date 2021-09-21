@@ -165,11 +165,11 @@ void handle_packet(uint8_t *recv_frame);
  * Initializier for self_t struct, that represents our identity in the tree
  *
  * @param laddr: Our own mac address
- * @param is_source: Whether we are the source of the tree or not
+ * @param payload: The payload the source shall send
  * @param if_name: The interface's name
  * @param sockfd: Socket that is used for sending, receiving and IOTCTLs
  */
-void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd);
+void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd);
 
 /**
  * Performs the bookkeeping at the end of a game round

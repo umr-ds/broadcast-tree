@@ -5,6 +5,8 @@
 #include <poll.h>
 #include <argp.h>
 #include <time.h>
+#include <limits.h>
+#include <stdlib.h>
 
 #include "libexplain/socket.h"
 #include "libexplain/ioctl.h"
@@ -18,7 +20,7 @@
 extern self_t self;
 
 struct arguments {
-    bool source;
+    char *payload;
     int log_level;
     char *log_file;
     char *interface;
@@ -29,9 +31,9 @@ const char *argp_program_bug_address = "<sterz@mathematik.uni-marburg.de>";
 static char doc[] = "BTP -- Broadcast Tree Protocol";
 static char args_doc[] = "INTERFACE";
 static struct argp_option options[] = {
-        {"source",      's', 0,      0, "This node is a BTP source", 0 },
-        {"log",      'l', "level",      OPTION_ARG_OPTIONAL, "Log level\n0: QUIET, 1: TRACE, 2: DEBUG, 3: INFO (default),\n4: WARN, 5: ERROR, 6: FATAL", 1 },
-        {"file",      'f', "path",      OPTION_ARG_OPTIONAL, "File path to log file.\nIf not present only stdout and stderr logging will be used.", 1 },
+        {"source",    's', "payload", 0, "Path to the payload to be sent (omit this option for client mode)", 0 },
+        {"log_level", 'l', "level",   0, "Log level\n0: QUIET, 1: TRACE, 2: DEBUG, 3: INFO (default),\n4: WARN, 5: ERROR, 6: FATAL", 1 },
+        {"log_file",  'f', "path",    0, "File path to log file.\nIf not present only stdout and stderr logging will be used.", 1 },
         { 0 }
 };
 
@@ -48,9 +50,19 @@ struct sockaddr_ll L_SOCKADDR = {
 static error_t parse_opt (int key, char *arg, struct argp_state *state) {
     struct arguments *arguments = state->input;
 
+    char buf[PATH_MAX]; /* PATH_MAX incudes the \0 so +1 is not required */
+    char *res;
+
     switch (key) {
         case 's':
-            arguments->source = true;
+            res = realpath(arg, buf);
+            if (!res) {
+                log_error("Could not read file: %s", strerror(errno));
+                exit(EXIT_FAILURE);
+            }
+
+            arguments->payload = res;
+            log_debug("Will send file %s.", arguments->payload);
             break;
         case 'l':
             arguments->log_level = (int) strtol(arg, NULL, 10);
@@ -77,7 +89,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
 
 static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
 
-int init_sock(char *if_name, bool is_source) {
+int init_sock(char *if_name, char *payload) {
     log_info("Initialising socket.");
     int ioctl_stat;
     int tmp_sockfd;
@@ -110,7 +122,7 @@ int init_sock(char *if_name, bool is_source) {
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
     log_debug("Initializing self.");
-    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, is_source, if_name, tmp_sockfd);
+    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, payload, if_name, tmp_sockfd);
 
     int8_t max_tx_pwr;
     if ((max_tx_pwr = get_max_tx_pwr()) < 0) {
@@ -180,7 +192,7 @@ int event_loop() {
 int main (int argc, char **argv) {
 
     struct arguments arguments = {
-            .source = false,
+            .payload = "",
             .log_level = 3,
             .log_file = "",
             .interface = ""
@@ -199,12 +211,12 @@ int main (int argc, char **argv) {
         log_add_fp(lf, arguments.log_level - 1);
     }
 
-    int sockfd = init_sock(arguments.interface, arguments.source);
+    int sockfd = init_sock(arguments.interface, arguments.payload);
     if (sockfd < 0){
         exit(sockfd);
     }
 
-    if (arguments.source) {
+    if (strlen(arguments.payload) != 0) {
         broadcast_discovery();
     }
 

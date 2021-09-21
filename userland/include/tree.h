@@ -31,6 +31,7 @@ typedef struct {
  */
 typedef struct {
     bool is_source; // whether we are the rood of the broadcast tree
+    char *payload; // The payload to be sent if we are the source
     map_t children; // hashmap of currently connected children
     map_t parent_blocklist; // parents that refused request are ignored
     int8_t max_pwr; // maximum power at which we are able (or willing) to broadcast
