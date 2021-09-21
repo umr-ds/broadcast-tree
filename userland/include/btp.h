@@ -124,6 +124,7 @@ typedef struct {
  */
 typedef struct {
     eth_radio_btp_t btp_frame;
+    mac_addr_t sender;
     mac_addr_t old_parent;
     mac_addr_t new_parent;
 } __attribute__((packed)) eth_radio_btp_pts_t;
@@ -133,6 +134,7 @@ typedef struct {
  */
 typedef struct {
     eth_btp_t btp_frame;
+    mac_addr_t sender;
     mac_addr_t old_parent;
     mac_addr_t new_parent;
 } __attribute__((packed)) eth_btp_pts_t;

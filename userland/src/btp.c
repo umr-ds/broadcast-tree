@@ -59,15 +59,24 @@ void init_self(mac_addr_t laddr, bool is_source, char *if_name, int sockfd) {
     dummy = (char *) malloc(sizeof(char));
 }
 
-void cycle_detection_ping() {
+void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
     eth_btp_t pts_base = { 0x0 };
     build_frame(&pts_base, self.parent->addr, 0, 0, ping_to_source, self.tree_id, self.max_pwr);
 
     eth_btp_pts_t pts_frame = { 0x0 };
     pts_frame.btp_frame = pts_base;
 
-    memcpy(pts_frame.new_parent, self.parent->addr, 6);
-    memcpy(pts_frame.old_parent, self.prev_parent->addr, 6);
+    // If the in_frame is given, we are ment to forward a ping to source to our parent.
+    // Thus, copy the ping to source relevant stuff.
+    if (in_frame) {
+        memcpy(pts_frame.sender, in_frame->sender, 6);
+        memcpy(pts_frame.new_parent, in_frame->new_parent, 6);
+        memcpy(pts_frame.old_parent, in_frame->old_parent, 6);
+    } else {
+        memcpy(pts_frame.sender, self.laddr, 6);
+        memcpy(pts_frame.new_parent, self.parent->addr, 6);
+        memcpy(pts_frame.old_parent, self.prev_parent->addr, 6);
+    }
 
     log_debug(
             "Checking for cycle with ping to source: "
@@ -325,7 +334,7 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
     self.pending_parent = NULL;
 
     if (self_has_children()) {
-        cycle_detection_ping();
+        cycle_detection_ping(NULL);
     }
 
     // if we have not yet finished our part of the game, reset the unchanged-round-counter and assume our parent's fin-state
@@ -412,6 +421,37 @@ void handle_end_of_game(eth_radio_btp_t *in_frame) {
     child->game_fin = true;
 }
 
+void handle_cycle_detection_ping(uint8_t *recv_frame) {
+    // If we are the source or we have no parent, we are not able to forward this ping
+    if (self.is_source || !self_is_connected()) {
+        log_info("Have no parent, not forwarding Ping to Source");
+        return;
+    }
+
+    eth_radio_btp_pts_t in_frame = { 0x0 };
+    memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_pts_t));
+
+    if (memcmp(self.laddr, in_frame.sender, 6) == 0) {
+        log_warn("Detected potential cycle!");
+        if (memcmp(self.parent, in_frame.new_parent, 6) != 0) {
+            // Here, our current parent and the parent in question from the Ping to Source frame do not match.
+            // This means, that in the time from connecting to the parent in question and receiving this
+            // Ping to Source, we probably already connected to another parent already and the cycle is already broken.
+            log_info("Potential cycle turned out already broken. Ignoring this Ping to Source message.");
+            return;
+        } else {
+            // So, we really detected a cycle. We disconnect from our parent and reconnect to the old parent.
+            disconnect_from_parent();
+            establish_connection(self.prev_parent->addr, self.max_pwr, self.tree_id);
+        }
+        // In this case, we received our own ping to source frame, which indicated a cycle.
+    } else {
+        // We just receive a ping to source as an intermediate node. Simply forward.
+        log_info("Forwarding Ping to Source.");
+        cycle_detection_ping(&in_frame);
+    }
+}
+
 void game_round(int cur_time) {
 
     // if we are currently waiting to connect to a new parent, we don't modify our state, since we are about to change the topology
@@ -477,6 +517,10 @@ void handle_packet(uint8_t *recv_frame) {
         case end_of_game:
             log_debug("Received End of Game.");
             handle_end_of_game(&in_frame);
+            break;
+        case ping_to_source:
+            log_debug("Received Ping to Source cycle detection.");
+            handle_cycle_detection_ping(recv_frame);
             break;
 
         default:
