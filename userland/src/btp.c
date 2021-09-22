@@ -522,6 +522,8 @@ void game_round(int cur_time) {
         self.game_fin = true;
 
         if (self.is_source) {
+            send_payload();
+        } else {
             eth_btp_t eog = {0x0};
             build_frame(&eog, self.parent->addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
 
@@ -531,8 +533,6 @@ void game_round(int cur_time) {
             send_btp_frame((uint8_t *) &eog, sizeof(eth_btp_t));
 
             set_tx_pwr(cur_tx_pwr);
-        } else {
-            send_payload();
         }
 
 

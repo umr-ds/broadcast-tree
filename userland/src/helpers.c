@@ -19,7 +19,7 @@ bool all_children_fin() {
     if (hashmap_length(self.children) == 0) {
         return true;
     }
-    
+
     return hashmap_iterate(self.children, hashmap_child_fin, NULL) == MAP_OK;
 }
 
