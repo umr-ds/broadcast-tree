@@ -7,29 +7,20 @@
 
 extern self_t self;
 
+int hashmap_child_fin(any_t item, any_t data) {
+    child_t *tmp_child = (child_t *) data;
+
+    log_debug("Checking %s game fin status.", mac_to_str(tmp_child->addr));
+
+    return tmp_child->game_fin ? MAP_OK : MAP_MISSING;
+}
+
 bool all_children_fin() {
-    int num_children = hashmap_length(self.children);
-    char **keys = (char **) malloc(num_children);
-
-    if (hashmap_get_keys(self.children, keys) == MAP_MISSING) {
-        log_warn("Have not children.");
-        return false;
+    if (hashmap_length(self.children) == 0) {
+        return true;
     }
-
-    int i;
-    child_t *tmp_child = malloc(sizeof(child_t));
-    for (i = 0; i < num_children; i++) {
-        if(hashmap_get(self.children, keys[i], (void **) tmp_child) == MAP_MISSING) {
-            log_warn("For some reason this child could not be found.");
-            continue;
-        }
-
-        if (!tmp_child->game_fin) {
-            return false;
-        }
-    }
-
-    return true;
+    
+    return hashmap_iterate(self.children, hashmap_child_fin, NULL) == MAP_OK;
 }
 
 int8_t get_snd_pwr() {
@@ -47,7 +38,7 @@ int8_t get_snd_pwr() {
     child_t *tmp_child = malloc(sizeof(child_t));
     for (i = 0; i < num_children; i++) {
         if(hashmap_get(self.children, keys[i], (void **) tmp_child) == MAP_MISSING) {
-            log_warn("For some reason this child could not be found.");
+            log_warn("For some reason child %s could not be found.", mac_to_str((uint8_t*) keys[i]));
             continue;
         }
 
@@ -70,7 +61,9 @@ int get_time_msec() {
 
 bool already_child(mac_addr_t potential_child_addr) {
     child_t child = {0x0};
-    if (hashmap_get(self.children, (char *)potential_child_addr, (any_t*)&child) == MAP_OK) {
+    char key[18] = { 0x0 };
+    prepare_key(potential_child_addr, key);
+    if (hashmap_get(self.children, key, (any_t*)&child) == MAP_OK) {
         return true;
     }
 
@@ -211,6 +204,20 @@ void hexdump(const void *data, size_t size) {
             }
         }
     }
+}
+
+char *mac_to_str(mac_addr_t addr) {
+    size_t res_size = sizeof(char) * 18;
+    char *mac_str = malloc(res_size);
+    snprintf(mac_str, res_size, "%02x:%02x:%02x:%02x:%02x:%02x",
+             addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
+
+    return mac_str;
+}
+
+void prepare_key(mac_addr_t addr, char *res) {
+    snprintf(res, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
+             addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
 }
 
 void pprint_frame(eth_radio_btp_t *in_frame) {

@@ -261,7 +261,9 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
     }
 
     // If the address is in the parent blocklist, we won't attempt to connect again
-    if (hashmap_get(self.parent_blocklist, (char *)in_frame->eth.ether_shost, (void **)&dummy) == MAP_OK) {
+    char key[18] = { 0x0 };
+    prepare_key(in_frame->eth.ether_shost, key);
+    if (hashmap_get(self.parent_blocklist, key, (void **)&dummy) == MAP_OK) {
         log_debug("Already ignoring potential parent.");
         return;
     }
@@ -291,6 +293,21 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
     establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.tree_id);
 }
 
+void reject_child(eth_radio_btp_t *in_frame) {
+    log_info("Sending Child Reject frame.");
+    eth_btp_t child_rejection_frame = { 0x0 };
+    build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, child_reject, in_frame->btp.tree_id, self.max_pwr);
+
+    log_info("Rejecting child.");
+
+    int8_t cur_tx_pwr = get_tx_pwr();
+    set_tx_pwr(self.max_pwr);
+
+    send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t));
+
+    set_tx_pwr(cur_tx_pwr);
+}
+
 void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
     log_info("Sending Child Accept frame.");
     child_t *new_child = (child_t *) malloc(sizeof(child_t));
@@ -304,7 +321,14 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
         new_child->game_fin = in_frame->btp.game_fin;
     }
 
-    hashmap_put(self.children, (char *)in_frame->eth.ether_shost, new_child);
+    char key[18] = { 0x0 };
+    prepare_key(in_frame->eth.ether_shost, key);
+    if (hashmap_put(self.children, key, new_child) != MAP_OK) {
+        log_error("Could not safe child %s in hashmap.", key);
+        reject_child(in_frame);
+    } else {
+        log_debug("Added child %s to hashmap.", key);
+    }
 
     if (child_tx_pwr > self.high_pwr) {
         self.snd_high_pwr = self.high_pwr;
@@ -321,21 +345,6 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
     log_info("Accepting child.");
 
     send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(eth_btp_t));
-}
-
-void reject_child(eth_radio_btp_t *in_frame) {
-    log_info("Sending Child Reject frame.");
-    eth_btp_t child_rejection_frame = { 0x0 };
-    build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, child_reject, in_frame->btp.tree_id, self.max_pwr);
-
-    log_info("Rejecting child.");
-
-    int8_t cur_tx_pwr = get_tx_pwr();
-    set_tx_pwr(self.max_pwr);
-
-    send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t));
-
-    set_tx_pwr(cur_tx_pwr);
 }
 
 void handle_child_request(eth_radio_btp_t *in_frame) {
@@ -409,35 +418,26 @@ void handle_child_reject(eth_radio_btp_t *in_frame) {
     log_info("Parent rejected our request.");
     free(self.pending_parent);
     self.pending_parent = NULL;
-    hashmap_put(self.parent_blocklist, (char *)in_frame->eth.ether_shost, (void**) &dummy);
+
+    char key[18] = { 0x0 };
+    prepare_key(in_frame->eth.ether_shost, key);
+    hashmap_put(self.parent_blocklist, key, (void**) &dummy);
 }
 
 void handle_parent_revocation(eth_radio_btp_t *in_frame) {
     child_t *child = (child_t *) malloc(sizeof(child_t));
 
-    if (hashmap_get(self.children, (char *)in_frame->eth.ether_shost, (void **)&child) == MAP_MISSING) {
-        log_warn("%x%x%x%x%x%x is not our child. Ignoring.",
-                 in_frame->eth.ether_shost[0],
-                 in_frame->eth.ether_shost[1],
-                 in_frame->eth.ether_shost[2],
-                 in_frame->eth.ether_shost[3],
-                 in_frame->eth.ether_shost[4],
-                 in_frame->eth.ether_shost[5]
-                 );
+    char key[18] = { 0x0 };
+    prepare_key(in_frame->eth.ether_shost, key);
+    if (hashmap_get(self.children, key, (void **)&child) == MAP_MISSING) {
+        log_warn("%s is not our child. Ignoring.", key);
         return;
     }
 
     self.round_unchanged_cnt = 0;
 
-    if (hashmap_remove(self.children, (char *)in_frame->eth.ether_shost) == MAP_MISSING) {
-        log_warn("Could not remove child %x%x%x%x%x%x",
-                 in_frame->eth.ether_shost[0],
-                 in_frame->eth.ether_shost[1],
-                 in_frame->eth.ether_shost[2],
-                 in_frame->eth.ether_shost[3],
-                 in_frame->eth.ether_shost[4],
-                 in_frame->eth.ether_shost[5]
-                 );
+    if (hashmap_remove(self.children, key) == MAP_MISSING) {
+        log_warn("Could not remove child %s", key);
     }
 
     if (child->tx_pwr == self.high_pwr) {
@@ -451,26 +451,14 @@ void handle_parent_revocation(eth_radio_btp_t *in_frame) {
 void handle_end_of_game(eth_radio_btp_t *in_frame) {
     child_t *child = { 0x0 };
 
-    if (hashmap_get(self.children, (char *)in_frame->eth.ether_shost, (void **)&child) == MAP_MISSING) {
-        log_warn("%x%x%x%x%x%x is not our child. Ignoring.",
-                 in_frame->eth.ether_shost[0],
-                 in_frame->eth.ether_shost[1],
-                 in_frame->eth.ether_shost[2],
-                 in_frame->eth.ether_shost[3],
-                 in_frame->eth.ether_shost[4],
-                 in_frame->eth.ether_shost[5]
-        );
+    char key[18] = { 0x0 };
+    prepare_key(in_frame->eth.ether_shost, key);
+    if (hashmap_get(self.children, key, (void **)&child) == MAP_MISSING) {
+        log_warn("%s is not our child. Ignoring.", key);
         return;
     }
 
-    log_warn("Child %x%x%x%x%x%x has finished its game.",
-             in_frame->eth.ether_shost[0],
-             in_frame->eth.ether_shost[1],
-             in_frame->eth.ether_shost[2],
-             in_frame->eth.ether_shost[3],
-             in_frame->eth.ether_shost[4],
-             in_frame->eth.ether_shost[5]
-    );
+    log_warn("Child %s has finished its game.", key);
 
     child->game_fin = true;
 }
@@ -533,18 +521,17 @@ void game_round(int cur_time) {
         log_info("Unchanged-round-counter reached max, ending game.");
         self.game_fin = true;
 
-        eth_btp_t eog = { 0x0 };
-        build_frame(&eog, self.parent->addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
-
-        int8_t cur_tx_pwr = get_tx_pwr();
-        set_tx_pwr(self.max_pwr);
-
-        send_btp_frame((uint8_t *)&eog, sizeof(eth_btp_t));
-
-        set_tx_pwr(cur_tx_pwr);
-
         if (self.is_source) {
+            eth_btp_t eog = {0x0};
+            build_frame(&eog, self.parent->addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
 
+            int8_t cur_tx_pwr = get_tx_pwr();
+            set_tx_pwr(self.max_pwr);
+
+            send_btp_frame((uint8_t *) &eog, sizeof(eth_btp_t));
+
+            set_tx_pwr(cur_tx_pwr);
+        } else {
             send_payload();
         }
 

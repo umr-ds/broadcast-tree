@@ -45,4 +45,7 @@ bool set_max_tx_pwr();
 int8_t get_snd_pwr();
 bool all_children_fin();
 
+char *mac_to_str(mac_addr_t addr);
+void prepare_key(mac_addr_t addr, char *res);
+
 #endif // __HELPERS_H__
