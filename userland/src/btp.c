@@ -64,6 +64,8 @@ void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
 }
 
 void send_payload() {
+    log_info("Will start sending payload.");
+
     int payload_fd;
     int bytes_read = 1;
     uint16_t seq_num = 0;
@@ -74,6 +76,7 @@ void send_payload() {
         log_error("Could not read open file: %s", strerror(errno));
     }
 
+    log_debug("Preparing data frame.");
     struct stat file_stats;
     fstat(payload_fd, &file_stats);
 
@@ -84,6 +87,7 @@ void send_payload() {
     payload_frame.btp_frame = payload_base;
     payload_frame.payload_len = file_stats.st_size;
 
+    log_debug("Starting chunking file for transfer.");
     while (bytes_read > 0) {
         if ((bytes_read = read(payload_fd, payload_frame.payload, MAX_PAYLOAD)) < 0) {
             log_error("Could not read from file: %s", strerror(errno));
@@ -101,6 +105,7 @@ void send_payload() {
     }
 
     close(payload_fd);
+    log_debug("File is completely sent.");
 }
 
 void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
@@ -522,6 +527,8 @@ void game_round(int cur_time) {
 
     self.round_unchanged_cnt++;
 
+    log_debug("Current unchanged counter: %d", self.round_unchanged_cnt);
+
     if (self.round_unchanged_cnt >= MAX_UNCHANGED_ROUNDS && all_children_fin()) {
         log_info("Unchanged-round-counter reached max, ending game.");
         self.game_fin = true;
@@ -537,6 +544,7 @@ void game_round(int cur_time) {
         set_tx_pwr(cur_tx_pwr);
 
         if (self.is_source) {
+
             send_payload();
         }
 
@@ -545,7 +553,7 @@ void game_round(int cur_time) {
 }
 
 void handle_data(uint8_t *recv_frame) {
-    
+
 }
 
 void handle_packet(uint8_t *recv_frame) {

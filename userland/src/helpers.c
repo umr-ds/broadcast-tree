@@ -11,9 +11,9 @@ bool all_children_fin() {
     int num_children = hashmap_length(self.children);
     char **keys = (char **) malloc(num_children);
 
-    if (hashmap_get_keys(self.children, keys) != MAP_OK) {
-        log_warn("Could not get children.");
-        return -1;
+    if (hashmap_get_keys(self.children, keys) == MAP_MISSING) {
+        log_warn("Have not children.");
+        return false;
     }
 
     int i;

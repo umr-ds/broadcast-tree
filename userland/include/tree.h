@@ -41,7 +41,7 @@ typedef struct {
     parent_t *parent; // currently connected parent
     parent_t *pending_parent; // a new parent to which we are currently trying to connect
     parent_t *prev_parent; // a parent that we were connected to
-    uint32_t tree_id; // the tree to which we belong
+    uint32_t tree_id; // the tree to which we belong // TODO: SHOULDN'T WE CHECK ON ALL INCOMING FRAME IF THE FRAME IS FOR OUR TREE?
     bool game_fin; // whether we have finished our part of the game
     uint8_t round_unchanged_cnt; // counter for game rounds without topology changes. if reaches max, game ends
     char if_name[IFNAMSIZ]; // the interface name to be used
