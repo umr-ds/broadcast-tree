@@ -70,6 +70,7 @@ void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
 }
 
 void send_payload() {
+    // FIXME: For some reason, we send 2 or 3 bytes less than expected...
     log_info("Will start sending payload.");
 
     int payload_fd;
@@ -574,6 +575,7 @@ void forward_payload(eth_radio_btp_payload_t *in_frame){
 void handle_data(uint8_t *recv_frame) {
     // If we are the source, we do not want any payload.
     if (self.is_source) {
+        log_debug("Ignoring data as I'm the source.");
         return;
     }
 
@@ -583,13 +585,15 @@ void handle_data(uint8_t *recv_frame) {
     memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_payload_t));
 
     if (!payload_recv_buf) {
+        log_debug("Initializing receive buffer stuff. Payload is %d bytes big.", in_frame.payload_len);
         max_seq_num = (in_frame.payload_len / MAX_PAYLOAD) + 1;
         payload_recv_buf = (uint8_t *) malloc(in_frame.payload_len);
         seq_nums = (bool *) malloc(sizeof(bool) * max_seq_num);
-        memset(seq_nums, 1, sizeof(bool) * max_seq_num);
+        memset(seq_nums, 0, sizeof(bool) * max_seq_num);
     }
 
     if (!seq_nums[in_frame.seq_num]){
+        log_debug("Writing %d bytes for seq num %d", in_frame.payload_chunk_len, in_frame.seq_num);
         uint16_t offset = in_frame.seq_num * MAX_PAYLOAD;
         memcpy(payload_recv_buf + offset, in_frame.payload, in_frame.payload_chunk_len);
         seq_nums[in_frame.seq_num] = true;
@@ -601,12 +605,12 @@ void handle_data(uint8_t *recv_frame) {
         int written_bytes;
         char tmp_fname[] = "btp_result_XXXXXX";
 
-        log_info("Received entire payload, writing to file %s", tmp_fname);
-
         if ((out_fd = mkstemp(tmp_fname)) < 0) {
             log_error("Could not open payload file: %s", strerror(errno));
             return;
         }
+
+        log_info("Received entire payload, writing to file %s", tmp_fname);
 
         if ((written_bytes = write(out_fd, payload_recv_buf, in_frame.payload_len)) != in_frame.payload_len) {
             log_warn("Wrote only %d bytes instead of %d.", written_bytes, in_frame.payload_len);
