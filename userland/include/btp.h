@@ -13,7 +13,8 @@
 
 #define MTU 1500
 #define BTP_HEADER_SIZE 25
-#define MAX_PAYLOAD (MTU - BTP_HEADER_SIZE)
+#define BTP_PAYLOAD_HEADER_SIZE sizeof(uint16_t) * 3 + BTP_HEADER_SIZE
+#define MAX_PAYLOAD (MTU - BTP_PAYLOAD_HEADER_SIZE)
 #define MAX_DEPTH 20
 
 #define POLL_TIMEOUT 1000   // timeout for poll in ms
@@ -104,6 +105,7 @@ typedef struct {
     uint16_t seq_num; // payload sequence number - separate from btp sequence number
     // TODO: buffer over-read if payload_len > len(payload)?
     uint16_t payload_len;
+    uint16_t payload_chunk_len;
     uint8_t payload[MAX_PAYLOAD];
 } __attribute__((packed)) eth_radio_btp_payload_t;
 
@@ -115,6 +117,7 @@ typedef struct {
     uint16_t seq_num; // payload sequence number - separate from btp sequence number
     // TODO: buffer over-read if payload_len > len(payload)?
     uint16_t payload_len;
+    uint16_t payload_chunk_len;
     uint8_t payload[MAX_PAYLOAD];
 } __attribute__((packed)) eth_btp_payload_t;
 

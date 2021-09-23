@@ -1,5 +1,6 @@
 #include <iwlib.h>
 #include <sys/stat.h>
+#include <stdlib.h>
 
 #include "log.h"
 #include "btp.h"
@@ -7,6 +8,11 @@
 #include "tree.h"
 
 self_t self = {0x0};
+
+uint8_t *payload_recv_buf = NULL;
+bool *seq_nums = NULL;
+uint16_t max_seq_num = 0;
+uint16_t seq_num_cnt = 0;
 
 char *dummy = NULL;
 
@@ -70,9 +76,7 @@ void send_payload() {
     int bytes_read = 1;
     uint16_t seq_num = 0;
 
-    size_t total_frame_size_base = sizeof(eth_btp_t) + sizeof(uint16_t) + sizeof(uint16_t);
-
-    if ((payload_fd = open(self.payload,O_CREAT | O_WRONLY,S_IRUSR | S_IWUSR))== -1) {
+    if ((payload_fd = open(self.payload, O_RDONLY)) == -1) {
         log_error("Could not read open file: %s", strerror(errno));
     }
 
@@ -95,11 +99,17 @@ void send_payload() {
             return;
         }
 
+        if (bytes_read == 0) {
+            log_debug("Done reading file.");
+            return;
+        }
+
         log_debug("Read %d bytes from file.", bytes_read);
 
+        payload_frame.payload_chunk_len = bytes_read;
         payload_frame.seq_num = seq_num++;
 
-        if (send_btp_frame((uint8_t *) &payload_frame, total_frame_size_base + payload_frame.payload_len) < 0) {
+        if (send_btp_frame((uint8_t *) &payload_frame, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_chunk_len) < 0) {
             return;
         }
 
@@ -463,7 +473,7 @@ void handle_end_of_game(eth_radio_btp_t *in_frame) {
         return;
     }
 
-    log_warn("Child %s has finished its game.", key);
+    log_info("Child %s has finished its game.", key);
 
     child->game_fin = true;
 }
@@ -544,7 +554,69 @@ void game_round(int cur_time) {
     }
 }
 
+void forward_payload(eth_radio_btp_payload_t *in_frame){
+    eth_radio_btp_t base_in_frame = in_frame->btp_frame;
+    eth_btp_t base_frame = { 0x0 };
+    build_frame(&base_frame, base_in_frame.eth.ether_dhost, base_in_frame.btp.recv_err, base_in_frame.btp.mutex, base_in_frame.btp.frame_type, base_in_frame.btp.tree_id, self.high_pwr);
+
+    eth_btp_payload_t out_frame = { 0x0 };
+    out_frame.btp_frame = base_frame;
+    out_frame.seq_num = in_frame->seq_num;
+    out_frame.payload_len = in_frame->payload_len;
+    out_frame.payload_chunk_len = in_frame->payload_chunk_len;
+    memcpy(out_frame.payload, in_frame->payload, in_frame->payload_chunk_len);
+
+    if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len) < 0) {
+        return;
+    }
+}
+
 void handle_data(uint8_t *recv_frame) {
+    // If we are the source, we do not want any payload.
+    if (self.is_source) {
+        return;
+    }
+
+    // TODO: Check tree id
+
+    eth_radio_btp_payload_t in_frame = { 0x0 };
+    memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_payload_t));
+
+    if (!payload_recv_buf) {
+        max_seq_num = (in_frame.payload_len / MAX_PAYLOAD) + 1;
+        payload_recv_buf = (uint8_t *) malloc(in_frame.payload_len);
+        seq_nums = (bool *) malloc(sizeof(bool) * max_seq_num);
+        memset(seq_nums, 1, sizeof(bool) * max_seq_num);
+    }
+
+    if (!seq_nums[in_frame.seq_num]){
+        uint16_t offset = in_frame.seq_num * MAX_PAYLOAD;
+        memcpy(payload_recv_buf + offset, in_frame.payload, in_frame.payload_chunk_len);
+        seq_nums[in_frame.seq_num] = true;
+        seq_num_cnt++;
+    }
+
+    if (seq_num_cnt >= max_seq_num) {
+        int out_fd;
+        int written_bytes;
+        char tmp_fname[] = "btp_result_XXXXXX";
+
+        log_info("Received entire payload, writing to file %s", tmp_fname);
+
+        if ((out_fd = mkstemp(tmp_fname)) < 0) {
+            log_error("Could not open payload file: %s", strerror(errno));
+            return;
+        }
+
+        if ((written_bytes = write(out_fd, payload_recv_buf, in_frame.payload_len)) != in_frame.payload_len) {
+            log_warn("Wrote only %d bytes instead of %d.", written_bytes, in_frame.payload_len);
+        }
+
+        log_info("Done writing payload to %s", tmp_fname);
+        close(out_fd);
+    }
+
+    forward_payload(&in_frame);
 
 }
 
