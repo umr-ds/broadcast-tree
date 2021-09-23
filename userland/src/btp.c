@@ -81,7 +81,8 @@ void send_payload() {
     fstat(payload_fd, &file_stats);
 
     eth_btp_t payload_base = { 0x0 };
-    build_frame(&payload_base, self.parent->addr, 0, 0, data, self.tree_id, self.high_pwr);
+    mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    build_frame(&payload_base, bcast_addr, 0, 0, data, self.tree_id, self.high_pwr);
 
     eth_btp_payload_t payload_frame = { 0x0 };
     payload_frame.btp_frame = payload_base;
@@ -111,7 +112,7 @@ void send_payload() {
 void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
     log_info("Initializing Ping to Source cycle detection.");
     eth_btp_t pts_base = { 0x0 };
-    build_frame(&pts_base, self.parent->addr, 0, 0, ping_to_source, self.tree_id, self.max_pwr);
+    build_frame(&pts_base, self.parent->addr, 0, 0, ping_to_source, self.tree_id, self.parent->high_pwr);
 
     eth_btp_pts_t pts_frame = { 0x0 };
     pts_frame.btp_frame = pts_base;
@@ -142,7 +143,7 @@ void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
 
 
     int8_t cur_tx_pwr = get_tx_pwr();
-    set_max_tx_pwr();
+    set_tx_pwr(self.parent->high_pwr);
 
     /* Send packet */
     send_btp_frame((uint8_t *) &pts_frame, sizeof(eth_btp_pts_t));
@@ -321,13 +322,15 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
         new_child->game_fin = in_frame->btp.game_fin;
     }
 
-    char key[18] = { 0x0 };
-    prepare_key(in_frame->eth.ether_shost, key);
+    log_debug("Size of hashmap before: %d", hashmap_length(self.children));
+    char *key = (char *) malloc(18);
+    prepare_key(new_child->addr, key);
     if (hashmap_put(self.children, key, new_child) != MAP_OK) {
-        log_error("Could not safe child %s in hashmap.", key);
+        log_error("Could not save child %s in hashmap.", key);
         reject_child(in_frame);
+        return;
     } else {
-        log_debug("Added child %s to hashmap.", key);
+        log_debug("Added child %s to hashmap. New size: %d", key, hashmap_length(self.children));
     }
 
     if (child_tx_pwr > self.high_pwr) {
@@ -419,7 +422,7 @@ void handle_child_reject(eth_radio_btp_t *in_frame) {
     free(self.pending_parent);
     self.pending_parent = NULL;
 
-    char key[18] = { 0x0 };
+    char *key = (char *) malloc(18);
     prepare_key(in_frame->eth.ether_shost, key);
     hashmap_put(self.parent_blocklist, key, (void**) &dummy);
 }
@@ -446,6 +449,8 @@ void handle_parent_revocation(eth_radio_btp_t *in_frame) {
     } else if (child->tx_pwr == self.snd_high_pwr) {
         self.snd_high_pwr = get_snd_pwr();
     }
+
+    free(child);
 }
 
 void handle_end_of_game(eth_radio_btp_t *in_frame) {
@@ -454,7 +459,7 @@ void handle_end_of_game(eth_radio_btp_t *in_frame) {
     char key[18] = { 0x0 };
     prepare_key(in_frame->eth.ether_shost, key);
     if (hashmap_get(self.children, key, (void **)&child) == MAP_MISSING) {
-        log_warn("%s is not our child. Ignoring.", key);
+        log_warn("%s is not our child. Ignoring. Hashmap has size of %d.", key, hashmap_length(self.children));
         return;
     }
 
@@ -475,7 +480,7 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
 
     if (memcmp(self.laddr, in_frame.sender, 6) == 0) {
         log_warn("Detected potential cycle!");
-        if (memcmp(self.parent, in_frame.new_parent, 6) != 0) {
+        if (memcmp(self.parent->addr, in_frame.new_parent, 6) != 0) {
             // Here, our current parent and the parent in question from the Ping to Source frame do not match.
             // This means, that in the time from connecting to the parent in question and receiving this
             // Ping to Source, we probably already connected to another parent already and the cycle is already broken.

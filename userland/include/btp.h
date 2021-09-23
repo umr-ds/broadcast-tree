@@ -25,7 +25,7 @@
 #define DISCOVERY_BCAST_INTERVAL_MSEC 1000
 #define PENDING_TIMEOUT 1000
 
-#define MAX_UNCHANGED_ROUNDS 10
+#define MAX_UNCHANGED_ROUNDS 5
 
 typedef uint8_t mac_addr_t[6];
 
