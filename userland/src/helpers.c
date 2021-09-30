@@ -176,7 +176,7 @@ void hexdump(const void *data, size_t size) {
     size_t padding_index;
 
     for (data_index = 0; data_index < size; ++data_index) {
-        log_debug("%02x ", ((unsigned char *) data)[data_index]);
+        printf("%02x ", ((unsigned char *) data)[data_index]);
 
         if (((unsigned char *) data)[data_index] >= ' ' && ((unsigned char *) data)[data_index] <= '~') {
             chars[data_index % 16] = ((unsigned char *) data)[data_index];
@@ -185,22 +185,22 @@ void hexdump(const void *data, size_t size) {
         }
 
         if ((data_index + 1) % 8 == 0 || data_index + 1 == size) {
-            log_debug(" ");
+            printf(" ");
 
             if ((data_index + 1) % 16 == 0) {
-                log_debug("|  %s \n", chars);
+                printf("|  %s \n", chars);
             } else if (data_index + 1 == size) {
                 chars[(data_index + 1) % 16] = '\0';
 
                 if ((data_index + 1) % 16 <= 8) {
-                    log_debug(" ");
+                    printf(" ");
                 }
 
                 for (padding_index = (data_index + 1) % 16; padding_index < 16; ++padding_index) {
-                    log_debug("   ");
+                    printf("   ");
                 }
 
-                log_debug("|  %s \n", chars);
+                printf("|  %s \n", chars);
             }
         }
     }
