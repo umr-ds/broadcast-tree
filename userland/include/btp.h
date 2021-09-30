@@ -14,7 +14,7 @@
 #define MTU 1500
 #define BTP_HEADER_SIZE sizeof(eth_btp_t)
 #define BTP_PAYLOAD_HEADER_SIZE sizeof(uint16_t) * 3 + BTP_HEADER_SIZE
-#define MAX_PAYLOAD (MTU - BTP_PAYLOAD_HEADER_SIZE)
+#define MAX_PAYLOAD (MTU - (BTP_PAYLOAD_HEADER_SIZE))
 #define MAX_DEPTH 20
 
 #define POLL_TIMEOUT 1000   // timeout for poll in ms

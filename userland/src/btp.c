@@ -540,7 +540,7 @@ void game_round(int cur_time) {
     }
 
     // the end-of-game-state is final and once we reach it, we never switch back out of it
-    if (self.game_fin && !self.is_source) {
+    if (self.game_fin) {
         log_debug("Game already finished, doing nothing");
         return;
     }
