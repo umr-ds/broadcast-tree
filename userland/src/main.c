@@ -134,8 +134,6 @@ int init_sock(char *if_name, char *payload) {
 }
 
 int event_loop() {
-    // TODO: what happens if we send a child-request to a potential parent but never receive an answer?
-
     ssize_t read_bytes;
     uint8_t recv_frame[MTU];
     memset(recv_frame, 0, MTU * sizeof (uint8_t));

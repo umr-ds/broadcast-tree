@@ -264,7 +264,7 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
 void handle_discovery(eth_radio_btp_t *in_frame) {
     log_debug("Received Discovery frame.");
     // if we are the tree's source, we don't want to connect to anyone
-    if (self.is_source) return;
+    if (self.is_source && in_frame->btp.tree_id == self.tree_id) return;
 
     // if we are currently trying to connect to a new parent node, we ignore other announcements
     if (self_is_pending()) {
@@ -362,6 +362,13 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
 }
 
 void handle_child_request(eth_radio_btp_t *in_frame) {
+
+    // If we are not the source and are not connected, then there is nothing to do
+    if (!self.is_source && !self_is_connected()) return;
+
+    // We are not asked for our tree.
+    if (in_frame->btp.tree_id != self.tree_id) return;
+
     log_info("Received Child Request frame.");
     if (already_child(in_frame->eth.ether_shost)) return;
 
@@ -439,6 +446,9 @@ void handle_child_reject(eth_radio_btp_t *in_frame) {
 }
 
 void handle_parent_revocation(eth_radio_btp_t *in_frame) {
+    // If we do not have a tree id (i.e., we are not part of a tree) or the received tree id does not match ours, ignore.
+    if (self.tree_id == 0 || self.tree_id != in_frame->btp.tree_id) return;
+
     child_t *child = (child_t *) malloc(sizeof(child_t));
 
     char key[18] = { 0x0 };
@@ -465,6 +475,9 @@ void handle_parent_revocation(eth_radio_btp_t *in_frame) {
 }
 
 void handle_end_of_game(eth_radio_btp_t *in_frame) {
+    // If we do not have a tree id (i.e., we are not part of a tree) or the received tree id does not match ours, ignore.
+    if (self.tree_id == 0 || self.tree_id != in_frame->btp.tree_id) return;
+
     child_t *child = { 0x0 };
 
     char key[18] = { 0x0 };
@@ -488,6 +501,9 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
 
     eth_radio_btp_pts_t in_frame = { 0x0 };
     memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_pts_t));
+
+    // If the received tree id does not match ours, ignore.
+    if (self.tree_id != in_frame.btp_frame.btp.tree_id) return;
 
     if (memcmp(self.laddr, in_frame.sender, 6) == 0) {
         log_warn("Detected potential cycle!");
@@ -524,12 +540,12 @@ void game_round(int cur_time) {
     }
 
     // the end-of-game-state is final and once we reach it, we never switch back out of it
-    if (self.game_fin) {
+    if (self.game_fin && !self.is_source) {
         log_debug("Game already finished, doing nothing");
         return;
     }
 
-    self.round_unchanged_cnt++;
+    if (self.is_source || self_is_connected()) self.round_unchanged_cnt++;
 
     log_debug("Current unchanged counter: %d", self.round_unchanged_cnt);
 
@@ -579,10 +595,11 @@ void handle_data(uint8_t *recv_frame) {
         return;
     }
 
-    // TODO: Check tree id
-
     eth_radio_btp_payload_t in_frame = { 0x0 };
     memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_payload_t));
+
+    // If the received tree id does not match ours, ignore.
+    if (self.tree_id != in_frame.btp_frame.btp.tree_id) return;
 
     if (!payload_recv_buf) {
         log_debug("Initializing receive buffer stuff. Payload is %d bytes big.", in_frame.payload_len);

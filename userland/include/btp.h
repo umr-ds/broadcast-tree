@@ -103,7 +103,6 @@ typedef struct {
 typedef struct {
     eth_radio_btp_t btp_frame;
     uint16_t seq_num; // payload sequence number - separate from btp sequence number
-    // TODO: buffer over-read if payload_len > len(payload)?
     uint16_t payload_len;
     uint16_t payload_chunk_len;
     uint8_t payload[MAX_PAYLOAD];
@@ -115,7 +114,6 @@ typedef struct {
 typedef struct {
     eth_btp_t btp_frame;
     uint16_t seq_num; // payload sequence number - separate from btp sequence number
-    // TODO: buffer over-read if payload_len > len(payload)?
     uint16_t payload_len;
     uint16_t payload_chunk_len;
     uint8_t payload[MAX_PAYLOAD];
