@@ -1,6 +1,7 @@
 FROM Base.img
 
-RUN bash
+# Prepare nexmon
+#RUN bash
 RUN bash -c "
     cd /nexmon/buildtools/isl-0.10
     ./configure
@@ -8,3 +9,19 @@ RUN bash -c "
     make install
     ln -s /usr/local/lib/libisl.so /usr/lib/arm-linux-gnueabihf/libisl.so.10
 "
+
+# Install BTree-Specific nexmon patch
+RUN bash -c "
+    cp -r /userland/nexmon_patch /nexmon/patches/bcm43430a1/7_45_41_46/btp/
+    cd /nexmon/patches/bcm43430a1/7_45_41_46/btp/
+    source /nexmon/setup_env.sh
+    make install-firmware
+"
+
+# Make BTree-Specific nexmon patch permanent
+#RUN bash -c "
+#    MODPATH=$(/sbin/mu | head -1 | cut -d':' -f2 | tr -d '[:space:]')
+#    cp $MODPATH /root/brcmfmac.ko.orig
+#    cp /nexmon/patches/bcm43430a1/7_45_41_46/btp/brcmfmac_kernel49/brcmfmac.ko "$MODPATH"
+#    depmod -a
+#"

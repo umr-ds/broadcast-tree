@@ -1,9 +1,18 @@
 FROM https://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-2019-04-09/2019-04-08-raspbian-stretch-lite.zip
-PUMP 2500M
+PUMP 10G
+
+# We have to downgrade the RPi kernel to 4.14.98 as this is the last working version for nexmon.
+RUN rpi-update a08ece3d48c3c40bf1b501772af9933249c11c5b
 
 RUN apt-get update
 RUN apt-get upgrade -y
 
-RUN apt-get install -y raspberrypi-kernel-headers git libgmp3-dev gawk qpdf bison flex make
+# Nexmon dependencies
+RUN apt-get install -y raspberrypi-kernel-headers git libgmp3-dev gawk qpdf bison flex make kmod
+RUN apt-get remove -y wpasupplicant
+
+# BTree dependencies
+RUN apt-get install -y libiw-dev libexplain-dev
 
 INSTALL /root/nexmon /nexmon
+INSTALL /root/userland /userland

@@ -1,1 +1,1 @@
-FROM nature40/pimod:v0.2.2
+FROM nature40/pimod:v0.3.0
