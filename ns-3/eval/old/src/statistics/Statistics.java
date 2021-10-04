@@ -23,7 +23,7 @@ public class Statistics
 	public static void main(String[] args) throws Exception
 	{
 		try(BufferedReader br = new BufferedReader(
-				new FileReader("/home/krassus/Programme/NS-3.30.1/ns-3.30.1/scratch/broadcast/output_2.log")))
+				new FileReader(args[0])))
 		{
 			boolean newRound = true, isNodeZero = false, hadSource = false;
 			int unconnectedNodes = 0;

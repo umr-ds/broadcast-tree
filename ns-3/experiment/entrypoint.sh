@@ -19,6 +19,7 @@ if [ -n "$RUN" ]; then
                             for size in "${SIZE[@]}"; do
                                 for rts_cts in "${RTS_CTS[@]}";do
                                     log_name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${runs}_${cpm}_${rts_cts}-run.log"
+                                    csv_name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${runs}_${cpm}_${rts_cts}.csv"
                                     err_name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${runs}_${cpm}_${rts_cts}-err.log"
                                     echo "# Executing $log_name"
                                     ./waf --run="broadcast
@@ -31,8 +32,12 @@ if [ -n "$RUN" ]; then
                                         --iMax=${runs}
                                         --cpm=${cpm}
                                         --rtsCts=${rts_cts}
-                                        --linearEnergyModel=false" > "$log_path/$err_name" 2>"$log_path/$log_name"
+                                        --linearEnergyModel=false
+                                        --log=true" > "$log_path/$err_name" 2>"$log_path/$log_name"
                                     sed -i "1 i\Nodes: $nodes, Hops: $hops, Proto: $btp, Size: $size, Seed: $seed, Runs: $runs, CPM: $cpm, RTS: $rts_cts" "$log_path/$log_name"
+
+                                    echo "# Computing CSV $log_name"
+                                    CLASSPATH=/root/eval/ java statistics.Statistics "$log_path/$log_name" > "$log_path/$csv_name"
                                 done
                             done
                         done

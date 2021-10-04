@@ -30,7 +30,7 @@ RUN apt-get update \
     python-subprocess32 \
     python3-pip \
     build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    openjdk-17-jdk
 
 RUN pip3 install cxxfilt
 
@@ -48,6 +48,10 @@ RUN wget http://www.nsnam.org/release/ns-allinone-$NS3_VERSION.tar.bz2 \
 
 # ns-3 does not use default library paths, so we have to add this one
 ENV LD_LIBRARY_PATH=/usr/local/lib
+
+COPY eval/old/src /root/eval
+WORKDIR /root/eval
+RUN javac statistics/Statistics.java
 
 WORKDIR /root/ns-allinone-$NS3_VERSION/ns-$NS3_VERSION
 
