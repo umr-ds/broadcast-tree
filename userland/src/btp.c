@@ -447,7 +447,7 @@ void handle_child_reject(eth_radio_btp_t *in_frame) {
 
 void handle_parent_revocation(eth_radio_btp_t *in_frame) {
     // If we do not have a tree id (i.e., we are not part of a tree) or the received tree id does not match ours, ignore.
-    if (self.tree_id == 0 || self.tree_id != in_frame->btp.tree_id) return;
+    if (!self_is_connected() || self.tree_id != in_frame->btp.tree_id) return;
 
     child_t *child = (child_t *) malloc(sizeof(child_t));
 
@@ -476,7 +476,7 @@ void handle_parent_revocation(eth_radio_btp_t *in_frame) {
 
 void handle_end_of_game(eth_radio_btp_t *in_frame) {
     // If we do not have a tree id (i.e., we are not part of a tree) or the received tree id does not match ours, ignore.
-    if (self.tree_id == 0 || self.tree_id != in_frame->btp.tree_id) return;
+    if (!self_is_connected() || self.tree_id != in_frame->btp.tree_id) return;
 
     child_t *child = { 0x0 };
 
