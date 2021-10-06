@@ -65,6 +65,10 @@ RUN sed -i "/obj.source =/a 'model/EEBTPTag.cc'," src/wifi/wscript; \
 # To build the EE-BTP code, we have to call a dummy run with simple parameters
 RUN ./waf --run="broadcast --nWifi=1"
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    parallel
+
 # Add the experiment stuff
 COPY experiment/ experiment/
 ENTRYPOINT ["experiment/entrypoint.sh"]

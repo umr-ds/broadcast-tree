@@ -17,12 +17,11 @@ if [ -n "$RUN" ]; then
                     for runs in "${RUNS[@]}"; do
                         for cpm in "${CPM[@]}"; do
                             for size in "${SIZE[@]}"; do
-                                for rts_cts in "${RTS_CTS[@]}";do
-                                    log_name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${runs}_${cpm}_${rts_cts}-run.log"
-                                    csv_name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${runs}_${cpm}_${rts_cts}.csv"
-                                    err_name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${runs}_${cpm}_${rts_cts}-err.log"
-                                    echo "# Executing $log_name"
-                                    ./waf --run="broadcast
+                                for rts_cts in "${RTS_CTS[@]}"; do
+                                    name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${runs}_${cpm}_${rts_cts}"
+
+                                    echo "# Starting $name"
+                                    cmd="./waf --run-no-build=\"broadcast
                                         --nWifi=${nodes}
                                         --hopCount=${hops}
                                         --eebtp=${btp}
@@ -33,11 +32,11 @@ if [ -n "$RUN" ]; then
                                         --cpm=${cpm}
                                         --rtsCts=${rts_cts}
                                         --linearEnergyModel=false
-                                        --log=true" > "$log_path/$err_name" 2>"$log_path/$log_name"
-                                    sed -i "1 i\Nodes: $nodes, Hops: $hops, Proto: $btp, Size: $size, Seed: $seed, Runs: $runs, CPM: $cpm, RTS: $rts_cts" "$log_path/$log_name"
+                                        --log=true\" > \"$log_path/$name.err\" 2>\"$log_path/$name.log\""
 
-                                    echo "# Computing CSV $log_name"
-                                    CLASSPATH=/root/eval/ java statistics.Statistics "$log_path/$log_name" > "$log_path/$csv_name"
+                                    sem -j+0 bash -c "'$cmd'"
+
+                                    echo "# `ps aux | grep "python3 ./waf" | wc -l` parallel jobs running" 
                                 done
                             done
                         done
@@ -46,6 +45,13 @@ if [ -n "$RUN" ]; then
             done
         done
     done
+
+    while true; do echo "# Waiting for `ps aux | grep "python3 ./waf" | wc -l` jobs."; sleep 5; done &
+    statuspid="$!"
+
+    sem --wait
+    kill "$statuspid"
+    echo "Done."
 
 else
     echo "# Dropping into bash"
