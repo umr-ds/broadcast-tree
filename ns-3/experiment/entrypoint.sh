@@ -14,30 +14,28 @@ if [ -n "$RUN" ]; then
         for hops in "${HOP_COUNT[@]}"; do
             for btp in "${EEBTP[@]}"; do
                 for seed in "${SEED[@]}"; do
-                    for runs in "${RUNS[@]}"; do
-                        for cpm in "${CPM[@]}"; do
-                            for size in "${SIZE[@]}"; do
-                                for rts_cts in "${RTS_CTS[@]}"; do
-                                    name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${runs}_${cpm}_${rts_cts}"
+                    for cpm in "${CPM[@]}"; do
+                        for size in "${SIZE[@]}"; do
+                            for rts_cts in "${RTS_CTS[@]}"; do
+                                name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${runs}_${cpm}_${rts_cts}"
 
-                                    echo "# Starting $name"
-                                    cmd="./waf --run-no-build=\"broadcast
-                                        --nWifi=${nodes}
-                                        --hopCount=${hops}
-                                        --eebtp=${btp}
-                                        --width=${size}
-                                        --height=${size}
-                                        --rndSeed=${seed}
-                                        --iMax=${runs}
-                                        --cpm=${cpm}
-                                        --rtsCts=${rts_cts}
-                                        --linearEnergyModel=false
-                                        --log=true\" > \"$log_path/$name.err\" 2>\"$log_path/$name.log\""
+                                echo "# Starting $name"
+                                cmd="./waf --run-no-build=\"broadcast
+                                    --nWifi=${nodes}
+                                    --hopCount=${hops}
+                                    --eebtp=${btp}
+                                    --width=${size}
+                                    --height=${size}
+                                    --rndSeed=${seed}
+                                    --iMax=${runs}
+                                    --cpm=${cpm}
+                                    --rtsCts=${rts_cts}
+                                    --linearEnergyModel=false
+                                    --log=true\" > \"$log_path/$name.err\" 2>\"$log_path/$name.log\""
 
-                                    sem -j+0 bash -c "'$cmd'"
+                                sem -j+0 bash -c "'$cmd'"
 
-                                    echo "# `ps aux | grep "python3 ./waf" | wc -l` parallel jobs running" 
-                                done
+                                echo "# `ps aux | grep "python3 ./waf" | wc -l` parallel jobs running"
                             done
                         done
                     done
