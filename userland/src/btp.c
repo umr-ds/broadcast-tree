@@ -30,11 +30,12 @@ bool self_has_children() {
     return hashmap_length(self.children) != 0;
 }
 
-ssize_t send_btp_frame(uint8_t *data, size_t data_len) {
+ssize_t send_btp_frame(uint8_t *data, size_t data_len, int8_t tx_pwr) {
 #ifdef NEXMON
     // TODO implement with nexmon.
     return -1;
 #else
+    set_tx_pwr(tx_pwr);
     ssize_t sent_bytes = sendto(self.sockfd, data, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
     if (sent_bytes < 0) {
         log_error("Could not send data: %s", strerror(errno));
@@ -77,12 +78,7 @@ int disconnect_child(any_t item, any_t data) {
     eth_btp_t child_rejection_frame = { 0x0 };
     build_frame(&child_rejection_frame, tmp_child->addr, 0, 0, child_reject, self.tree_id, self.max_pwr);
 
-    int8_t cur_tx_pwr = get_tx_pwr();
-    set_tx_pwr(self.max_pwr);
-
-    send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t));
-
-    set_tx_pwr(cur_tx_pwr);
+    send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t), self.max_pwr);
 
     return MAP_OK;
 }
@@ -144,7 +140,7 @@ void send_payload() {
         payload_frame.payload_chunk_len = bytes_read;
         payload_frame.seq_num = seq_num++;
 
-        if (send_btp_frame((uint8_t *) &payload_frame, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_chunk_len) < 0) {
+        if (send_btp_frame((uint8_t *) &payload_frame, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_chunk_len, self.high_pwr) < 0) {
             return;
         }
 
@@ -157,7 +153,7 @@ void send_payload() {
 void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
     log_info("Initializing Ping to Source cycle detection.");
     eth_btp_t pts_base = { 0x0 };
-    build_frame(&pts_base, self.parent->addr, 0, 0, ping_to_source, self.tree_id, self.parent->high_pwr);
+    build_frame(&pts_base, self.parent->addr, 0, 0, ping_to_source, self.tree_id, self.parent->own_pwr);
 
     eth_btp_pts_t pts_frame = { 0x0 };
     pts_frame.btp_frame = pts_base;
@@ -183,16 +179,11 @@ void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
             "  Frame Type: %i; "
             "  TX Power: %i",
             ping_to_source,
-            self.max_pwr
+            self.parent->own_pwr
     );
 
-
-    int8_t cur_tx_pwr = get_tx_pwr();
-    set_tx_pwr(self.parent->high_pwr);
-
     /* Send packet */
-    send_btp_frame((uint8_t *) &pts_frame, sizeof(eth_btp_pts_t));
-    set_tx_pwr(cur_tx_pwr);
+    send_btp_frame((uint8_t *) &pts_frame, sizeof(eth_btp_pts_t), self.parent->own_pwr);
 }
 
 void broadcast_discovery() {
@@ -208,10 +199,8 @@ void broadcast_discovery() {
             self.max_pwr
     );
 
-    set_max_tx_pwr();
-
     /* Send packet */
-    send_btp_frame((uint8_t *) &discovery_frame, sizeof(eth_btp_t));
+    send_btp_frame((uint8_t *) &discovery_frame, sizeof(eth_btp_t), self.max_pwr);
 }
 
 void parse_header(eth_radio_btp_t *in_frame, uint8_t *recv_frame) {
@@ -279,8 +268,6 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
     self.pending_parent->snd_high_pwr = snd_high_pwr;
     self.pending_parent->last_seen = get_time_msec();
 
-    set_tx_pwr(new_parent_tx);
-
     eth_btp_t child_request_frame = { 0x0 };
     build_frame(&child_request_frame, potential_parent_addr, 0, 0, child_request, tree_id, new_parent_tx);
 
@@ -294,7 +281,7 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
             new_parent_tx
     );
 
-    send_btp_frame((uint8_t *) &child_request_frame, sizeof(eth_btp_t));
+    send_btp_frame((uint8_t *) &child_request_frame, sizeof(eth_btp_t), new_parent_tx);
 }
 
 void handle_discovery(eth_radio_btp_t *in_frame) {
@@ -348,12 +335,7 @@ void reject_child(eth_radio_btp_t *in_frame) {
 
     log_info("Rejecting child.");
 
-    int8_t cur_tx_pwr = get_tx_pwr();
-    set_tx_pwr(self.max_pwr);
-
-    send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t));
-
-    set_tx_pwr(cur_tx_pwr);
+    send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t), self.max_pwr);
 }
 
 void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
@@ -387,14 +369,12 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
         self.snd_high_pwr = child_tx_pwr;
     }
 
-    set_tx_pwr(child_tx_pwr);
-
     eth_btp_t child_confirm_frame = { 0x0 };
     build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, child_confirm, in_frame->btp.tree_id, child_tx_pwr);
 
     log_info("Accepting child.");
 
-    send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(eth_btp_t));
+    send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(eth_btp_t), child_tx_pwr);
 }
 
 void handle_child_request(eth_radio_btp_t *in_frame) {
@@ -425,14 +405,8 @@ void disconnect_from_parent() {
     eth_btp_t disconnect_frame = { 0x0 };
     build_frame(&disconnect_frame, self.parent->addr, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
 
-    int8_t cur_tx_pwr = get_tx_pwr();
-    set_tx_pwr(self.max_pwr);
+    send_btp_frame((uint8_t *)&disconnect_frame, sizeof(eth_btp_t), self.max_pwr);
 
-    // TODO: Verify all sending powers
-    // TODO: set sending power in send_btp_frame
-    send_btp_frame((uint8_t *)&disconnect_frame, sizeof(eth_btp_t));
-
-    set_tx_pwr(cur_tx_pwr);
     free(self.parent);
     self.parent = NULL;
 }
@@ -625,15 +599,8 @@ void game_round(int cur_time) {
             eth_btp_t eog = {0x0};
             build_frame(&eog, self.parent->addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
 
-            int8_t cur_tx_pwr = get_tx_pwr();
-            set_tx_pwr(self.max_pwr);
-
-            send_btp_frame((uint8_t *) &eog, sizeof(eth_btp_t));
-
-            set_tx_pwr(cur_tx_pwr);
+            send_btp_frame((uint8_t *) &eog, sizeof(eth_btp_t), self.max_pwr);
         }
-
-
     }
 }
 
@@ -649,7 +616,7 @@ void forward_payload(eth_radio_btp_payload_t *in_frame){
     out_frame.payload_chunk_len = in_frame->payload_chunk_len;
     memcpy(out_frame.payload, in_frame->payload, in_frame->payload_chunk_len);
 
-    if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len) < 0) {
+    if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len, self.high_pwr) < 0) {
         return;
     }
 }
