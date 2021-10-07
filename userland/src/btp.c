@@ -219,6 +219,7 @@ int8_t compute_tx_pwr(eth_radio_btp_t *in_frame) {
 
     int8_t new_tx_power = old_tx_power - (snr - MINIMAL_SNR);
 
+    // FIXME: something's very wrong with the send-power calculation (probably unit mismatch, or something)
     log_debug("Peer sent with %hhi dBm (RSSI: %hhi, noise: %hhi, SNR: %hhi). New tx power is %hhi dBm.", old_tx_power, signal, noise, snr, new_tx_power);
 
     return new_tx_power < 0 ? 0 : new_tx_power;
