@@ -70,7 +70,6 @@ void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
 }
 
 void send_payload() {
-    // FIXME: For some reason, we send 2 or 3 bytes less than expected...
     log_info("Will start sending payload.");
 
     int payload_fd;
@@ -227,7 +226,7 @@ bool should_switch(btp_header_t header, int8_t new_parent_tx) {
     return gain > loss;
 }
 
-void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx, uint32_t tree_id) {
+void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx, int8_t high_pwr, int8_t snd_high_pwr, uint32_t tree_id) {
     log_info(
             "Establishing connection to %x:%x:%x:%x:%x:%x",
             potential_parent_addr[0],
@@ -239,8 +238,11 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
             );
     self.pending_parent = (parent_t *) malloc(sizeof(parent_t));
 
+    // FIXME: Properly initialize parent struct, i.e., set high_pwr accordingly
     memcpy(self.pending_parent->addr, potential_parent_addr, 6);
     self.pending_parent->own_pwr = new_parent_tx;
+    self.pending_parent->high_pwr = high_pwr;
+    self.pending_parent->snd_high_pwr = snd_high_pwr;
     self.pending_parent->last_seen = get_time_msec();
 
     set_tx_pwr(new_parent_tx);
@@ -302,7 +304,7 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
 
     if (self_is_connected() && !should_switch(in_frame->btp, new_parent_tx)) return;
 
-    establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.tree_id);
+    establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.high_pwr, in_frame->btp.snd_high_pwr, in_frame->btp.tree_id);
 }
 
 void reject_child(eth_radio_btp_t *in_frame) {
@@ -385,12 +387,15 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
 }
 
 void disconnect_from_parent() {
+    // TODO: logging is really a good idea
     eth_btp_t disconnect_frame = { 0x0 };
     build_frame(&disconnect_frame, self.parent->addr, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
 
     int8_t cur_tx_pwr = get_tx_pwr();
     set_tx_pwr(self.max_pwr);
 
+    // TODO: Verify all sending powers
+    // TODO: set sending power in send_btp_frame
     send_btp_frame((uint8_t *)&disconnect_frame, sizeof(eth_btp_t));
 
     set_tx_pwr(cur_tx_pwr);
@@ -431,7 +436,11 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
 
 void handle_child_reject(eth_radio_btp_t *in_frame) {
     // If we do not wait for an CHILD CONFIRM, ignore.
-    if (!self_is_pending()) return;
+    if (!self_is_pending()) {
+        // TODO CHCECK IF FRAME IS FROM OUR PARENT
+        // TODO DISCONNECT ALL CHILDREN AND SEND CHILD REJECT TO ALL OF THEM
+        return;
+    }
 
     // We received a confirmation from a parent we never asked. Ignore.
     if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
@@ -516,7 +525,15 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
         } else {
             // So, we really detected a cycle. We disconnect from our parent and reconnect to the old parent.
             disconnect_from_parent();
-            establish_connection(self.prev_parent->addr, self.max_pwr, self.tree_id);
+
+            if (!self.prev_parent){
+                log_warn("Have no previous parent, can not re-connect.");
+                return;
+            }
+
+            establish_connection(self.prev_parent->addr, self.max_pwr, self.prev_parent->high_pwr, self.prev_parent->snd_high_pwr, self.tree_id);
+            free(self.prev_parent);
+            self.prev_parent = NULL;
         }
         // In this case, we received our own ping to source frame, which indicated a cycle.
     } else {
