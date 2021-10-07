@@ -69,6 +69,41 @@ void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
     dummy = (char *) malloc(sizeof(char));
 }
 
+int disconnect_child(any_t item, any_t data) {
+    child_t *tmp_child = (child_t *) data;
+
+    log_debug("Disconnecting %s.", mac_to_str(tmp_child->addr));
+
+    eth_btp_t child_rejection_frame = { 0x0 };
+    build_frame(&child_rejection_frame, tmp_child->addr, 0, 0, child_reject, self.tree_id, self.max_pwr);
+
+    int8_t cur_tx_pwr = get_tx_pwr();
+    set_tx_pwr(self.max_pwr);
+
+    send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t));
+
+    set_tx_pwr(cur_tx_pwr);
+
+    return MAP_OK;
+}
+
+void disconnect_all_children() {
+    log_debug("Disconnecting all children");
+
+    if (hashmap_length(self.children) == 0) {
+        return;
+    }
+
+    hashmap_iterate(self.children, disconnect_child, NULL);
+
+    hashmap_free(self.children);
+
+    self.children = hashmap_new();
+
+    self.high_pwr = 0;
+    self.snd_high_pwr = 0;
+}
+
 void send_payload() {
     log_info("Will start sending payload.");
 
@@ -238,7 +273,6 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
             );
     self.pending_parent = (parent_t *) malloc(sizeof(parent_t));
 
-    // FIXME: Properly initialize parent struct, i.e., set high_pwr accordingly
     memcpy(self.pending_parent->addr, potential_parent_addr, 6);
     self.pending_parent->own_pwr = new_parent_tx;
     self.pending_parent->high_pwr = high_pwr;
@@ -410,13 +444,14 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
     // We received a confirmation from a parent we never asked. Ignore.
     if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
 
-    // If we are already connected, disconnect from the current par
+    // If we are already connected, disconnect from the current parent
     if (self_is_connected()) disconnect_from_parent();
 
     log_info("Parent confirmed our request.");
 
     self.tree_id = in_frame->btp.tree_id;
 
+    if (self.prev_parent) free(self.prev_parent);
     self.prev_parent = self.parent;
     self.parent = self.pending_parent;
     self.parent->last_seen = get_time_msec();
@@ -435,15 +470,30 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
 
 
 void handle_child_reject(eth_radio_btp_t *in_frame) {
-    // If we do not wait for an CHILD CONFIRM, ignore.
+    // If we are not currently pending, but receive a reject from our current parent, then we are no longer part of the tree and disconnect all our children as well.
     if (!self_is_pending()) {
-        // TODO CHCECK IF FRAME IS FROM OUR PARENT
-        // TODO DISCONNECT ALL CHILDREN AND SEND CHILD REJECT TO ALL OF THEM
+        if (memcmp(in_frame->eth.ether_shost, self.parent->addr, 6) != 0) return;
+        log_debug("Received disconnection command from our parent");
+
+        disconnect_all_children();
+        free(self.parent);
+        self.parent = NULL;
         return;
     }
 
     // We received a confirmation from a parent we never asked. Ignore.
     if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
+
+    if (self.prev_parent && (memcmp(in_frame->eth.ether_shost, self.prev_parent->addr, 6) == 0)) {
+        log_debug("Were unable to reconnect to previous parent");
+
+        disconnect_all_children();
+        free(self.prev_parent);
+        self.prev_parent = NULL;
+        free(self.pending_parent);
+        self.pending_parent = NULL;
+        return;
+    }
 
     log_info("Parent rejected our request.");
     free(self.pending_parent);
@@ -528,12 +578,11 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
 
             if (!self.prev_parent){
                 log_warn("Have no previous parent, can not re-connect.");
+                disconnect_all_children();
                 return;
             }
 
             establish_connection(self.prev_parent->addr, self.max_pwr, self.prev_parent->high_pwr, self.prev_parent->snd_high_pwr, self.tree_id);
-            free(self.prev_parent);
-            self.prev_parent = NULL;
         }
         // In this case, we received our own ping to source frame, which indicated a cycle.
     } else {
