@@ -20,6 +20,7 @@ bool all_children_fin() {
         return true;
     }
 
+    // FIXME: shit's broken, yo!
     return hashmap_iterate(self.children, hashmap_child_fin, NULL) == MAP_OK;
 }
 
