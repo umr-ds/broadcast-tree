@@ -73,7 +73,7 @@ public class Section
 				cL.remove(r);
 			else if(this.findCycles(r, cL))
 			{
-				System.out.println("Cycle for " + r.getMacAddress());
+				System.err.println("Cycle for " + r.getMacAddress());
 				this.lastedCycles++;
 			}
 		}

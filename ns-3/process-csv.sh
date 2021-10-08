@@ -2,13 +2,13 @@
 
 set +euf -o pipefail
 
-for logpath in $1/*-run.log; do
+for logpath in $1/*.log; do
     if [ ! -f "$logpath" ]; then
         echo "$logpath does not exist."
         continue
     fi
 
-    csvpath="${logpath%-run.log}.csv"
+    csvpath="${logpath%.log}.csv"
     if [ -f "$csvpath" ]; then
         echo "$csvpath does exist, skipping re-computation."
         continue

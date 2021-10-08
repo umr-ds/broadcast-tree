@@ -214,3 +214,4 @@ pimod/.bash_history
 *.log
 
 ns-3/results/
+.ipynb_checkpoints

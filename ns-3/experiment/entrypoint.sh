@@ -17,7 +17,7 @@ if [ -n "$RUN" ]; then
                     for cpm in "${CPM[@]}"; do
                         for size in "${SIZE[@]}"; do
                             for rts_cts in "${RTS_CTS[@]}"; do
-                                name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${runs}_${cpm}_${rts_cts}"
+                                name="${nodes}_${hops}_${btp}_${size}_${size}_${seed}_${cpm}_${rts_cts}"
 
                                 echo "# Starting $name"
                                 cmd="./waf --run-no-build=\"broadcast
@@ -27,7 +27,7 @@ if [ -n "$RUN" ]; then
                                     --width=${size}
                                     --height=${size}
                                     --rndSeed=${seed}
-                                    --iMax=${runs}
+                                    --iMax=${RUNS}
                                     --cpm=${cpm}
                                     --rtsCts=${rts_cts}
                                     --linearEnergyModel=false
