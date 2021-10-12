@@ -25,6 +25,11 @@ typedef struct _hashmap_map{
     hashmap_element *data;
 } hashmap_map;
 
+unsigned long crc32(const unsigned char *s, unsigned int len);
+unsigned int hashmap_hash_int(hashmap_map * m, char* keystring);
+int hashmap_hash(map_t in, char* key);
+int hashmap_rehash(map_t in);
+
 /*
  * Return an empty hashmap, or NULL on failure.
  */

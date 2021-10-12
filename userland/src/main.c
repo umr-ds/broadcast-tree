@@ -19,6 +19,9 @@
 
 extern self_t self;
 
+int init_sock(char *if_name, char *payload);
+int event_loop(void);
+
 struct arguments {
     char *payload;
     int log_level;
@@ -133,7 +136,7 @@ int init_sock(char *if_name, char *payload) {
     return tmp_sockfd;
 }
 
-int event_loop() {
+int event_loop(void) {
     ssize_t read_bytes;
     uint8_t recv_frame[MTU];
     memset(recv_frame, 0, MTU * sizeof (uint8_t));

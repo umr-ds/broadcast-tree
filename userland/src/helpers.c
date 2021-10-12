@@ -7,8 +7,11 @@
 
 extern self_t self;
 
-int hashmap_child_fin(any_t item, any_t data) {
-    child_t *tmp_child = (child_t *) data;
+int hashmap_child_fin(any_t item, any_t data);
+
+int hashmap_child_fin(any_t item, any_t args) {
+    (void)(item);
+    child_t *tmp_child = (child_t *) args;
 
     log_debug("Game fin status. [addr: %s, game_fin: %s]", mac_to_str(tmp_child->addr), tmp_child->game_fin ? "true" : "false");
 
@@ -167,18 +170,20 @@ int8_t get_max_tx_pwr() {
     return max_tx_pwr;
 }
 
-void hexdump(const void *data, size_t size) {
+void hexdump(const void *buf, size_t size) {
     char chars[17];
+    unsigned char *buf_cpy = malloc(size);
+    memcpy(buf_cpy, buf, size);
     chars[16] = '\0';
 
     size_t data_index;
     size_t padding_index;
 
     for (data_index = 0; data_index < size; ++data_index) {
-        printf("%02x ", ((unsigned char *) data)[data_index]);
+        printf("%02x ", (buf_cpy)[data_index]);
 
-        if (((unsigned char *) data)[data_index] >= ' ' && ((unsigned char *) data)[data_index] <= '~') {
-            chars[data_index % 16] = ((unsigned char *) data)[data_index];
+        if ((buf_cpy)[data_index] >= ' ' && (buf_cpy)[data_index] <= '~') {
+            chars[data_index % 16] = (buf_cpy)[data_index];
         } else {
             chars[data_index % 16] = '.';
         }
@@ -203,6 +208,8 @@ void hexdump(const void *data, size_t size) {
             }
         }
     }
+
+    free(buf_cpy);
 }
 
 char *mac_to_str(mac_addr_t addr) {

@@ -3,8 +3,8 @@ CC = gcc
 INCLUDES = -Iinclude/
 CFLAGS = -liw -lexplain -DLOG_USE_COLOR -g3 $(INCLUDES)
 CFLAGS += -Werror -Wl,--fatal-warnings
-CFLAGS += -pipe -fPIE -fdiagnostics-color -Wno-unknown-warning-option -Wpedantic
-CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-format-truncation
+CFLAGS += -pipe -fPIE -fdiagnostics-color -Wpedantic
+CFLAGS += -Wall -Werror-implicit-function-declaration
 CFLAGS += -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations
 CFLAGS += -Wshadow -Wpointer-arith -Wcast-qual -Wsign-compare -Wswitch-enum
 CFLAGS += -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Werror=format-security

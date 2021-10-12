@@ -140,12 +140,12 @@ typedef struct {
     mac_addr_t new_parent;
 } __attribute__((packed)) eth_btp_pts_t;
 
-bool self_is_connected();
+bool self_is_connected(void);
 
 /**
  * Initialises the construction of a new broadcast-tree
  */
-void broadcast_discovery();
+void broadcast_discovery(void);
 
 /**
  * Parse the common btp-header

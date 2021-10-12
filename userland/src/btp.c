@@ -18,25 +18,48 @@ char *dummy = NULL;
 
 extern struct sockaddr_ll L_SOCKADDR;
 
-bool self_is_connected() {
+ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr);
+int disconnect_child(any_t item, any_t args);
+void disconnect_all_children(void);
+void send_payload(void);
+void cycle_detection_ping(eth_radio_btp_pts_t *in_frame);
+int8_t compute_tx_pwr(eth_radio_btp_t *in_frame);
+bool should_switch(btp_header_t header, int8_t new_parent_tx);
+void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx, int8_t high_pwr, int8_t snd_high_pwr, uint32_t tree_id);
+void handle_discovery(eth_radio_btp_t *in_frame);
+void reject_child(eth_radio_btp_t *in_frame);
+void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr);
+void handle_child_request(eth_radio_btp_t *in_frame);
+void disconnect_from_parent(void);
+void handle_child_confirm(eth_radio_btp_t *in_frame);
+void handle_child_reject(eth_radio_btp_t *in_frame);
+void handle_parent_revocation(eth_radio_btp_t *in_frame);
+void handle_end_of_game(eth_radio_btp_t *in_frame);
+void handle_cycle_detection_ping(uint8_t *recv_frame);
+void forward_payload(eth_radio_btp_payload_t *in_frame);
+void handle_data(uint8_t *recv_frame);
+bool self_is_pending(void);
+bool self_has_children(void);
+
+bool self_is_connected(void) {
     return self.parent;
 }
 
-bool self_is_pending() {
+bool self_is_pending(void) {
     return self.pending_parent;
 }
 
-bool self_has_children() {
+bool self_has_children(void) {
     return hashmap_length(self.children) != 0;
 }
 
-ssize_t send_btp_frame(uint8_t *data, size_t data_len, int8_t tx_pwr) {
+ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
 #ifdef NEXMON
     // TODO implement with nexmon.
     return -1;
 #else
     set_tx_pwr(tx_pwr);
-    ssize_t sent_bytes = sendto(self.sockfd, data, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
+    ssize_t sent_bytes = sendto(self.sockfd, buf, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
     if (sent_bytes < 0) {
         log_error("Could not send data. [error: %s]", strerror(errno));
     }
@@ -69,8 +92,9 @@ void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
     dummy = (char *) malloc(sizeof(char));
 }
 
-int disconnect_child(any_t item, any_t data) {
-    child_t *tmp_child = (child_t *) data;
+int disconnect_child(any_t item, any_t args) {
+    (void)(item);
+    child_t *tmp_child = (child_t *) args;
 
     eth_btp_t child_rejection_frame = { 0x0 };
     build_frame(&child_rejection_frame, tmp_child->addr, 0, 0, child_reject, self.tree_id, self.max_pwr);
@@ -82,7 +106,7 @@ int disconnect_child(any_t item, any_t data) {
     return MAP_OK;
 }
 
-void disconnect_all_children() {
+void disconnect_all_children(void) {
     if (hashmap_length(self.children) == 0) {
         return;
     }
@@ -99,7 +123,7 @@ void disconnect_all_children() {
     log_debug("All children disconnected.");
 }
 
-void send_payload() {
+void send_payload(void) {
     log_info("Starting sending payload.");
 
     int payload_fd;
@@ -395,7 +419,7 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
     }
 }
 
-void disconnect_from_parent() {
+void disconnect_from_parent(void) {
     eth_btp_t disconnect_frame = { 0x0 };
     build_frame(&disconnect_frame, self.parent->addr, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
 
@@ -448,7 +472,6 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
         log_debug("Our game not finished yet, resetting counter.");
     }
 }
-
 
 void handle_child_reject(eth_radio_btp_t *in_frame) {
     // If we are not currently pending, but receive a reject from our current parent, then we are no longer part of the tree and disconnect all our children as well.
@@ -637,7 +660,7 @@ void game_round(int cur_time) {
     }
 }
 
-void forward_payload(eth_radio_btp_payload_t *in_frame){
+void forward_payload(eth_radio_btp_payload_t *in_frame) {
     eth_radio_btp_t base_in_frame = in_frame->btp_frame;
     eth_btp_t base_frame = { 0x0 };
     build_frame(&base_frame, base_in_frame.eth.ether_dhost, base_in_frame.btp.recv_err, base_in_frame.btp.mutex, base_in_frame.btp.frame_type, base_in_frame.btp.tree_id, self.high_pwr);
