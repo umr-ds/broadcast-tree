@@ -1,8 +1,14 @@
 TARGET = btp
 CC = gcc
 INCLUDES = -Iinclude/
-WARN_AS_ERROR = -Wall -Werror -Wpedantic -Wl,--fatal-warnings
-CFLAGS = $(WARN_AS_ERROR) -liw -lexplain -DLOG_USE_COLOR -g3 $(INCLUDES)
+CFLAGS = -liw -lexplain -DLOG_USE_COLOR -g3 $(INCLUDES)
+CFLAGS += -Werror -Wl,--fatal-warnings
+CFLAGS += -pipe -fPIE -fdiagnostics-color -Wno-unknown-warning-option -Wpedantic
+CFLAGS += -Wall -Werror-implicit-function-declaration -Wno-format-truncation
+CFLAGS += -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations
+CFLAGS += -Wshadow -Wpointer-arith -Wcast-qual -Wsign-compare -Wswitch-enum
+CFLAGS += -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Werror=format-security
+CFLAGS += -Wunused-parameter -Wuninitialized -Wformat-security -Wstrict-overflow=2
 
 SOURCEDIR = src
 BUILDDIR = build
