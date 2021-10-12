@@ -10,13 +10,14 @@ extern self_t self;
 int hashmap_child_fin(any_t item, any_t data) {
     child_t *tmp_child = (child_t *) data;
 
-    log_debug("Checking %s game fin status.", mac_to_str(tmp_child->addr));
+    log_debug("Game fin status. [addr: %s, game_fin: %s]", mac_to_str(tmp_child->addr), tmp_child->game_fin ? "true" : "false");
 
-    return tmp_child->game_fin ? MAP_OK : MAP_MISSING;
+    return tmp_child->game_fin ? MAP_OK : MAP_MISSING;;
 }
 
 bool all_children_fin() {
     if (hashmap_length(self.children) == 0) {
+        log_debug("Have no children.");
         return true;
     }
 
@@ -39,7 +40,7 @@ int8_t get_snd_pwr() {
     child_t *tmp_child = malloc(sizeof(child_t));
     for (i = 0; i < num_children; i++) {
         if(hashmap_get(self.children, keys[i], (void **) tmp_child) == MAP_MISSING) {
-            log_warn("For some reason child %s could not be found.", mac_to_str((uint8_t*) keys[i]));
+            log_warn("Child could not be found. [addr: %s]", mac_to_str((uint8_t*) keys[i]));
             continue;
         }
 
@@ -110,7 +111,7 @@ bool set_tx_pwr(int8_t tx_pwr) {
     wrq.u.txpower.flags = IW_TXPOW_DBM;
 
     if(iw_set_ext(self.sockfd, self.if_name, SIOCSIWTXPOW, &wrq) < 0) {
-        log_error("Could not set txpower: %s", explain_ioctl(self.sockfd, SIOCSIWTXPOW, &wrq));
+        log_error("Could not set txpower. [error: %s]", explain_ioctl(self.sockfd, SIOCSIWTXPOW, &wrq));
         return false;
     }
 
@@ -137,35 +138,32 @@ int8_t get_tx_pwr() {
             return (int8_t) dbm;
         }
     } else {
-        log_error("Could not get current txpower: %s", explain_ioctl(self.sockfd, SIOCGIWTXPOW, wrq));
+        log_error("Could not get current txpower. [%s]", explain_ioctl(self.sockfd, SIOCGIWTXPOW, wrq));
         return (int8_t) res;
     }
 }
 
 int8_t get_max_tx_pwr() {
     int8_t cur_tx_pwr;
-    log_debug("Getting current TX power.");
     if ((cur_tx_pwr = get_tx_pwr()) < 0) {
         return -1;
     }
 
-    log_debug("Setting arbitrary high TX power.");
     if (!set_tx_pwr(INT8_MAX)) {
         return -1;
     }
 
-    log_debug("Getting highest reported TX power.");
     int8_t max_tx_pwr;
     if ((max_tx_pwr = get_tx_pwr()) < 0) {
         return -1;
     }
 
-    log_debug("Setting old tx power.");
     if (!set_tx_pwr(cur_tx_pwr)) {
         return -1;
     }
 
-    log_debug("Getting max txpower");
+    log_debug("Got max tx power. [max_tx_pwr: %i]", max_tx_pwr);
+
     return max_tx_pwr;
 }
 

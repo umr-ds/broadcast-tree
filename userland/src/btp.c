@@ -38,17 +38,16 @@ ssize_t send_btp_frame(uint8_t *data, size_t data_len, int8_t tx_pwr) {
     set_tx_pwr(tx_pwr);
     ssize_t sent_bytes = sendto(self.sockfd, data, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
     if (sent_bytes < 0) {
-        log_error("Could not send data: %s", strerror(errno));
+        log_error("Could not send data. [error: %s]", strerror(errno));
     }
 
-    log_debug("Sent %i bytes", sent_bytes);
+    log_debug("Successfully sent frame. [sent_bytes: %i, tx_pwr: %i]", sent_bytes, tx_pwr);
 
     return sent_bytes;
 #endif
 }
 
 void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
-    log_debug("Initializing self.");
     bool is_source = strlen(payload) == 0 ? false : true;
 
     self.is_source = is_source;
@@ -73,19 +72,17 @@ void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
 int disconnect_child(any_t item, any_t data) {
     child_t *tmp_child = (child_t *) data;
 
-    log_debug("Disconnecting %s.", mac_to_str(tmp_child->addr));
-
     eth_btp_t child_rejection_frame = { 0x0 };
     build_frame(&child_rejection_frame, tmp_child->addr, 0, 0, child_reject, self.tree_id, self.max_pwr);
 
     send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t), self.max_pwr);
 
+    log_debug("Child disconnected. [addr: %s]", mac_to_str(tmp_child->addr));
+
     return MAP_OK;
 }
 
 void disconnect_all_children() {
-    log_debug("Disconnecting all children");
-
     if (hashmap_length(self.children) == 0) {
         return;
     }
@@ -98,20 +95,21 @@ void disconnect_all_children() {
 
     self.high_pwr = 0;
     self.snd_high_pwr = 0;
+
+    log_debug("All children disconnected.");
 }
 
 void send_payload() {
-    log_info("Will start sending payload.");
+    log_info("Starting sending payload.");
 
     int payload_fd;
     int bytes_read = 1;
     uint16_t seq_num = 0;
 
     if ((payload_fd = open(self.payload, O_RDONLY)) == -1) {
-        log_error("Could not read open file: %s", strerror(errno));
+        log_error("Could not open file. [error: %s]", strerror(errno));
     }
 
-    log_debug("Preparing data frame.");
     struct stat file_stats;
     fstat(payload_fd, &file_stats);
 
@@ -126,7 +124,7 @@ void send_payload() {
     log_debug("Starting chunking file for transfer.");
     while (bytes_read > 0) {
         if ((bytes_read = read(payload_fd, payload_frame.payload, MAX_PAYLOAD)) < 0) {
-            log_error("Could not read from file: %s", strerror(errno));
+            log_error("Could not read from file. [error: %s]", strerror(errno));
             return;
         }
 
@@ -135,8 +133,6 @@ void send_payload() {
             return;
         }
 
-        log_debug("Read %d bytes from file.", bytes_read);
-
         payload_frame.payload_chunk_len = bytes_read;
         payload_frame.seq_num = seq_num++;
 
@@ -144,46 +140,41 @@ void send_payload() {
             return;
         }
 
+        log_debug("Successfully sent next chunk. [bytes_read: %i, seq_num: %i]", bytes_read, payload_frame.seq_num);
     }
 
     close(payload_fd);
-    log_debug("File is completely sent.");
+    log_info("Completely sent file.");
 }
 
 void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
-    log_info("Initializing Ping to Source cycle detection.");
+    log_info("Sending Ping to Source cycle detection frame.");
     eth_btp_t pts_base = { 0x0 };
     build_frame(&pts_base, self.parent->addr, 0, 0, ping_to_source, self.tree_id, self.parent->own_pwr);
 
     eth_btp_pts_t pts_frame = { 0x0 };
     pts_frame.btp_frame = pts_base;
 
-    // If the in_frame is given, we are ment to forward a ping to source to our parent.
+    // If the in_frame is given, we are meant to forward a ping to source to our parent.
     // Thus, copy the ping to source relevant stuff.
     if (in_frame) {
-        log_debug("Forwarding Ping to Source frame.");
         memcpy(pts_frame.sender, in_frame->sender, 6);
         memcpy(pts_frame.new_parent, in_frame->new_parent, 6);
         memcpy(pts_frame.old_parent, in_frame->old_parent, 6);
+        log_debug("Forwarding Ping to Source frame. [sender: %s, destination: %s]", mac_to_str(pts_frame.sender), mac_to_str(self.parent->addr));
     } else {
-        log_debug("Adding missing parts to ping to source frame.");
         memcpy(pts_frame.sender, self.laddr, 6);
         memcpy(pts_frame.new_parent, self.parent->addr, 6);
         if (self.prev_parent){
             memcpy(pts_frame.old_parent, self.prev_parent->addr, 6);
         }
+        log_debug("Added missing parts to ping to source frame. [sender: %s, destination: %s]", mac_to_str(pts_frame.sender), mac_to_str(self.parent->addr));
     }
-
-    log_debug(
-            "Checking for cycle with ping to source: "
-            "  Frame Type: %i; "
-            "  TX Power: %i",
-            ping_to_source,
-            self.parent->own_pwr
-    );
 
     /* Send packet */
     send_btp_frame((uint8_t *) &pts_frame, sizeof(eth_btp_pts_t), self.parent->own_pwr);
+
+    log_info("Sent cycle detection frame. [tx_pwr: %i]", self.parent->own_pwr);
 }
 
 void broadcast_discovery() {
@@ -191,25 +182,20 @@ void broadcast_discovery() {
     mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     build_frame(&discovery_frame, bcast_addr, 0, 0, discovery, self.tree_id, self.max_pwr);
 
-    log_debug(
-            "Broadcasting discovery: "
-            "  Frame Type: %i; "
-            "  TX Power: %i",
-            discovery,
-            self.max_pwr
-    );
-
     /* Send packet */
     send_btp_frame((uint8_t *) &discovery_frame, sizeof(eth_btp_t), self.max_pwr);
+
+    log_debug("Broadcast discovery. [tx_pwr: %i]", self.max_pwr);
 }
 
 void parse_header(eth_radio_btp_t *in_frame, uint8_t *recv_frame) {
-    log_debug("Parsing header.");
     memcpy(in_frame, recv_frame, sizeof(eth_radio_btp_t ));
     pprint_frame(in_frame);
+    log_debug("Parsed header.");
 }
 
 int8_t compute_tx_pwr(eth_radio_btp_t *in_frame) {
+    // FIXME: something's very wrong with the send-power calculation (probably unit mismatch, or something)
     log_info("Computing TX power.");
     int8_t old_tx_power = in_frame->btp.tx_pwr;
     int8_t signal = in_frame->radiotap.dbm_antsignal;
@@ -219,10 +205,11 @@ int8_t compute_tx_pwr(eth_radio_btp_t *in_frame) {
 
     int8_t new_tx_power = old_tx_power - (snr - MINIMAL_SNR);
 
-    // FIXME: something's very wrong with the send-power calculation (probably unit mismatch, or something)
-    log_debug("Peer sent with %hhi dBm (RSSI: %hhi, noise: %hhi, SNR: %hhi). New tx power is %hhi dBm.", old_tx_power, signal, noise, snr, new_tx_power);
+    int8_t result = new_tx_power < 0 ? 0 : new_tx_power;
 
-    return new_tx_power < 0 ? 0 : new_tx_power;
+    log_debug("Computed tx power. [RSSI: %i, noise: %i, SNR: %i, sender tx: %i, computed tx: %i, result: %i]", signal, noise, snr, old_tx_power, new_tx_power, result);
+
+    return result;
 }
 
 bool should_switch(btp_header_t header, int8_t new_parent_tx) {
@@ -230,13 +217,17 @@ bool should_switch(btp_header_t header, int8_t new_parent_tx) {
     // If parent's sending power to reach us is lower than the power
     // the parent is currently using, we should not switch, since we
     // are not the furthest away child
-    if (self.parent->own_pwr < self.parent->high_pwr) return false;
-    log_debug("Parent's own_pwr (%hhi) is higher than it's high_pwr (%hhi)", self.parent->own_pwr, self.parent->high_pwr);
+    if (self.parent->own_pwr < self.parent->high_pwr) {
+        log_debug("Our parents power to reach us is lower than its current sending power. [reach power: %i, parent tx power: %i]", self.parent->own_pwr, self.parent->high_pwr);
+        return false;
+    }
 
     // if the parent is already sending with a higher power than is needed to reach us,
     // then switching is essentially free. Just switch without further computations.
-    if (new_parent_tx < header.high_pwr) return true;
-    log_debug("Parent's new tx power (%hhi) is higher than it's high_pwr (%hhi)", new_parent_tx, header.high_pwr);
+    if (new_parent_tx < header.high_pwr) {
+        log_debug("The potential parent's new tx power is lower than it's currently sending. [new_tx_pwr: %i, tx_pwr: %i]", new_parent_tx, header.high_pwr);
+        return true;
+    }
 
     // The difference between the old parent's current sending power to reach us and
     // its gains when not connected to us.
@@ -246,21 +237,15 @@ bool should_switch(btp_header_t header, int8_t new_parent_tx) {
     // current highest sending power, i.e., how bad would it be to switch to this parent.
     int8_t loss = new_parent_tx - header.high_pwr;
 
+    bool _should_switch = gain > loss;
+
     // If the old parent would gain more than the new loses, we should switch.
-    log_debug("Gain: %hhi; Loss: %hhi", gain, loss);
-    return gain > loss;
+    log_debug("Gain vs. loss comparison: [gain: %i, loss: %i, should_switch: %s]", gain, loss, _should_switch ? "true" : "false");
+    return _should_switch;
 }
 
 void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx, int8_t high_pwr, int8_t snd_high_pwr, uint32_t tree_id) {
-    log_info(
-            "Establishing connection to %x:%x:%x:%x:%x:%x",
-            potential_parent_addr[0],
-            potential_parent_addr[1],
-            potential_parent_addr[2],
-            potential_parent_addr[3],
-            potential_parent_addr[4],
-            potential_parent_addr[5]
-            );
+    log_info("Establishing connection. [addr: %s]", mac_to_str(potential_parent_addr));
     self.pending_parent = (parent_t *) malloc(sizeof(parent_t));
 
     memcpy(self.pending_parent->addr, potential_parent_addr, 6);
@@ -269,30 +254,27 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
     self.pending_parent->snd_high_pwr = snd_high_pwr;
     self.pending_parent->last_seen = get_time_msec();
 
+    log_debug("Updated self. [own_prw: %i, high_pwr: %i, snd_high_pwr: %i, last_seen: %i]", self.pending_parent->own_pwr, self.pending_parent->high_pwr, self.pending_parent->snd_high_pwr, self.pending_parent->last_seen);
+
     eth_btp_t child_request_frame = { 0x0 };
     build_frame(&child_request_frame, potential_parent_addr, 0, 0, child_request, tree_id, new_parent_tx);
 
-    log_debug(
-            "Sending child request: "
-            "Frame Type: %i; "
-            "Tree ID: %li; "
-            "TX Power: %i",
-            discovery,
-            tree_id,
-            new_parent_tx
-    );
-
     send_btp_frame((uint8_t *) &child_request_frame, sizeof(eth_btp_t), new_parent_tx);
+
+    log_debug("Sent child request. [tx_pwr: %i]", new_parent_tx);
 }
 
 void handle_discovery(eth_radio_btp_t *in_frame) {
-    log_debug("Received Discovery frame.");
+    log_info("Received Discovery frame.");
     // if we are the tree's source, we don't want to connect to anyone
-    if (self.is_source && in_frame->btp.tree_id == self.tree_id) return;
+    if (self.is_source && in_frame->btp.tree_id == self.tree_id) {
+        log_debug("We are either the source or the tree ID is not matching. [is_source: %s, received tree ID: %i, our tree ID: %i]", self.is_source ? "true" : false, in_frame->btp.tree_id, self.tree_id);
+        return;
+    }
 
     // if we are currently trying to connect to a new parent node, we ignore other announcements
     if (self_is_pending()) {
-        log_debug("Already waiting for connection");
+        log_debug("Already waiting for connection. [addr: %s]", mac_to_str(self.pending_parent->addr));
         return;
     }
 
@@ -300,16 +282,16 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
     char key[18] = { 0x0 };
     prepare_key(in_frame->eth.ether_shost, key);
     if (hashmap_get(self.parent_blocklist, key, (void **)&dummy) == MAP_OK) {
-        log_debug("Already ignoring potential parent.");
+        log_debug("Already ignoring potential parent. [addr: %s]", mac_to_str(in_frame->eth.ether_shost));
         return;
     }
 
     // If we receive a discovery from our parent, update our own state.
     if (self_is_connected() && memcmp(in_frame->eth.ether_shost, self.parent->addr, 6) == 0) {
-        log_debug("Updating parent information.");
         self.parent->high_pwr = in_frame->btp.high_pwr;
         self.parent->snd_high_pwr = in_frame->btp.snd_high_pwr;
         self.parent->last_seen = get_time_msec();
+        log_debug("Updated parent information. [high_pwr: %i, snd_high_pwr: %i, last_seen: %i]", self.parent->high_pwr, self.parent->snd_high_pwr, self.parent->last_seen);
         return;
     }
 
@@ -324,23 +306,26 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
 
     int8_t new_parent_tx = compute_tx_pwr(in_frame);
 
-    if (self_is_connected() && !should_switch(in_frame->btp, new_parent_tx)) return;
+    bool is_connected = self_is_connected();
+    bool _should_switch = should_switch(in_frame->btp, new_parent_tx);
+
+    if (is_connected && !_should_switch) {
+        log_debug("Either not connected or should not switch. [is_connected: %s, should_switch: %s]", is_connected ? "true" : false, _should_switch ? "true" : "false");
+        return;
+    }
 
     establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.high_pwr, in_frame->btp.snd_high_pwr, in_frame->btp.tree_id);
 }
 
 void reject_child(eth_radio_btp_t *in_frame) {
-    log_info("Sending Child Reject frame.");
     eth_btp_t child_rejection_frame = { 0x0 };
     build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, child_reject, in_frame->btp.tree_id, self.max_pwr);
 
-    log_info("Rejecting child.");
-
     send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t), self.max_pwr);
+    log_info("Rejected child. [addr: %s]", mac_to_str(in_frame->eth.ether_shost));
 }
 
 void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
-    log_info("Sending Child Accept frame.");
     child_t *new_child = (child_t *) malloc(sizeof(child_t));
     memcpy(new_child->addr, in_frame->eth.ether_shost, 6);
     new_child->tx_pwr = child_tx_pwr;
@@ -352,15 +337,14 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
         new_child->game_fin = in_frame->btp.game_fin;
     }
 
-    log_debug("Size of hashmap before: %d", hashmap_length(self.children));
     char *key = (char *) malloc(18);
     prepare_key(new_child->addr, key);
     if (hashmap_put(self.children, key, new_child) != MAP_OK) {
-        log_error("Could not save child %s in hashmap.", key);
+        log_error("Have to reject child because hashmap error. [addr: %s]", key);
         reject_child(in_frame);
         return;
     } else {
-        log_debug("Added child %s to hashmap. New size: %d", key, hashmap_length(self.children));
+        log_debug("Added child to hashmap. [addr: %s]", key);
     }
 
     if (child_tx_pwr > self.high_pwr) {
@@ -373,27 +357,37 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
     eth_btp_t child_confirm_frame = { 0x0 };
     build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, child_confirm, in_frame->btp.tree_id, child_tx_pwr);
 
-    log_info("Accepting child.");
-
     send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(eth_btp_t), child_tx_pwr);
+
+    log_info("Accepted child. [addr: %s]", key);
 }
 
 void handle_child_request(eth_radio_btp_t *in_frame) {
-
     // If we are not the source and are not connected, then there is nothing to do
-    if (!self.is_source && !self_is_connected()) return;
+    if (!self.is_source && !self_is_connected()) {
+        log_debug("We are the source or are not connected. Returning. [is_source: %s, is_connected: %s]", self.is_source ? "true": "false", self_is_connected() ? "true": "false");
+        return;
+    }
 
     // We are not asked for our tree.
-    if (in_frame->btp.tree_id != self.tree_id) return;
+    if (in_frame->btp.tree_id != self.tree_id) {
+        log_debug("Wrong tree ID. [received ID: %i, our ID: %i]", in_frame->btp.tree_id, self.tree_id);
+        return;
+    }
 
-    log_info("Received Child Request frame.");
-    if (already_child(in_frame->eth.ether_shost)) return;
+    log_info("Received Child Request frame. [addr: %s]", mac_to_str(in_frame->eth.ether_shost));
+    if (already_child(in_frame->eth.ether_shost)) {
+        log_debug("Child is aready our child. [addr: %s]", mac_to_str(in_frame->eth.ether_shost));
+        return;
+    }
 
     int8_t potential_child_send_pwr = compute_tx_pwr(in_frame);
     if ((!self_is_connected() && !self.is_source)
         || hashmap_length(self.children) >= BREADTH
         || potential_child_send_pwr > self.max_pwr
        ) {
+        log_info("Rejecting child (either we have no parent, are the source, have too much children or sending power would be too high). [is_connected: %s, is_source, %s, num children: %i, potential send power: %i, self_max_power: %i]",
+                 self_is_connected() ? "true" : "false", self.is_source ? "true" : "false", hashmap_length(self.children), potential_child_send_pwr, self.max_pwr);
         reject_child(in_frame);
     } else {
         accept_child(in_frame, potential_child_send_pwr);
@@ -402,27 +396,37 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
 }
 
 void disconnect_from_parent() {
-    // TODO: logging is really a good idea
     eth_btp_t disconnect_frame = { 0x0 };
     build_frame(&disconnect_frame, self.parent->addr, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
 
     send_btp_frame((uint8_t *)&disconnect_frame, sizeof(eth_btp_t), self.max_pwr);
 
+    log_info("Disconnected from parent. [addr: %s]", mac_to_str(self.parent->addr));
     free(self.parent);
     self.parent = NULL;
 }
 
 void handle_child_confirm(eth_radio_btp_t *in_frame) {
     // If we do not wait for an CHILD CONFIRM, ignore.
-    if (!self_is_pending()) return;
+    if (!self_is_pending()) {
+        log_debug("We are not waiting for a child confirm.");
+        return;
+    }
 
     // We received a confirmation from a parent we never asked. Ignore.
-    if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
+    if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) {
+        log_debug("Received child confirm from unknown node. [potential parent: %s, received addr: %s]", self.pending_parent->addr, in_frame->eth.ether_shost);
+        return;
+    }
 
     // If we are already connected, disconnect from the current parent
-    if (self_is_connected()) disconnect_from_parent();
+    if (self_is_connected()) {
+        log_debug("Disconnected from old parent to connect to new parent. [old parent: %s, new parent: %s]", mac_to_str(self.parent->addr),
+                  mac_to_str(in_frame->eth.ether_shost));
+        disconnect_from_parent();
+    }
 
-    log_info("Parent confirmed our request.");
+    log_info("Parent confirmed our request. [addr: %s]", mac_to_str(in_frame->eth.ether_shost));
 
     self.tree_id = in_frame->btp.tree_id;
 
@@ -434,12 +438,14 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
 
     if (self_has_children()) {
         cycle_detection_ping(NULL);
+        log_debug("We have children, sent ping.");
     }
 
     // if we have not yet finished our part of the game, reset the unchanged-round-counter and assume our parent's fin-state
     if (!self.game_fin) {
         self.round_unchanged_cnt = 0;
         self.game_fin = in_frame->btp.game_fin;
+        log_debug("Our game not finished yet, resetting counter.");
     }
 }
 
@@ -447,20 +453,28 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
 void handle_child_reject(eth_radio_btp_t *in_frame) {
     // If we are not currently pending, but receive a reject from our current parent, then we are no longer part of the tree and disconnect all our children as well.
     if (!self_is_pending()) {
-        if (memcmp(in_frame->eth.ether_shost, self.parent->addr, 6) != 0) return;
-        log_debug("Received disconnection command from our parent");
+        if (memcmp(in_frame->eth.ether_shost, self.parent->addr, 6) != 0) {
+            log_debug("Ignoring child reject from node that is not our parent. [addr: %s, parent addr: %s]", mac_to_str(in_frame->eth.ether_shost), mac_to_str(self.parent->addr));
+            return;
+        }
+
+        log_info("Received disconnection command from our parent. [addr: %s]", mac_to_str(self.parent->addr));
 
         disconnect_all_children();
         free(self.parent);
         self.parent = NULL;
+        log_debug("Disconnected all children and reset parent.");
         return;
     }
 
-    // We received a confirmation from a parent we never asked. Ignore.
-    if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) return;
+    // We received a confirmation from a node we never asked. Ignore.
+    if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) {
+        log_debug("Ignoring child reject from unknown node. [addr: %s, parent addr: %s]", mac_to_str(in_frame->eth.ether_shost), mac_to_str(self.pending_parent->addr));
+        return;
+    }
 
     if (self.prev_parent && (memcmp(in_frame->eth.ether_shost, self.prev_parent->addr, 6) == 0)) {
-        log_debug("Were unable to reconnect to previous parent");
+        log_debug("Were unable to reconnect to previous parent. [prev parent addr: %s]", mac_to_str(self.prev_parent->addr));
 
         disconnect_all_children();
         free(self.prev_parent);
@@ -470,32 +484,36 @@ void handle_child_reject(eth_radio_btp_t *in_frame) {
         return;
     }
 
-    log_info("Parent rejected our request.");
+    log_info("Pending parent rejected our request. [pending parent: %s]", mac_to_str(in_frame->eth.ether_shost));
     free(self.pending_parent);
     self.pending_parent = NULL;
 
     char *key = (char *) malloc(18);
     prepare_key(in_frame->eth.ether_shost, key);
     hashmap_put(self.parent_blocklist, key, (void**) &dummy);
+    log_info("Blocked pending parent. [%s]", key);
 }
 
 void handle_parent_revocation(eth_radio_btp_t *in_frame) {
     // If we do not have a tree id (i.e., we are not part of a tree) or the received tree id does not match ours, ignore.
-    if (!self_is_connected() || self.tree_id != in_frame->btp.tree_id) return;
+    if (!self_is_connected() || self.tree_id != in_frame->btp.tree_id) {
+        log_debug("We are either not connected or received wring tree id. [is_connected: %s, our tree ID: %i, received tree ID: %i]", self_is_connected() ? "true" : "false", self.tree_id, in_frame->btp.tree_id);
+        return;
+    }
 
     child_t *child = (child_t *) malloc(sizeof(child_t));
 
     char key[18] = { 0x0 };
     prepare_key(in_frame->eth.ether_shost, key);
     if (hashmap_get(self.children, key, (void **)&child) == MAP_MISSING) {
-        log_warn("%s is not our child. Ignoring.", key);
+        log_warn("Received from from unknown node. Ignoring. [addr: %s]", key);
         return;
     }
 
     self.round_unchanged_cnt = 0;
 
     if (hashmap_remove(self.children, key) == MAP_MISSING) {
-        log_warn("Could not remove child %s", key);
+        log_warn("Could not remove child. [addr: %s]", key);
     }
 
     if (child->tx_pwr == self.high_pwr) {
@@ -506,30 +524,35 @@ void handle_parent_revocation(eth_radio_btp_t *in_frame) {
     }
 
     free(child);
+
+    log_info("Removed child due to parent revocation. [addr %s]", key);
 }
 
 void handle_end_of_game(eth_radio_btp_t *in_frame) {
     // If we do not have a tree id (i.e., we are not part of a tree) or the received tree id does not match ours, ignore.
-    if (!self_is_connected() || self.tree_id != in_frame->btp.tree_id) return;
+    if (!self_is_connected() || self.tree_id != in_frame->btp.tree_id) {
+        log_debug("We are either not connected or received wring tree id. [is_connected: %s, our tree ID: %i, received tree ID: %i]", self_is_connected() ? "true" : "false", self.tree_id, in_frame->btp.tree_id);
+        return;
+    }
 
     child_t *child = { 0x0 };
 
     char key[18] = { 0x0 };
     prepare_key(in_frame->eth.ether_shost, key);
     if (hashmap_get(self.children, key, (void **)&child) == MAP_MISSING) {
-        log_warn("%s is not our child. Ignoring. Hashmap has size of %d.", key, hashmap_length(self.children));
+        log_warn("Not our child. Ignoring. [addr: %s]", key);
         return;
     }
 
-    log_info("Child %s has finished its game.", key);
-
     child->game_fin = true;
+
+    log_info("Child has finished its game. [addr: %s]", key);
 }
 
 void handle_cycle_detection_ping(uint8_t *recv_frame) {
     // If we are the source or we have no parent, we are not able to forward this ping
     if (self.is_source || !self_is_connected()) {
-        log_info("Have no parent, not forwarding Ping to Source");
+        log_info("Have no parent, not forwarding Ping to Source. [is_source: %s, is_connected: %s]", self.is_source ? "true" : "false", !self_is_connected() ? "true" : "false");
         return;
     }
 
@@ -537,23 +560,27 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
     memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_pts_t));
 
     // If the received tree id does not match ours, ignore.
-    if (self.tree_id != in_frame.btp_frame.btp.tree_id) return;
+    if (self.tree_id != in_frame.btp_frame.btp.tree_id) {
+        log_debug("Not our tree ID. [our tree ID: %i, received tree ID: %i]", self.tree_id, in_frame.btp_frame.btp.tree_id);
+        return;
+    }
 
     if (memcmp(self.laddr, in_frame.sender, 6) == 0) {
-        log_warn("Detected potential cycle!");
+        log_warn("Detected potential cycle! [our addr: %s, sender addr: %s]", mac_to_str(self.laddr), mac_to_str(in_frame.sender));
         if (memcmp(self.parent->addr, in_frame.new_parent, 6) != 0) {
             // Here, our current parent and the parent in question from the Ping to Source frame do not match.
             // This means, that in the time from connecting to the parent in question and receiving this
             // Ping to Source, we probably already connected to another parent already and the cycle is already broken.
-            log_info("Potential cycle turned out already broken. Ignoring this Ping to Source message.");
+            log_info("Potential cycle turned out already broken. Ignoring this Ping to Source message. [our addr: %s, sender addr: %s]", mac_to_str(self.laddr), mac_to_str(in_frame.sender));
             return;
         } else {
             // So, we really detected a cycle. We disconnect from our parent and reconnect to the old parent.
             disconnect_from_parent();
+            log_info("Disconnected from parent due to cycle.");
 
             if (!self.prev_parent){
-                log_warn("Have no previous parent, can not re-connect.");
                 disconnect_all_children();
+                log_warn("Have no previous parent, can not re-connect. Disconnected from all children.");
                 return;
             }
 
@@ -568,15 +595,14 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
 }
 
 void game_round(int cur_time) {
-
     // if we are currently waiting to connect to a new parent, we don't modify our state, since we are about to change the topology
     if (self_is_pending()) {
         if (cur_time >= self.pending_parent->last_seen + PENDING_TIMEOUT) {
-            log_warn("Pending parent did not respond in time. Removing pending parent.");
+            log_warn("Pending parent did not respond in time. Removing pending parent. [addr: %s]", mac_to_str(self.pending_parent->addr));
             free(self.pending_parent);
             self.pending_parent = NULL;
         }
-        log_debug("Currently pending new connection");
+        log_debug("Currently pending new connection. [addr: %s]", mac_to_str(self.pending_parent->addr));
         return;
     }
 
@@ -586,21 +612,27 @@ void game_round(int cur_time) {
         return;
     }
 
-    if (self.is_source || self_is_connected()) self.round_unchanged_cnt++;
+    if (self.is_source || self_is_connected()) {
+        self.round_unchanged_cnt++;
+        log_debug("Increased unchanged counter. [is_source: %s, is_connected: %s]", self.is_source ? "true" : "false", self_is_connected() ? "true" : "false");
+    }
 
-    log_debug("Current unchanged counter: %d", self.round_unchanged_cnt);
+    log_debug("Current counter: [%i]", self.round_unchanged_cnt);
 
-    if (self.round_unchanged_cnt >= MAX_UNCHANGED_ROUNDS && all_children_fin()) {
-        log_info("Unchanged-round-counter reached max, ending game.");
+    bool children_fin = all_children_fin();
+    if (self.round_unchanged_cnt >= MAX_UNCHANGED_ROUNDS && children_fin) {
+        log_info("Ending game. [unchanged counter: %i, children_fin: %s]", self.round_unchanged_cnt, children_fin ? "true" : "false");
         self.game_fin = true;
 
         if (self.is_source) {
             send_payload();
+            log_debug("Sent payload.");
         } else {
             eth_btp_t eog = {0x0};
             build_frame(&eog, self.parent->addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
 
             send_btp_frame((uint8_t *) &eog, sizeof(eth_btp_t), self.max_pwr);
+            log_debug("Sent end of game frame. [parent addr: %s, tx power: %i]", mac_to_str(self.parent->addr), self.max_pwr);
         }
     }
 }
@@ -618,14 +650,16 @@ void forward_payload(eth_radio_btp_payload_t *in_frame){
     memcpy(out_frame.payload, in_frame->payload, in_frame->payload_chunk_len);
 
     if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len, self.high_pwr) < 0) {
-        return;
+        log_warn("Could not forward payload.");
+    } else {
+        log_info("Successfully forwarded payload.");
     }
 }
 
 void handle_data(uint8_t *recv_frame) {
     // If we are the source, we do not want any payload.
     if (self.is_source) {
-        log_debug("Ignoring data as I'm the source.");
+        log_debug("Ignoring data frame. [is_source: %s]", self.is_source ? "true" : "false");
         return;
     }
 
@@ -633,22 +667,27 @@ void handle_data(uint8_t *recv_frame) {
     memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_payload_t));
 
     // If the received tree id does not match ours, ignore.
-    if (self.tree_id != in_frame.btp_frame.btp.tree_id) return;
+    if (self.tree_id != in_frame.btp_frame.btp.tree_id) {
+        log_debug("This data frame is not for our tree. [our tree ID: %i, received tree ID: %i]", self.tree_id, in_frame.btp_frame.btp.tree_id);
+        return;
+    }
+
+    log_info("Received data frame. [payload size: %i, addr: %s]", in_frame.payload_len, mac_to_str(in_frame.btp_frame.eth.ether_shost));
 
     if (!payload_recv_buf) {
-        log_debug("Initializing receive buffer stuff. Payload is %d bytes big.", in_frame.payload_len);
         max_seq_num = (in_frame.payload_len / MAX_PAYLOAD) + 1;
         payload_recv_buf = (uint8_t *) malloc(in_frame.payload_len);
         seq_nums = (bool *) malloc(sizeof(bool) * max_seq_num);
         memset(seq_nums, 0, sizeof(bool) * max_seq_num);
+        log_debug("Initialized receive buffer stuff. [total payload size: %i]", in_frame.payload_len);
     }
 
     if (!seq_nums[in_frame.seq_num]){
-        log_debug("Writing %d bytes for seq num %d", in_frame.payload_chunk_len, in_frame.seq_num);
         uint16_t offset = in_frame.seq_num * MAX_PAYLOAD;
         memcpy(payload_recv_buf + offset, in_frame.payload, in_frame.payload_chunk_len);
         seq_nums[in_frame.seq_num] = true;
         seq_num_cnt++;
+        log_debug("Wrote payload chunk. [chunk size: %i, seq num: %i]", in_frame.payload_chunk_len, in_frame.seq_num);
     }
 
     if (seq_num_cnt >= max_seq_num) {
@@ -657,17 +696,15 @@ void handle_data(uint8_t *recv_frame) {
         char tmp_fname[] = "btp_result_XXXXXX";
 
         if ((out_fd = mkstemp(tmp_fname)) < 0) {
-            log_error("Could not open payload file: %s", strerror(errno));
+            log_error("Could not open payload file. [error: %s]", strerror(errno));
             return;
         }
 
-        log_info("Received entire payload, writing to file %s", tmp_fname);
-
         if ((written_bytes = write(out_fd, payload_recv_buf, in_frame.payload_len)) != in_frame.payload_len) {
-            log_warn("Wrote only %d bytes instead of %d.", written_bytes, in_frame.payload_len);
+            log_warn("Wrote too few bytes. [written: %i, expected: %i]", written_bytes, in_frame.payload_len);
         }
 
-        log_info("Done writing payload to %s", tmp_fname);
+        log_info("Received entire payload. [file path: %s]", tmp_fname);
         close(out_fd);
     }
 
@@ -681,40 +718,31 @@ void handle_packet(uint8_t *recv_frame) {
 
     switch (in_frame.btp.frame_type) {
         case discovery:
-            log_debug("Received Discovery");
             handle_discovery(&in_frame);
             break;
         case child_request:
-            log_debug("Received Child Request.");
             handle_child_request(&in_frame);
             break;
         case child_confirm:
-            log_debug("Received Child Confirm.");
             handle_child_confirm(&in_frame);
             break;
         case child_reject:
-            log_debug("Received Child Reject.");
             handle_child_reject(&in_frame);
             break;
         case parent_revocaction:
-            log_debug("Received Parent Revocation.");
             handle_parent_revocation(&in_frame);
             break;
         case end_of_game:
-            log_debug("Received End of Game.");
             handle_end_of_game(&in_frame);
             break;
         case ping_to_source:
-            log_debug("Received Ping to Source cycle detection.");
             handle_cycle_detection_ping(recv_frame);
             break;
         case data:
-            log_debug("Received data.");
             handle_data(recv_frame);
             break;
 
         default:
             log_error("Received unknown type");
-
     }
 }

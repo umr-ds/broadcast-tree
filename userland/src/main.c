@@ -57,12 +57,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
         case 's':
             res = realpath(arg, buf);
             if (!res) {
-                log_error("Could not read file: %s", strerror(errno));
+                log_error("Could not read file. [arg= %s, err= %s]", arg, strerror(errno));
                 exit(EXIT_FAILURE);
             }
 
             arguments->payload = res;
-            log_debug("Will send file %s.", arguments->payload);
             break;
         case 'l':
             arguments->log_level = (int) strtol(arg, NULL, 10);
@@ -90,45 +89,46 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
 static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
 
 int init_sock(char *if_name, char *payload) {
-    log_info("Initialising socket.");
+    log_info("Initialising socket. [interface: %s]", if_name);
     int ioctl_stat;
     int tmp_sockfd;
 
     struct ifreq if_idx;
     struct ifreq if_mac;
 
-    log_debug("Creating socket.");
     if ((tmp_sockfd = socket(AF_PACKET, SOCK_RAW, htons(BTP_ETHERTYPE))) == -1) {
         log_error("Could not create socket: %s", explain_socket(AF_PACKET, SOCK_RAW, htons(BTP_ETHERTYPE)));
         return tmp_sockfd;
     }
+    log_debug("Created socket. [sock_fd: %i]", tmp_sockfd);
 
-    log_debug("Getting interface's index.");
     memcpy(if_idx.ifr_name, if_name, IFNAMSIZ - 1);
     ioctl_stat = ioctl(tmp_sockfd, SIOCGIFINDEX, &if_idx);
     if (ioctl_stat < 0) {
-        log_error("Could not get the interface's index: %s", explain_ioctl(tmp_sockfd, SIOCGIFINDEX, &if_idx));
+        log_error("Could not get the interface's index. [%s]", explain_ioctl(tmp_sockfd, SIOCGIFINDEX, &if_idx));
     }
+    log_debug("Got interface's index.");
 
-    log_debug("Acquiring MAC address.");
     memcpy(if_mac.ifr_name, if_name, IFNAMSIZ - 1);
     ioctl_stat = ioctl(tmp_sockfd, SIOCGIFHWADDR, &if_mac);
     if (ioctl_stat < 0) {
-        log_error("Could not get MAC address: %s", explain_ioctl(tmp_sockfd, SIOCGIFHWADDR, &if_mac));
+        log_error("Could not get MAC address. [%s]", explain_ioctl(tmp_sockfd, SIOCGIFHWADDR, &if_mac));
         return ioctl_stat;
     }
+    log_debug("Acquired MAC address.");
 
     L_SOCKADDR.sll_ifindex = if_idx.ifr_ifindex;
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
-    log_debug("Initializing self.");
     init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, payload, if_name, tmp_sockfd);
+    log_debug("Initialized self.");
 
     int8_t max_tx_pwr;
     if ((max_tx_pwr = get_max_tx_pwr()) < 0) {
         return -1;
     }
     self.max_pwr = max_tx_pwr;
+    log_debug("Figured out max sending power. [%i]", max_tx_pwr);
 
     return tmp_sockfd;
 }
@@ -151,6 +151,7 @@ int event_loop() {
             start_time = cur_time;
 
             game_round(cur_time);
+            log_debug("Evaluated game round.");
         }
 
         struct pollfd pfd = {
@@ -161,7 +162,7 @@ int event_loop() {
         res = poll(&pfd, 1, POLL_TIMEOUT);
 
         if (res == -1) {
-            log_error("Poll returned an error: %s", explain_poll(&pfd, 1, POLL_TIMEOUT));
+            log_error("Poll returned an error. [%s]", explain_poll(&pfd, 1, POLL_TIMEOUT));
             return res;
         }
 
@@ -171,15 +172,15 @@ int event_loop() {
 
         if (pfd.revents & POLLIN) {
             if ((read_bytes = recv(self.sockfd, recv_frame, MTU, 0)) >= 0) {
-                log_info("Received BTP packet.");
+                log_info("Received BTP packet. [read_bytes: %i]", read_bytes);
                 handle_packet(recv_frame);
             } else {
                 if (errno == EINTR) {
                     memset(recv_frame, 0, MTU * sizeof (uint8_t));
-                    log_error("Received signal from recv: %s", strerror(errno));
+                    log_error("Receive was interrupted. [error: %s]", strerror(errno));
                     continue;
                 } else {
-                    log_error("Could not receive data: %s", strerror(errno));
+                    log_error("Receive returned and error. [error: %s]", strerror(errno));
                     return read_bytes;
                 }
             }
