@@ -278,6 +278,9 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
     self.pending_parent->snd_high_pwr = snd_high_pwr;
     self.pending_parent->last_seen = get_time_msec();
 
+    if (self.prev_parent) free(self.prev_parent);
+    self.prev_parent = self.parent;
+
     log_debug("Updated self. [own_prw: %i, high_pwr: %i, snd_high_pwr: %i, last_seen: %i]", self.pending_parent->own_pwr, self.pending_parent->high_pwr, self.pending_parent->snd_high_pwr, self.pending_parent->last_seen);
 
     eth_btp_t child_request_frame = { 0x0 };
@@ -458,8 +461,6 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
 
     self.tree_id = in_frame->btp.tree_id;
 
-    if (self.prev_parent) free(self.prev_parent);
-    self.prev_parent = self.parent;
     self.parent = self.pending_parent;
     self.parent->last_seen = get_time_msec();
     self.pending_parent = NULL;
@@ -624,12 +625,12 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
 void game_round(int cur_time) {
     // if we are currently waiting to connect to a new parent, we don't modify our state, since we are about to change the topology
     if (self_is_pending()) {
+        log_debug("Currently pending new connection. [addr: %s]", mac_to_str(self.pending_parent->addr));
         if (cur_time >= self.pending_parent->last_seen + PENDING_TIMEOUT) {
             log_warn("Pending parent did not respond in time. Removing pending parent. [addr: %s]", mac_to_str(self.pending_parent->addr));
             free(self.pending_parent);
             self.pending_parent = NULL;
         }
-        log_debug("Currently pending new connection. [addr: %s]", mac_to_str(self.pending_parent->addr));
         return;
     }
 
