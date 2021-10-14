@@ -753,6 +753,7 @@ void handle_data(uint8_t *recv_frame) {
 
         log_info("Received entire payload. [file path: %s]", tmp_fname);
         close(out_fd);
+        payload_complete = true;
     }
 
 }
