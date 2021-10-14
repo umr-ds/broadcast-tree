@@ -723,6 +723,8 @@ void handle_data(uint8_t *recv_frame) {
         seq_nums[in_frame.seq_num] = true;
         seq_num_cnt++;
         log_debug("Wrote payload chunk. [chunk size: %i, seq num: %i]", in_frame.payload_chunk_len, in_frame.seq_num);
+
+        forward_payload(&in_frame);
     }
 
     if (seq_num_cnt >= max_seq_num) {
@@ -742,8 +744,6 @@ void handle_data(uint8_t *recv_frame) {
         log_info("Received entire payload. [file path: %s]", tmp_fname);
         close(out_fd);
     }
-
-    forward_payload(&in_frame);
 
 }
 
