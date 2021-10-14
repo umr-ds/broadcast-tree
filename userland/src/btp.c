@@ -219,7 +219,6 @@ void parse_header(eth_radio_btp_t *in_frame, uint8_t *recv_frame) {
 }
 
 int8_t compute_tx_pwr(eth_radio_btp_t *in_frame) {
-    // FIXME: something's very wrong with the send-power calculation (probably unit mismatch, or something)
     log_info("Computing TX power.");
     int8_t old_tx_power = in_frame->btp.tx_pwr;
     int8_t signal = in_frame->radiotap.dbm_antsignal;

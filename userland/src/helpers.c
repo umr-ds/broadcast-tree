@@ -5,9 +5,15 @@
 #include "log.h"
 #include "helpers.h"
 
+typedef struct {
+    int8_t high_pwr;
+    int8_t snd_high_pwr;
+} snd_pwr_iterator_t;
+
 extern self_t self;
 
-int hashmap_child_fin(any_t item, any_t data);
+int hashmap_child_fin(any_t item, any_t args);
+int hashmap_snd_pwr(any_t item, any_t args);
 
 int hashmap_child_fin(any_t item, any_t args) {
     (void)(item);
@@ -15,7 +21,7 @@ int hashmap_child_fin(any_t item, any_t args) {
 
     log_debug("Game fin status. [addr: %s, game_fin: %s]", mac_to_str(tmp_child->addr), tmp_child->game_fin ? "true" : "false");
 
-    return tmp_child->game_fin ? MAP_OK : MAP_MISSING;;
+    return tmp_child->game_fin ? MAP_OK : MAP_MISSING;
 }
 
 bool all_children_fin() {
@@ -24,38 +30,31 @@ bool all_children_fin() {
         return true;
     }
 
-    // FIXME: shit's broken, yo!
     return hashmap_iterate(self.children, hashmap_child_fin, NULL) == MAP_OK;
 }
 
+int hashmap_snd_pwr(any_t item, any_t args) {
+    snd_pwr_iterator_t *snd_pwr_iterator = (snd_pwr_iterator_t *) item;
+    child_t *tmp_child = (child_t *) args;
+
+    if (tmp_child->tx_pwr > snd_pwr_iterator->high_pwr) {
+        snd_pwr_iterator->snd_high_pwr = snd_pwr_iterator->high_pwr;
+        snd_pwr_iterator->high_pwr = tmp_child->tx_pwr;
+    } else if (tmp_child->tx_pwr > snd_pwr_iterator->snd_high_pwr) {
+        snd_pwr_iterator->snd_high_pwr = tmp_child->tx_pwr;
+    }
+
+    return MAP_OK;
+}
+
 int8_t get_snd_pwr() {
-    int num_children = hashmap_length(self.children);
-    char **keys = (char **) malloc(num_children);
+    snd_pwr_iterator_t *snd_pwr_iterator = (snd_pwr_iterator_t *) malloc(sizeof(snd_pwr_iterator_t));
+    snd_pwr_iterator->high_pwr = 0;
+    snd_pwr_iterator->snd_high_pwr = 0;
 
-    if (hashmap_get_keys(self.children, keys) != MAP_OK) {
-        log_warn("Could not get children.");
-        return -1;
-    }
+    hashmap_iterate(self.children, hashmap_snd_pwr, snd_pwr_iterator);
 
-    int i;
-    int8_t high_tmp = 0;
-    int8_t snd_high_tmp = 0;
-    child_t *tmp_child = malloc(sizeof(child_t));
-    for (i = 0; i < num_children; i++) {
-        if(hashmap_get(self.children, keys[i], (void **) tmp_child) == MAP_MISSING) {
-            log_warn("Child could not be found. [addr: %s]", mac_to_str((uint8_t*) keys[i]));
-            continue;
-        }
-
-        if (tmp_child->tx_pwr > high_tmp) {
-            snd_high_tmp = high_tmp;
-            high_tmp = tmp_child->tx_pwr;
-        } else if (tmp_child->tx_pwr > snd_high_tmp) {
-            snd_high_tmp = tmp_child->tx_pwr;
-        }
-    }
-
-    return snd_high_tmp;
+    return snd_pwr_iterator->snd_high_pwr;
 }
 
 int get_time_msec() {

@@ -67,7 +67,7 @@ typedef struct {
  */
 typedef struct {
     uint8_t recv_err:1; // flag set if the channel has been very noisy; NOTE: Why? Really needed? Might remove.
-    uint8_t game_fin:1; // flag set if the node has already finished its game // TODO: set and check appropriately
+    uint8_t game_fin:1; // flag set if the node has already finished its game
     uint8_t mutex:1; // flags set if something-something mutex
     uint8_t unused:2;
     frame_t frame_type:3; // see frame_t enum
