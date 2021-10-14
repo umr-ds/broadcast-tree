@@ -293,6 +293,15 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
 
 void handle_discovery(eth_radio_btp_t *in_frame) {
     log_info("Received Discovery frame.");
+
+    child_t *potential_child;
+    char key[18] = { 0x0 };
+    prepare_key(in_frame->eth.ether_shost, key);
+    if (hashmap_get(self.children, key, (void **)&potential_child) == MAP_OK) {
+        potential_child->game_fin = in_frame->btp.game_fin;
+    }
+
+
     // if we are the tree's source, we don't want to connect to anyone
     if (self.is_source && in_frame->btp.tree_id == self.tree_id) {
         log_debug("We are either the source or the tree ID is not matching. [is_source: %s, received tree ID: %i, our tree ID: %i]", self.is_source ? "true" : false, in_frame->btp.tree_id, self.tree_id);
@@ -306,8 +315,6 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
     }
 
     // If the address is in the parent blocklist, we won't attempt to connect again
-    char key[18] = { 0x0 };
-    prepare_key(in_frame->eth.ether_shost, key);
     if (hashmap_get(self.parent_blocklist, key, (void **)&dummy) == MAP_OK) {
         log_debug("Already ignoring potential parent. [addr: %s]", mac_to_str(in_frame->eth.ether_shost));
         return;
@@ -474,7 +481,7 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
     if (!self.game_fin) {
         self.round_unchanged_cnt = 0;
         self.game_fin = in_frame->btp.game_fin;
-        log_debug("Our game not finished yet, resetting counter.");
+        log_debug("Our game not finished yet, resetting counter. [self.game_fin: %s]", self.game_fin ? "true" : "false");
     }
 }
 
