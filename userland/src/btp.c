@@ -13,6 +13,7 @@ uint8_t *payload_recv_buf = NULL;
 bool *seq_nums = NULL;
 uint16_t max_seq_num = 0;
 uint16_t seq_num_cnt = 0;
+bool payload_complete = false;
 
 char *dummy = NULL;
 
@@ -736,7 +737,7 @@ void handle_data(uint8_t *recv_frame) {
         forward_payload(&in_frame);
     }
 
-    if (seq_num_cnt >= max_seq_num) {
+    if (!payload_complete && seq_num_cnt >= max_seq_num) {
         int out_fd;
         int written_bytes;
         char tmp_fname[] = "btp_result_XXXXXX";
