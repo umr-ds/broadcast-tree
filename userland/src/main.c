@@ -19,6 +19,13 @@
 
 extern self_t self;
 
+/**
+ * TODO: Proposal.
+ * The source should repeatedly send its payload until it has no children anymore.
+ * And children should disconnect from their parents as soon as they have received the entire payload and do not have
+ * children anymore.
+ */
+
 int init_sock(char *if_name, char *payload);
 int event_loop(void);
 
@@ -152,10 +159,10 @@ int event_loop(void) {
             }
 
             start_time = cur_time;
-
-            game_round(cur_time);
-            log_debug("Evaluated game round.");
         }
+
+        game_round(cur_time);
+        log_debug("Evaluated game round.");
 
         struct pollfd pfd = {
             .fd = self.sockfd,
