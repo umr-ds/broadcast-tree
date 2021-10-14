@@ -17,14 +17,14 @@
 #define MAX_PAYLOAD (MTU - (BTP_PAYLOAD_HEADER_SIZE))
 #define MAX_DEPTH 20
 
-#define POLL_TIMEOUT 1000   // timeout for poll in ms
+#define POLL_TIMEOUT 100   // timeout for poll in ms
 
 #define BTP_ETHERTYPE 35039
 
 #define MINIMAL_SNR 4
 
 #define DISCOVERY_BCAST_INTERVAL_MSEC 1000
-#define PENDING_TIMEOUT 1000
+#define PENDING_TIMEOUT 100
 
 #define MAX_UNCHANGED_ROUNDS 5
 
