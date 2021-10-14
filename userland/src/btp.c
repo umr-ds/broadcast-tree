@@ -42,7 +42,7 @@ bool self_is_pending(void);
 bool self_has_children(void);
 
 bool self_is_connected(void) {
-    return self.parent;
+    return self.parent || self.is_source;
 }
 
 bool self_is_pending(void) {
@@ -298,7 +298,13 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
     char key[18] = { 0x0 };
     prepare_key(in_frame->eth.ether_shost, key);
     if (hashmap_get(self.children, key, (void **)&potential_child) == MAP_OK) {
-        potential_child->game_fin = in_frame->btp.game_fin;
+        if (memcmp(self.laddr, in_frame->btp.parent_addr, sizeof(mac_addr_t)) != 0) {
+            log_warn("We are not the parent of this child anymore. Removing child. [child addr: %s, new parent add: %s]",
+                     mac_to_str(in_frame->eth.ether_shost), mac_to_str(in_frame->btp.parent_addr));
+            handle_parent_revocation(in_frame);
+        } else {
+            potential_child->game_fin = in_frame->btp.game_fin;
+        }
     }
 
 
@@ -341,7 +347,7 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
     int8_t new_parent_tx = compute_tx_pwr(in_frame);
 
     bool is_connected = self_is_connected();
-    if (!is_connected) {
+    if (!is_connected && !self.is_source) {
         establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.high_pwr, in_frame->btp.snd_high_pwr, in_frame->btp.tree_id);
         log_debug("We are not connected. [is_connected: %s]", is_connected ? "true" : false);
         return;
@@ -402,7 +408,7 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
 
 void handle_child_request(eth_radio_btp_t *in_frame) {
     // If we are not the source and are not connected, then there is nothing to do
-    if (!self.is_source && !self_is_connected()) {
+    if (!self_is_connected()) {
         log_debug("We are the source or are not connected. Returning. [is_source: %s, is_connected: %s]", self.is_source ? "true": "false", self_is_connected() ? "true": "false");
         return;
     }
@@ -420,7 +426,7 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
     }
 
     int8_t potential_child_send_pwr = compute_tx_pwr(in_frame);
-    if ((!self_is_connected() && !self.is_source)
+    if ((!self_is_connected())
         || hashmap_length(self.children) >= BREADTH
         || potential_child_send_pwr > self.max_pwr
        ) {
@@ -566,7 +572,7 @@ void handle_parent_revocation(eth_radio_btp_t *in_frame) {
 void handle_end_of_game(eth_radio_btp_t *in_frame) {
     // If we do not have a tree id (i.e., we are not part of a tree) or the received tree id does not match ours, ignore.
     if (!self_is_connected() || self.tree_id != in_frame->btp.tree_id) {
-        log_debug("We are either not connected or received wring tree id. [is_connected: %s, our tree ID: %i, received tree ID: %i]", self_is_connected() ? "true" : "false", self.tree_id, in_frame->btp.tree_id);
+        log_debug("We are either not connected or received wrong tree id. [is_connected: %s, our tree ID: %i, received tree ID: %i]", self_is_connected() ? "true" : "false", self.tree_id, in_frame->btp.tree_id);
         return;
     }
 
@@ -647,7 +653,7 @@ void game_round(int cur_time) {
         return;
     }
 
-    if (self.is_source || self_is_connected()) {
+    if (self_is_connected()) {
         self.round_unchanged_cnt++;
         log_debug("Increased unchanged counter. [is_source: %s, is_connected: %s]", self.is_source ? "true" : "false", self_is_connected() ? "true" : "false");
     }
