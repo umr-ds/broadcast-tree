@@ -331,14 +331,18 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
     int8_t new_parent_tx = compute_tx_pwr(in_frame);
 
     bool is_connected = self_is_connected();
-    bool _should_switch = should_switch(in_frame->btp, new_parent_tx);
-
-    if (is_connected && !_should_switch) {
-        log_debug("Either not connected or should not switch. [is_connected: %s, should_switch: %s]", is_connected ? "true" : false, _should_switch ? "true" : "false");
+    if (!is_connected) {
+        establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.high_pwr, in_frame->btp.snd_high_pwr, in_frame->btp.tree_id);
+        log_debug("We are not connected. [is_connected: %s]", is_connected ? "true" : false);
         return;
     }
 
-    establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.high_pwr, in_frame->btp.snd_high_pwr, in_frame->btp.tree_id);
+    bool _should_switch = should_switch(in_frame->btp, new_parent_tx);
+    if (_should_switch) {
+        establish_connection(potential_parent_addr, new_parent_tx, in_frame->btp.high_pwr, in_frame->btp.snd_high_pwr, in_frame->btp.tree_id);
+        log_debug("We should switch to new parent. [should_switch: %s, new parent addr: %s]", _should_switch ? "true" : "false", mac_to_str(potential_parent_addr));
+        return;
+    }
 }
 
 void reject_child(eth_radio_btp_t *in_frame) {
