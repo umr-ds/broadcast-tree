@@ -225,11 +225,15 @@ int8_t compute_tx_pwr(eth_radio_btp_t *in_frame) {
     int8_t signal = in_frame->radiotap.dbm_antsignal;
     int8_t noise = in_frame->radiotap.dbm_antnoise;
 
-    int8_t snr = signal - noise;
+    int32_t snr = signal - noise;
 
-    int8_t new_tx_power = old_tx_power - (snr - MINIMAL_SNR);
+    int32_t new_tx_power = old_tx_power - (snr - MINIMAL_SNR);
 
-    int8_t result = new_tx_power < 0 ? 0 : new_tx_power;
+    if (new_tx_power < -127 || new_tx_power > 128) {
+        log_warn("Calculated tx power would overflow. [new_tx_power: %i]", new_tx_power);
+    }
+
+    int8_t result = (int8_t) (new_tx_power < 0 ? 0 : new_tx_power);
 
     log_debug("Computed tx power. [RSSI: %i, noise: %i, SNR: %i, sender tx: %i, computed tx: %i, result: %i]", signal, noise, snr, old_tx_power, new_tx_power, result);
 
@@ -255,11 +259,11 @@ bool should_switch(btp_header_t header, int8_t new_parent_tx) {
 
     // The difference between the old parent's current sending power to reach us and
     // its gains when not connected to us.
-    int8_t gain = self.parent->own_pwr - self.parent->snd_high_pwr;
+    int32_t gain = self.parent->own_pwr - self.parent->snd_high_pwr;
 
     // The difference between the new parents new sending power to reach us and its
     // current highest sending power, i.e., how bad would it be to switch to this parent.
-    int8_t loss = new_parent_tx - header.high_pwr;
+    int32_t loss = new_parent_tx - header.high_pwr;
 
     bool _should_switch = gain > loss;
 
