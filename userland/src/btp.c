@@ -132,6 +132,7 @@ void send_payload(void) {
 
     if ((payload_fd = open(self.payload, O_RDONLY)) == -1) {
         log_error("Could not open file. [error: %s]", strerror(errno));
+        return;
     }
 
     struct stat file_stats;
@@ -721,7 +722,8 @@ void handle_data(uint8_t *recv_frame) {
     // already receiving data frames from other nodes.
     if (self.is_source) {
         forward_payload(&in_frame);
-        log_debug("Ignoring data frame. [is_source: %s]", self.is_source ? "true" : "false");
+        payload_complete = true;
+        log_debug("Only forwarding data frame. [is_source: %s]", self.is_source ? "true" : "false");
         return;
     }
 
