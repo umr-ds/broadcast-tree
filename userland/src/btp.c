@@ -702,14 +702,15 @@ void forward_payload(eth_radio_btp_payload_t *in_frame) {
 }
 
 void handle_data(uint8_t *recv_frame) {
+    eth_radio_btp_payload_t in_frame = { 0x0 };
+    memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_payload_t));
+
     // If we are the source, we do not want any payload.
     if (self.is_source) {
+        forward_payload(&in_frame);
         log_debug("Ignoring data frame. [is_source: %s]", self.is_source ? "true" : "false");
         return;
     }
-
-    eth_radio_btp_payload_t in_frame = { 0x0 };
-    memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_payload_t));
 
     // If the received tree id does not match ours, ignore.
     if (self.tree_id != in_frame.btp_frame.btp.tree_id) {
@@ -734,7 +735,6 @@ void handle_data(uint8_t *recv_frame) {
         seq_num_cnt++;
         log_debug("Wrote payload chunk. [chunk size: %i, seq num: %i]", in_frame.payload_chunk_len, in_frame.seq_num);
 
-        forward_payload(&in_frame);
     }
 
     if (!payload_complete && seq_num_cnt >= max_seq_num) {
@@ -756,6 +756,13 @@ void handle_data(uint8_t *recv_frame) {
         payload_complete = true;
     }
 
+    forward_payload(&in_frame);
+
+    // If if we received the entire payload and have no children, we disconnect from our parent to notify them,
+    // that we are finished.
+    if (payload_complete && hashmap_length(self.children) == 0) {
+        disconnect_from_parent();
+    }
 }
 
 void handle_packet(uint8_t *recv_frame) {

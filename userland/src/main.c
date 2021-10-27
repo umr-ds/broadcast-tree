@@ -18,6 +18,7 @@
 #include "helpers.h"
 
 extern self_t self;
+extern bool payload_complete;
 
 /**
  * TODO: Proposal.
@@ -152,6 +153,11 @@ int event_loop(void) {
     int res;
     log_info("Waiting for BTP packets.");
     while (1) {
+        // If we have received the entire payload, we can shutdown or execution.
+        if (payload_complete) {
+            return 0;
+        }
+
         int cur_time = get_time_msec();
         if (cur_time - start_time > DISCOVERY_BCAST_INTERVAL_MSEC) {
             if (self.is_source || self_is_connected()) {
