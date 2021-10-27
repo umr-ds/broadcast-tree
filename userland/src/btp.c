@@ -72,9 +72,7 @@ ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
 
 void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
     bool is_source = strlen(payload) == 0 ? false : true;
-
     self.is_source = is_source;
-    self.payload = payload;
     self.children = hashmap_new();
     self.parent_blocklist = hashmap_new();
     self.max_pwr = 0;
@@ -87,7 +85,10 @@ void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
     self.sockfd = sockfd;
     self.game_fin = false;
     self.round_unchanged_cnt = 0;
+
     strncpy(self.if_name, if_name, IFNAMSIZ);
+
+    self.payload_fd = open(payload, O_RDONLY);
 
     dummy = (char *) malloc(sizeof(char));
 }
@@ -126,17 +127,13 @@ void disconnect_all_children(void) {
 void send_payload(void) {
     log_info("Starting sending payload.");
 
-    int payload_fd;
     int bytes_read = 1;
     uint16_t seq_num = 0;
 
-    if ((payload_fd = open(self.payload, O_RDONLY)) == -1) {
-        log_error("Could not open file. [error: %s]", strerror(errno));
-        return;
-    }
+
 
     struct stat file_stats;
-    fstat(payload_fd, &file_stats);
+    fstat(self.payload_fd, &file_stats);
 
     eth_btp_t payload_base = { 0x0 };
     mac_addr_t bcast_addr = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -148,7 +145,7 @@ void send_payload(void) {
 
     log_debug("Starting chunking file for transfer.");
     while (bytes_read > 0) {
-        if ((bytes_read = read(payload_fd, payload_frame.payload, MAX_PAYLOAD)) < 0) {
+        if ((bytes_read = read(self.payload_fd, payload_frame.payload, MAX_PAYLOAD)) < 0) {
             log_error("Could not read from file. [error: %s]", strerror(errno));
             return;
         }
@@ -168,7 +165,6 @@ void send_payload(void) {
         log_debug("Successfully sent next chunk. [bytes_read: %i, seq_num: %i]", bytes_read, payload_frame.seq_num);
     }
 
-    close(payload_fd);
     log_info("Completely sent file.");
 }
 
