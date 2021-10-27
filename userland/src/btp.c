@@ -130,7 +130,7 @@ void send_payload(void) {
     int bytes_read = 1;
     uint16_t seq_num = 0;
 
-
+    lseek(self.payload_fd, 0, SEEK_SET);
 
     struct stat file_stats;
     fstat(self.payload_fd, &file_stats);
