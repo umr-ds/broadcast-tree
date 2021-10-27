@@ -154,7 +154,11 @@ int event_loop(void) {
     log_info("Waiting for BTP packets.");
     while (1) {
         // If we have received the entire payload, we can shutdown or execution.
-        if (payload_complete) {
+        // If if we received the entire payload and have no children, we disconnect from our parent to notify them,
+        // that we are finished.
+        if (payload_complete && hashmap_length(self.children) == 0) {
+            log_info("Received entire payload and have no children. Disconnecting from parent.");
+            disconnect_from_parent();
             return 0;
         }
 

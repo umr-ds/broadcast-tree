@@ -31,7 +31,6 @@ void handle_discovery(eth_radio_btp_t *in_frame);
 void reject_child(eth_radio_btp_t *in_frame);
 void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr);
 void handle_child_request(eth_radio_btp_t *in_frame);
-void disconnect_from_parent(void);
 void handle_child_confirm(eth_radio_btp_t *in_frame);
 void handle_child_reject(eth_radio_btp_t *in_frame);
 void handle_parent_revocation(eth_radio_btp_t *in_frame);
@@ -654,6 +653,10 @@ void game_round(int cur_time) {
     // the end-of-game-state is final and once we reach it, we never switch back out of it
     if (self.game_fin) {
         log_debug("Game already finished, doing nothing");
+        if (self.is_source) {
+            send_payload();
+            log_debug("Re-sent payload.");
+        }
         return;
     }
 
@@ -705,13 +708,6 @@ void handle_data(uint8_t *recv_frame) {
     eth_radio_btp_payload_t in_frame = { 0x0 };
     memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_payload_t));
 
-    // If we are the source, we do not want any payload.
-    if (self.is_source) {
-        forward_payload(&in_frame);
-        log_debug("Ignoring data frame. [is_source: %s]", self.is_source ? "true" : "false");
-        return;
-    }
-
     // If the received tree id does not match ours, ignore.
     if (self.tree_id != in_frame.btp_frame.btp.tree_id) {
         log_debug("This data frame is not for our tree. [our tree ID: %i, received tree ID: %i]", self.tree_id, in_frame.btp_frame.btp.tree_id);
@@ -719,6 +715,15 @@ void handle_data(uint8_t *recv_frame) {
     }
 
     log_info("Received data frame. [payload size: %i, addr: %s, seq num: %i]", in_frame.payload_len, mac_to_str(in_frame.btp_frame.eth.ether_shost), in_frame.seq_num);
+
+    // If we are the source, we do not want any payload.
+    // However, we forward it anyway but also assume, that the payload is possible completely sent, as we are
+    // already receiving data frames from other nodes.
+    if (self.is_source) {
+        forward_payload(&in_frame);
+        log_debug("Ignoring data frame. [is_source: %s]", self.is_source ? "true" : "false");
+        return;
+    }
 
     if (!payload_recv_buf) {
         max_seq_num = (in_frame.payload_len / MAX_PAYLOAD) + 1;
@@ -757,13 +762,6 @@ void handle_data(uint8_t *recv_frame) {
     }
 
     forward_payload(&in_frame);
-
-    // If if we received the entire payload and have no children, we disconnect from our parent to notify them,
-    // that we are finished.
-    if (payload_complete && hashmap_length(self.children) == 0) {
-        log_info("Received entire payload and have no children. Disconnecting from parent.");
-        disconnect_from_parent();
-    }
 }
 
 void handle_packet(uint8_t *recv_frame) {

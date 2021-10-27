@@ -177,4 +177,6 @@ void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd);
  */
 void game_round(int cur_time);
 
+void disconnect_from_parent(void);
+
 #endif // __BTP_H__
