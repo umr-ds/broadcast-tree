@@ -695,9 +695,9 @@ void forward_payload(eth_radio_btp_payload_t *in_frame) {
     memcpy(out_frame.payload, in_frame->payload, in_frame->payload_chunk_len);
 
     if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len, self.high_pwr) < 0) {
-        log_warn("Could not forward payload.");
+        log_warn("Could not forward payload. [seq num: %i]", out_frame.seq_num);
     } else {
-        log_info("Successfully forwarded payload.");
+        log_info("Successfully forwarded payload. [seq num: %i]", out_frame.seq_num);
     }
 }
 
@@ -718,7 +718,7 @@ void handle_data(uint8_t *recv_frame) {
         return;
     }
 
-    log_info("Received data frame. [payload size: %i, addr: %s]", in_frame.payload_len, mac_to_str(in_frame.btp_frame.eth.ether_shost));
+    log_info("Received data frame. [payload size: %i, addr: %s, seq num: %i]", in_frame.payload_len, mac_to_str(in_frame.btp_frame.eth.ether_shost), in_frame.seq_num);
 
     if (!payload_recv_buf) {
         max_seq_num = (in_frame.payload_len / MAX_PAYLOAD) + 1;
@@ -761,6 +761,7 @@ void handle_data(uint8_t *recv_frame) {
     // If if we received the entire payload and have no children, we disconnect from our parent to notify them,
     // that we are finished.
     if (payload_complete && hashmap_length(self.children) == 0) {
+        log_info("Received entire payload and have no children. Disconnecting from parent.");
         disconnect_from_parent();
     }
 }
