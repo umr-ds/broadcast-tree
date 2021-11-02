@@ -2,17 +2,39 @@ FROM https://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-2019-0
 PUMP 10G
 
 # We have to downgrade the RPi kernel to 4.14.98 as this is the last working version for nexmon.
-RUN rpi-update a08ece3d48c3c40bf1b501772af9933249c11c5b
+PRUNE_MODULES=1 RUN rpi-update a08ece3d48c3c40bf1b501772af9933249c11c5b
 
 RUN apt-get update
 RUN apt-get upgrade -y
 
 # Nexmon dependencies
-RUN apt-get install -y raspberrypi-kernel-headers git libgmp3-dev gawk qpdf bison flex make kmod
+RUN apt-get install -y raspberrypi-kernel-headers git libgmp3-dev gawk qpdf bison flex make kmod bc
 RUN apt-get remove -y wpasupplicant
+
+RUN wget https://raw.githubusercontent.com/RPi-Distro/rpi-source/master/rpi-source -O /usr/local/bin/rpi-source
+RUN chmod +x /usr/local/bin/rpi-source
 
 # BTree dependencies
 RUN apt-get install -y libiw-dev libexplain-dev
 
+# Install the firstboot stuff
+INSTALL /root/firstboot.sh /boot/firstboot.sh
+INSTALL /root/firstboot.service /etc/systemd/system/firstboot.service
+
 INSTALL /root/nexmon /nexmon
-INSTALL /root/userland /userland
+INSTALL /root/btp /btp
+
+# Make some basic configurations like SSH
+RUN systemctl disable regenerate_ssh_host_keys
+
+# Install user ssh files and fix permissions
+INSTALL /root/ssh /home/pi/.ssh
+RUN chown -R pi:pi /home/pi
+RUN chmod 755   /home/pi
+RUN chmod 700   /home/pi/.ssh
+RUN chmod 600   /home/pi/.ssh/id_rsa
+RUN chmod 644   /home/pi/.ssh/id_rsa.pub
+
+RUN raspi-config nonint do_ssh 0
+
+RUN ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime

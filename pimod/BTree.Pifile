@@ -1,5 +1,7 @@
 FROM Base.img
 
+set -x
+
 # Prepare nexmon
 #RUN bash
 RUN bash -c "
@@ -10,18 +12,25 @@ RUN bash -c "
     ln -s /usr/local/lib/libisl.so /usr/lib/arm-linux-gnueabihf/libisl.so.10
 "
 
-# Install BTree-Specific nexmon patch
 RUN bash -c "
-    cp -r /userland/nexmon_patch /nexmon/patches/bcm43430a1/7_45_41_46/btp/
-    cd /nexmon/patches/bcm43430a1/7_45_41_46/btp/
-    source /nexmon/setup_env.sh
-    make install-firmware
+    cd /nexmon/buildtools/mpfr-3.1.4
+    autoreconf -f -i
+    ./configure
+    make
+    make install
+    ln -f -s /usr/local/lib/libmpfr.so /usr/lib/arm-linux-gnueabihf/libmpfr.so.4
 "
 
-# Make BTree-Specific nexmon patch permanent
-#RUN bash -c "
-#    MODPATH=$(/sbin/mu | head -1 | cut -d':' -f2 | tr -d '[:space:]')
-#    cp $MODPATH /root/brcmfmac.ko.orig
-#    cp /nexmon/patches/bcm43430a1/7_45_41_46/btp/brcmfmac_kernel49/brcmfmac.ko "$MODPATH"
-#    depmod -a
-#"
+RUN bash -c "
+    cp -r /btp/nexmon_patch /nexmon/patches/bcm43430a1/7_45_41_46/btp/
+    cd /nexmon/patches/bcm43430a1/7_45_41_46/btp/ || exit 1
+    source /nexmon/setup_env.sh
+    make
+"
+
+# Install the BTP binary
+RUN bash -c "
+    cd /btp
+    make
+    cp btp /usr/bin/btp
+"
