@@ -207,9 +207,9 @@ Temporary Items
 
 **/.DS_Store
 
-pimod/.cache
-pimod/*.img
-pimod/.bash_history
+**/.cache
+**/*.img
+**/.bash_history
 
 *.log
 

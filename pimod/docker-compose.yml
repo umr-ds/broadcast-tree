@@ -1,10 +1,11 @@
 version: "3"
 services:
   pimod:
-    image: nature40/pimod:0.4.0
+    image: nature40/pimod:0.4.2
     privileged: true
     working_dir: /root
     volumes:
       - .:/root
+      - ../.git:/root/.git
       - ../nexmon:/root/nexmon
       - ../userland:/root/btp

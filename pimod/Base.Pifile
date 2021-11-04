@@ -1,18 +1,11 @@
 FROM https://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-2019-04-09/2019-04-08-raspbian-stretch-lite.zip
-PUMP 10G
-
-# We have to downgrade the RPi kernel to 4.14.98 as this is the last working version for nexmon.
-PRUNE_MODULES=1 RUN rpi-update a08ece3d48c3c40bf1b501772af9933249c11c5b
+PUMP 5G
 
 RUN apt-get update
-RUN apt-get upgrade -y
 
 # Nexmon dependencies
-RUN apt-get install -y raspberrypi-kernel-headers git libgmp3-dev gawk qpdf bison flex make kmod bc
+RUN apt-get install -y raspberrypi-kernel-headers git libgmp3-dev gawk qpdf bison flex make kmod bc autoconf libtool texinfo build-essential
 RUN apt-get remove -y wpasupplicant
-
-RUN wget https://raw.githubusercontent.com/RPi-Distro/rpi-source/master/rpi-source -O /usr/local/bin/rpi-source
-RUN chmod +x /usr/local/bin/rpi-source
 
 # BTree dependencies
 RUN apt-get install -y libiw-dev libexplain-dev
@@ -21,8 +14,11 @@ RUN apt-get install -y libiw-dev libexplain-dev
 INSTALL /root/firstboot.sh /boot/firstboot.sh
 INSTALL /root/firstboot.service /etc/systemd/system/firstboot.service
 
-INSTALL /root/nexmon /nexmon
-INSTALL /root/btp /btp
+RUN mkdir /broadcast-tree
+INSTALL /root/nexmon /broadcast-tree/nexmon
+# We have to install .git folder so that nexmon can infer its version
+INSTALL /root/.git /broadcast-tree/.git
+INSTALL /root/btp /broadcast-tree/btp
 
 # Make some basic configurations like SSH
 RUN systemctl disable regenerate_ssh_host_keys

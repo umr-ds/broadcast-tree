@@ -1,36 +1,36 @@
 FROM Base.img
 
-set -x
+# Step 1: Install libisl in the version needed by nexmon
+WORKDIR /broadcast-tree/nexmon/buildtools/isl-0.10
+RUN ./configure
+RUN make -j $(( $(nproc) + 1 ))
+RUN make install
+RUN ln -s -f /usr/local/lib/libisl.so /usr/lib/arm-linux-gnueabihf/libisl.so.10
 
-# Prepare nexmon
-#RUN bash
-RUN bash -c "
-    cd /nexmon/buildtools/isl-0.10
-    ./configure
-    make
-    make install
-    ln -s /usr/local/lib/libisl.so /usr/lib/arm-linux-gnueabihf/libisl.so.10
-"
+# Step 2: Install libmpfr in the version needed by nexmon
+WORKDIR /broadcast-tree/nexmon/buildtools/mpfr-3.1.4
+RUN autoreconf -f -i
+RUN ./configure
+RUN make -j $(( $(nproc) + 1 ))
+RUN make install
+RUN ln -f -s /usr/local/lib/libmpfr.so /usr/lib/arm-linux-gnueabihf/libmpfr.so.4
 
+# Step 3: Prepare the toolchain for nexmon patches
+WORKDIR /broadcast-tree/nexmon
 RUN bash -c "
-    cd /nexmon/buildtools/mpfr-3.1.4
-    autoreconf -f -i
-    ./configure
-    make
-    make install
-    ln -f -s /usr/local/lib/libmpfr.so /usr/lib/arm-linux-gnueabihf/libmpfr.so.4
-"
-
-RUN bash -c "
-    cp -r /btp/nexmon_patch /nexmon/patches/bcm43430a1/7_45_41_46/btp/
-    cd /nexmon/patches/bcm43430a1/7_45_41_46/btp/ || exit 1
-    source /nexmon/setup_env.sh
+    source /broadcast-tree/nexmon/setup_env.sh
     make
 "
 
-# Install the BTP binary
+# Step 4: Install the nexmon BTP patch
+RUN cp -r /broadcast-tree/btp/nexmon_patch /broadcast-tree/nexmon/patches/bcm43430a1/7_45_41_46/btp/
+WORKDIR /broadcast-tree/nexmon/patches/bcm43430a1/7_45_41_46/btp/
 RUN bash -c "
-    cd /btp
+    source /broadcast-tree/nexmon/setup_env.sh
     make
-    cp btp /usr/bin/btp
 "
+
+# Step 5: Install BTP
+WORKDIR /broadcast-tree/btp
+RUN make
+RUN install -D -m 755 btp /usr/local/bin/btp
