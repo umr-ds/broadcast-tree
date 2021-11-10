@@ -16,9 +16,14 @@ sed -i "s/raspberrypi/$HNAME/g" /etc/hosts
 hostname "$HNAME"
 
 # Install the nexmon patch for BTP
-cd /nexmon/patches/bcm43430a1/7_45_41_46/btp/
-source /nexmon/setup_env.sh
-make install-firmware
+cd /broadcast-tree/nexmon/patches/bcm43430a1/7_45_41_46/btp/
+source /broadcast-tree/nexmon/setup_env.sh
+cp brcmfmac43430-sdio.bin /lib/firmware/brcm/brcmfmac43430-sdio.bin
+rmmod brcmfmac || echo "brcmfmac module not loaded"
+modprobe brcmutil
+modprobe brcmfmac
+
+sleep 1
 
 # Setup ad-hoc mode
 ifconfig "$IFNAME" down

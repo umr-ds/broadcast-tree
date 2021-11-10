@@ -10,10 +10,6 @@ RUN apt-get remove -y wpasupplicant
 # BTree dependencies
 RUN apt-get install -y libiw-dev libexplain-dev
 
-# Install the firstboot stuff
-INSTALL /root/firstboot.sh /boot/firstboot.sh
-INSTALL /root/firstboot.service /etc/systemd/system/firstboot.service
-
 RUN mkdir /broadcast-tree
 INSTALL /root/nexmon /broadcast-tree/nexmon
 # We have to install .git folder so that nexmon can infer its version
@@ -21,16 +17,36 @@ INSTALL /root/.git /broadcast-tree/.git
 INSTALL /root/btp /broadcast-tree/btp
 
 # Make some basic configurations like SSH
+# Fix permissions on host ssh files
+INSTALL /root/ssh/etc /etc/ssh/
+RUN bash -c 'chown root:root /etc/ssh/ssh_host_*'
+RUN bash -c 'chmod 600 /etc/ssh/ssh_host_*_key'
+RUN bash -c 'chmod 644 /etc/ssh/ssh_host_*_key.pub'
 RUN systemctl disable regenerate_ssh_host_keys
 
 # Install user ssh files and fix permissions
-INSTALL /root/ssh /home/pi/.ssh
-RUN chown -R pi:pi /home/pi
+INSTALL /root/ssh/pi /home/pi/.ssh
+RUN chown pi:pi /home/pi
+RUN chown pi:pi /home/pi/.ssh
+RUN chown pi:pi /home/pi/.ssh/id_rsa
+RUN chown pi:pi /home/pi/.ssh/id_rsa.pub
 RUN chmod 755   /home/pi
 RUN chmod 700   /home/pi/.ssh
 RUN chmod 600   /home/pi/.ssh/id_rsa
 RUN chmod 644   /home/pi/.ssh/id_rsa.pub
 
+# Install root ssh files and fix permissions
+INSTALL /root/ssh/root /root/.ssh
+RUN chown root:root /root
+RUN chown root:root /root/.ssh
+RUN chown root:root /root/.ssh/id_rsa
+RUN chown root:root /root/.ssh/id_rsa.pub
+RUN chmod 755       /root
+RUN chmod 700       /root/.ssh
+RUN chmod 600       /root/.ssh/id_rsa
+RUN chmod 644       /root/.ssh/id_rsa.pub
+
+# Allow basic connectivity (0 == success status code - enable)
 RUN raspi-config nonint do_ssh 0
 
 RUN ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime

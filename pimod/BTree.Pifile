@@ -34,3 +34,8 @@ RUN bash -c "
 WORKDIR /broadcast-tree/btp
 RUN make
 RUN install -D -m 755 btp /usr/local/bin/btp
+
+# Step 6: Install the firstboot stuff
+INSTALL /root/firstboot.sh /boot/firstboot.sh
+INSTALL /root/firstboot.service /etc/systemd/system/firstboot.service
+RUN systemctl enable firstboot.service

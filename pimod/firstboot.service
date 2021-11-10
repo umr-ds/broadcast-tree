@@ -6,7 +6,6 @@ ConditionFileNotEmpty=/boot/firstboot.sh
 
 [Service]
 ExecStart=/boot/firstboot.sh
-ExecStartPost=/bin/mv /boot/firstboot.sh /boot/firstboot.sh.done
 Type=oneshot
 RemainAfterExit=no
 

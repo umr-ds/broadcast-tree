@@ -1,7 +1,7 @@
 version: "3"
 services:
   pimod:
-    image: nature40/pimod:0.4.2
+    image: nature40/pimod:v0.4.3
     privileged: true
     working_dir: /root
     volumes:
