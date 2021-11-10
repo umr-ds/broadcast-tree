@@ -149,7 +149,7 @@ int event_loop(void) {
     uint8_t recv_frame[MTU];
     memset(recv_frame, 0, MTU * sizeof (uint8_t));
 
-    int start_time = get_time_msec();
+    int bcast_send_time = get_time_msec();
     int res;
     log_info("Waiting for BTP packets.");
     while (1) {
@@ -163,12 +163,12 @@ int event_loop(void) {
         }
 
         int cur_time = get_time_msec();
-        if (cur_time - start_time > DISCOVERY_BCAST_INTERVAL_MSEC) {
+        if (cur_time - bcast_send_time > DISCOVERY_BCAST_INTERVAL_MSEC) {
             if (self.is_source || self_is_connected()) {
                 broadcast_discovery();
             }
 
-            start_time = cur_time;
+            bcast_send_time = cur_time;
         }
 
         game_round(cur_time);

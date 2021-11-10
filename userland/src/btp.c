@@ -16,6 +16,7 @@ uint16_t seq_num_cnt = 0;
 bool payload_complete = false;
 
 char *dummy = NULL;
+int payload_transmit_time = 0;
 
 extern struct sockaddr_ll L_SOCKADDR;
 
@@ -127,6 +128,7 @@ void disconnect_all_children(void) {
 void send_payload(void) {
     log_info("Starting sending payload.");
 
+    payload_transmit_time = get_time_msec();
     int bytes_read = 1;
     uint16_t seq_num = 0;
 
@@ -440,6 +442,10 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
 }
 
 void disconnect_from_parent(void) {
+    if (self.is_source) {
+        return;
+    }
+
     eth_btp_t disconnect_frame = { 0x0 };
     build_frame(&disconnect_frame, self.parent->addr, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
 
@@ -650,7 +656,7 @@ void game_round(int cur_time) {
     // the end-of-game-state is final and once we reach it, we never switch back out of it
     if (self.game_fin) {
         log_debug("Game already finished, doing nothing");
-        if (self.is_source) {
+        if (self.is_source && cur_time - payload_transmit_time > RETRANSMIT_TIMEOUT) {
             send_payload();
             log_debug("Re-sent payload.");
         }
@@ -714,10 +720,9 @@ void handle_data(uint8_t *recv_frame) {
     log_info("Received data frame. [payload size: %i, addr: %s, seq num: %i]", in_frame.payload_len, mac_to_str(in_frame.btp_frame.eth.ether_shost), in_frame.seq_num);
 
     // If we are the source, we do not want any payload.
-    // However, we forward it anyway but also assume, that the payload is possible completely sent, as we are
+    // However, we assume that the payload is possible completely sent, as we are
     // already receiving data frames from other nodes.
     if (self.is_source) {
-        forward_payload(&in_frame);
         payload_complete = true;
         log_debug("Only forwarding data frame. [is_source: %s]", self.is_source ? "true" : "false");
         return;
