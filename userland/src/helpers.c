@@ -11,6 +11,15 @@ typedef struct {
 } snd_pwr_iterator_t;
 
 extern self_t self;
+extern bool max_power;
+
+int8_t set_pwr(int8_t pwr) {
+    if (max_power) {
+        return self.max_pwr;
+    } else {
+        return pwr;
+    }
+}
 
 int hashmap_child_fin(any_t item, any_t args);
 int hashmap_snd_pwr(any_t item, any_t args);
@@ -288,7 +297,7 @@ void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t mut
     out->btp.mutex = mutex;
     out->btp.frame_type = frame_type;
     out->btp.tree_id = tree_id;
-    out->btp.tx_pwr = tx_pwr;
+    out->btp.tx_pwr = set_pwr(tx_pwr);
     out->btp.high_pwr = self.high_pwr;
     out->btp.snd_high_pwr = self.snd_high_pwr;
     if (self.parent) {

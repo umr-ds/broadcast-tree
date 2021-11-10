@@ -18,6 +18,8 @@ bool payload_complete = false;
 char *dummy = NULL;
 int payload_transmit_time = 0;
 
+bool max_power;
+
 extern struct sockaddr_ll L_SOCKADDR;
 
 ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr);
@@ -59,13 +61,13 @@ ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
     // TODO implement with nexmon.
     return -1;
 #else
-    set_tx_pwr(tx_pwr);
+    set_tx_pwr(set_pwr(tx_pwr));
     ssize_t sent_bytes = sendto(self.sockfd, buf, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
     if (sent_bytes < 0) {
         log_error("Could not send data. [error: %s]", strerror(errno));
     }
 
-    log_debug("Successfully sent frame. [sent_bytes: %i, tx_pwr: %i]", sent_bytes, tx_pwr);
+    log_debug("Successfully sent frame. [sent_bytes: %i, tx_pwr: %i]", sent_bytes, set_pwr(tx_pwr));
 
     return sent_bytes;
 #endif
@@ -394,10 +396,10 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
     }
 
     if (child_tx_pwr > self.high_pwr) {
-        self.snd_high_pwr = self.high_pwr;
-        self.high_pwr = child_tx_pwr;
+        self.snd_high_pwr = set_pwr(self.high_pwr);
+        self.high_pwr = set_pwr(child_tx_pwr);
     } else if (child_tx_pwr > self.snd_high_pwr) {
-        self.snd_high_pwr = child_tx_pwr;
+        self.snd_high_pwr = set_pwr(child_tx_pwr);
     }
 
     eth_btp_t child_confirm_frame = { 0x0 };
@@ -564,10 +566,10 @@ void handle_parent_revocation(eth_radio_btp_t *in_frame) {
     }
 
     if (child->tx_pwr == self.high_pwr) {
-        self.high_pwr = self.snd_high_pwr;
-        self.snd_high_pwr = get_snd_pwr();
+        self.high_pwr = set_pwr(self.snd_high_pwr);
+        self.snd_high_pwr = set_pwr(get_snd_pwr());
     } else if (child->tx_pwr == self.snd_high_pwr) {
-        self.snd_high_pwr = get_snd_pwr();
+        self.snd_high_pwr = set_pwr(get_snd_pwr());
     }
 
     free(child);

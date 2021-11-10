@@ -19,6 +19,7 @@
 
 extern self_t self;
 extern bool payload_complete;
+extern bool max_power;
 
 /**
  * TODO: Proposal.
@@ -32,6 +33,7 @@ int event_loop(void);
 
 struct arguments {
     char *payload;
+    bool max_power;
     int log_level;
     char *log_file;
     char *interface;
@@ -43,6 +45,7 @@ static char doc[] = "BTP -- Broadcast Tree Protocol";
 static char args_doc[] = "INTERFACE";
 static struct argp_option options[] = {
         {"source",    's', "payload", 0, "Path to the payload to be sent (omit this option for client mode)", 0 },
+        {"max_power",  'm', 0,    0, "Whether to use maximum transmission power of fancy power calculations for efficiency.", 0 },
         {"log_level", 'l', "level",   0, "Log level\n0: QUIET, 1: TRACE, 2: DEBUG, 3: INFO (default),\n4: WARN, 5: ERROR, 6: FATAL", 1 },
         {"log_file",  'f', "path",    0, "File path to log file.\nIf not present only stdout and stderr logging will be used.", 1 },
         { 0 }
@@ -79,6 +82,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
             break;
         case 'f':
             arguments->log_file = arg;
+            break;
+        case 'm':
+            arguments->max_power = true;
             break;
         case ARGP_KEY_ARG:
             if (state->arg_num >= 1) argp_usage (state);
@@ -212,11 +218,14 @@ int main (int argc, char **argv) {
 
     struct arguments arguments = {
             .payload = "",
+            .max_power = false,
             .log_level = 3,
             .log_file = "",
             .interface = ""
     };
     argp_parse (&argp, argc, argv, 0, 0, &arguments);
+
+    max_power = arguments.max_power;
 
     // Logging stuff
     if (arguments.log_level == 0) {

@@ -47,5 +47,6 @@ bool all_children_fin(void);
 
 char *mac_to_str(mac_addr_t addr);
 void prepare_key(mac_addr_t addr, char *res);
+int8_t set_pwr(int8_t pwr);
 
 #endif // __HELPERS_H__
