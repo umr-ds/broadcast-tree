@@ -7,5 +7,6 @@ services:
         volumes:
             - ./results:/results
             - ./experiment:/root/ns-allinone-3.31/ns-3.31/experiment
+            - ./btp:/root/ns-allinone-3.31/ns-3.31/scratch/broadcast
         environment:
             - RUN

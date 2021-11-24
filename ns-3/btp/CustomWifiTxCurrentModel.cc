@@ -60,10 +60,11 @@ namespace ns3
 		NS_LOG_FUNCTION(this << txPowerDbm);
 		double current = 0;
 
-		if (this->chip == "MAX2831")
+		if (this->chip == "MAX2831") {
 			current = calcMax2831(txPowerDbm);
-		else
+		} else {
 			current = DbmToW(txPowerDbm) / (this->voltage * this->eta);
+		}
 
 		return (current + this->idleCurrent);
 	}
@@ -108,8 +109,10 @@ namespace ns3
 			current += (-0.000009708995023 * txPow);
 		}
 
-		//NS_LOG_UNCOND("dBm = " << txPowerDbm << ", Current = " << current << ", volt = " << this->voltage);
+		current = current / 1000;
 
-		return current / 1000;
+		NS_LOG_UNCOND("dBm = " << txPowerDbm << ", Current = " << current << ", volt = " << this->voltage);
+
+        return current;
 	}
 }
