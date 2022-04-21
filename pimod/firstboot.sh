@@ -3,8 +3,9 @@
 set -Eeuox pipefail
 
 # Get some base variables required for the setup
-IFNAME="wlan1"
+IFNAME="$(grep b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
 MAC_ADDRESS="$(cat /sys/class/net/$IFNAME/address)"
+
 MIDDLE=$(echo "$MAC_ADDRESS" | cut -d':' -f5 | tr -d '[:space:]')
 SUFFIX=$(echo "$MAC_ADDRESS" | cut -d':' -f6 | tr -d '[:space:]')
 HNAME="btp-${MIDDLE}-${SUFFIX}"
