@@ -35,7 +35,10 @@ WORKDIR /broadcast-tree/btp
 RUN make
 RUN install -D -m 755 btp /usr/local/bin/btp
 
-# Step 6: Install the firstboot stuff
-INSTALL /root/firstboot.sh /boot/firstboot.sh
+# Step 6: Install the firstboot stuff and r/w overlay script
+INSTALL /root/firstboot.sh /bin/firstboot.sh
 INSTALL /root/firstboot.service /etc/systemd/system/firstboot.service
 RUN systemctl enable firstboot.service
+INSTALL /root/ro-root.sh /bin/ro-root.sh
+
+RUN bash -c "echo \"dwc_otg.lpm_enable=0 console=tty1 root=/dev/nfs nfsroot=172.23.42.1:/srv/nfs/btree/,vers=3 ro rootwait ip=dhcp elevator=deadline init=/bin/ro-root.sh\" > /boot/cmdline.txt"

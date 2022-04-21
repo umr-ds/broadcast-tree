@@ -3,7 +3,7 @@
 set -Eeuox pipefail
 
 # Get some base variables required for the setup
-IFNAME="wlan0"
+IFNAME="wlan1"
 MAC_ADDRESS="$(cat /sys/class/net/$IFNAME/address)"
 MIDDLE=$(echo "$MAC_ADDRESS" | cut -d':' -f5 | tr -d '[:space:]')
 SUFFIX=$(echo "$MAC_ADDRESS" | cut -d':' -f6 | tr -d '[:space:]')
@@ -35,3 +35,9 @@ iwconfig "$IFNAME" channel 1
 iwconfig "$IFNAME" ap c0:ff:ee:c0:ff:ee
 ifconfig "$IFNAME" "$IP_ADDR"
 ifconfig "$IFNAME" netmask 255.255.0.0
+
+# Mount folder for logs
+BASE_PATH=/btree_data
+mkdir -p "$BASE_PATH"
+
+mount -t nfs 172.23.42.1:/srv/nfs/btree_data "$BASE_PATH"
