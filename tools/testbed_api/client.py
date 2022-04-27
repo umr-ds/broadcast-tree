@@ -1,20 +1,41 @@
 #! /usr/bin/env python3
 
-from nis import match
 import time
 import argparse
 import subprocess
 import json
+import logging
+import socket
+import _thread
 
+from threading import Semaphore
 from typing import List, Dict
 
 import api
 
-
 BATCH_SIZE = 10
+ALL_NODES_COUNT = 84
+sem = Semaphore(10)
+
+
+def listen_boot_sock():
+    boot_acks = 0
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("172.23.42.1", 35039))
+    sock.listen()
+
+    while boot_acks < ALL_NODES_COUNT:
+        print("Waiting for connection")
+        conn, addr = sock.accept()
+        with conn:
+            boot_acks += 1
+            print(f"Connected by {addr}")
+            conn.close()
+            sem.release()
 
 
 def get_neighbors() -> List[Dict]:
+    logging.info("Requesting all neigbors")
     command = ["ip", "--json", "neighbor"]
 
     ip_result = subprocess.run(command, capture_output=True)
@@ -25,37 +46,37 @@ def get_neighbors() -> List[Dict]:
 
 
 def graceful_boot_nodes(nodes=[], reboot=False):
+    boot_listener = _thread.start_new_thread(listen_boot_sock, ())
+
     if len(nodes) == 0:
         nodes = api.get_nodes()
 
+    logging.info(f"Gracefully booting {len(nodes)} nodes")
+
     counter = 0
     for node in nodes:
+        sem.acquire()
+        api.enable_port(node.id)
         if reboot:
             api.reboot_node(node.id)
         else:
             api.boot_node(node.id)
 
-        if counter == BATCH_SIZE:
-            time.sleep(30)
-            counter = 0
-        else:
-            counter += 1
 
-    neighbors = get_neighbors()
-    missing_nodes = []
+def graceful_shutdown_all():
+    logging.info("Shutting down all nodes")
+    nodes = api.get_nodes()
+
     for node in nodes:
-        node_status = [
-            neighbor for neighbor in neighbors if neighbor["lladdr"] == node.mac
-        ]
-        missing = True
-        for status in node_status:
-            if status["state"][0] == "REACHABLE":
-                missing = False
-        if missing:
-            missing_nodes.append(node)
+        api.shutdown_node(node.id)
 
-    if len(missing_nodes) > 0:
-        graceful_boot_nodes(missing_nodes, reboot=True)
+
+def enable_all_ports():
+    logging.info("Enabling all ports")
+    nodes = api.get_nodes()
+
+    for node in nodes:
+        api.enable_port(node.id)
 
 
 def api_commands(args):
@@ -84,9 +105,15 @@ def api_commands(args):
 def client_commands(args):
     if args.boot_nodes:
         graceful_boot_nodes()
+    if args.shutdown_nodes:
+        graceful_shutdown_all()
+    if args.enable_ports:
+        enable_all_ports()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+
     parser = argparse.ArgumentParser(description="Orchestrate piloty testbed")
     subparsers = parser.add_subparsers()
 
@@ -127,6 +154,12 @@ if __name__ == "__main__":
     )
     parser_client.add_argument(
         "-b", "--boot_nodes", action="store_true", help="Gracefully boot all nodes"
+    )
+    parser_client.add_argument(
+        "-s", "--shutdown_nodes", action="store_true", help="Shutdown all nodes"
+    )
+    parser_client.add_argument(
+        "-e", "--enable_ports", action="store_true", help="Enable all ports"
     )
     parser_client.set_defaults(func=client_commands)
 
