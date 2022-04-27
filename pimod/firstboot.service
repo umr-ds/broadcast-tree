@@ -6,7 +6,7 @@ ConditionFileNotEmpty=/bin/firstboot.sh
 
 [Service]
 ExecStart=/bin/firstboot.sh
-Type=forking
+Type=oneshot
 RemainAfterExit=no
 
 [Install]

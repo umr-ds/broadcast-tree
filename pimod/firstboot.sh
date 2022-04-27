@@ -6,10 +6,11 @@ set -Eeuox pipefail
 IFNAME="$(grep b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
 MAC_ADDRESS="$(cat /sys/class/net/$IFNAME/address)"
 
-MIDDLE=$(echo "$MAC_ADDRESS" | cut -d':' -f5 | tr -d '[:space:]')
-SUFFIX=$(echo "$MAC_ADDRESS" | cut -d':' -f6 | tr -d '[:space:]')
-HNAME="btp-${MIDDLE}-${SUFFIX}"
-IP_ADDR="10.10.$(( 16#$MIDDLE )).$(( 16#$SUFFIX ))"
+FST=$(echo "$MAC_ADDRESS" | cut -d':' -f4 | tr -d '[:space:]')
+SND=$(echo "$MAC_ADDRESS" | cut -d':' -f5 | tr -d '[:space:]')
+TRD=$(echo "$MAC_ADDRESS" | cut -d':' -f6 | tr -d '[:space:]')
+HNAME="btp-${FST}-${SND}-${TRD}"
+IP_ADDR="10.$(( 16#$FST )).$(( 16#$SND )).$(( 16#$TRD ))"
 
 # Set a unique hostname
 echo "$HNAME" > /etc/hostname
@@ -35,10 +36,12 @@ iwconfig "$IFNAME" essid btp
 iwconfig "$IFNAME" channel 1
 iwconfig "$IFNAME" ap c0:ff:ee:c0:ff:ee
 ifconfig "$IFNAME" "$IP_ADDR"
-ifconfig "$IFNAME" netmask 255.255.0.0
+ifconfig "$IFNAME" netmask 255.0.0.0
 
 # Mount folder for logs
 BASE_PATH=/btree_data
 mkdir -p "$BASE_PATH"
 
 mount -t nfs 172.23.42.1:/srv/nfs/btree_data "$BASE_PATH"
+
+nc -d 172.23.42.1 35039
