@@ -28,25 +28,36 @@ RUN bash -c 'chmod 600 /etc/ssh/sshd_config'
 
 # Install user ssh files and fix permissions
 INSTALL /root/ssh/pi /home/pi/.ssh
-RUN chown pi:pi /home/pi
-RUN chown pi:pi /home/pi/.ssh
-RUN chown pi:pi /home/pi/.ssh/id_rsa
-RUN chown pi:pi /home/pi/.ssh/id_rsa.pub
-RUN chmod 755   /home/pi
-RUN chmod 700   /home/pi/.ssh
-RUN chmod 600   /home/pi/.ssh/id_rsa
-RUN chmod 644   /home/pi/.ssh/id_rsa.pub
+RUN bash -c 'chown pi:pi /home/pi'
+RUN bash -c 'chown pi:pi /home/pi/.ssh'
+RUN bash -c 'chown pi:pi /home/pi/.ssh/id_rsa'
+RUN bash -c 'chown pi:pi /home/pi/.ssh/id_rsa.pub'
+RUN bash -c 'chmod 755   /home/pi'
+RUN bash -c 'chmod 700   /home/pi/.ssh'
+RUN bash -c 'chmod 600   /home/pi/.ssh/id_rsa'
+RUN bash -c 'chmod 644   /home/pi/.ssh/id_rsa.pub'
 
 # Install root ssh files and fix permissions
 INSTALL /root/ssh/root /root/.ssh
-RUN chown root:root /root
-RUN chown root:root /root/.ssh
-RUN chown root:root /root/.ssh/id_rsa
-RUN chown root:root /root/.ssh/id_rsa.pub
-RUN chmod 755       /root
-RUN chmod 700       /root/.ssh
-RUN chmod 600       /root/.ssh/id_rsa
-RUN chmod 644       /root/.ssh/id_rsa.pub
+RUN chown bash -c 'root:root /root'
+RUN chown bash -c 'root:root /root/.ssh'
+RUN chown bash -c 'root:root /root/.ssh/id_rsa'
+RUN chown bash -c 'root:root /root/.ssh/id_rsa.pub'
+RUN chmod bash -c '755       /root'
+RUN chmod bash -c '700       /root/.ssh'
+RUN chmod bash -c '600       /root/.ssh/id_rsa'
+RUN chmod bash -c '644       /root/.ssh/id_rsa.pub'
+
+# Set root password and allow root ssh login as it is a requirement for tpy
+(echo raspberry; echo raspberry) | RUN passwd root
+
+# Install authorized_keys for the testbed VM
+INSTALL /root/ssh/authorized_keys /root/.ssh/authorized_keys
+RUN bash -c 'chown root:root /root/.ssh/authorized_keys'
+RUN bash -c 'chmod 600 /root/.ssh/authorized_keys'
+INSTALL /root/ssh/authorized_keys /home/pi/.ssh/authorized_keys
+RUN bash -c 'chown pi:pi /home/pi/.ssh/authorized_keys'
+RUN bash -c 'chmod 600 /home/pi/.ssh/authorized_keys'
 
 # Set root password and allow root ssh login as it is a requirement for tpy
 (echo raspberry; echo raspberry) | RUN passwd root

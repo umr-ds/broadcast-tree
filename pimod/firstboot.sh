@@ -41,7 +41,6 @@ ifconfig "$IFNAME" netmask 255.0.0.0
 # Mount folder for logs
 BASE_PATH=/btree_data
 mkdir -p "$BASE_PATH"
-
 mount -t nfs 172.23.42.1:/srv/nfs/btree_data "$BASE_PATH"
 
 nc -d 172.23.42.1 35039
