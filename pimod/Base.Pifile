@@ -39,14 +39,14 @@ RUN bash -c 'chmod 644   /home/pi/.ssh/id_rsa.pub'
 
 # Install root ssh files and fix permissions
 INSTALL /root/ssh/root /root/.ssh
-RUN chown bash -c 'root:root /root'
-RUN chown bash -c 'root:root /root/.ssh'
-RUN chown bash -c 'root:root /root/.ssh/id_rsa'
-RUN chown bash -c 'root:root /root/.ssh/id_rsa.pub'
-RUN chmod bash -c '755       /root'
-RUN chmod bash -c '700       /root/.ssh'
-RUN chmod bash -c '600       /root/.ssh/id_rsa'
-RUN chmod bash -c '644       /root/.ssh/id_rsa.pub'
+RUN bash -c 'chown root:root /root'
+RUN bash -c 'chown root:root /root/.ssh'
+RUN bash -c 'chown root:root /root/.ssh/id_rsa'
+RUN bash -c 'chown root:root /root/.ssh/id_rsa.pub'
+RUN bash -c 'chmod 755       /root'
+RUN bash -c 'chmod 700       /root/.ssh'
+RUN bash -c 'chmod 600       /root/.ssh/id_rsa'
+RUN bash -c 'chmod 644       /root/.ssh/id_rsa.pub'
 
 # Set root password and allow root ssh login as it is a requirement for tpy
 (echo raspberry; echo raspberry) | RUN passwd root
