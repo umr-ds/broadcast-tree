@@ -51,18 +51,6 @@ def get_node(node_id: int) -> None:
 
 
 # Functions for enabling and disabling ports
-def enable_ports() -> None:
-    logging.debug(f"Enabling all ports")
-    endpoint_url = f"{BASE_URL}/nodes/on"
-    requests.get(endpoint_url, headers=APPLICATION_HEADER)
-
-
-def disable_ports() -> None:
-    logging.debug(f"Disabling all ports")
-    endpoint_url = f"{BASE_URL}/nodes/off"
-    requests.get(endpoint_url, headers=APPLICATION_HEADER)
-
-
 def enable_port(node_id: int) -> None:
     logging.debug(f"Enabling port for node {node_id}")
     endpoint_url = f"{BASE_URL}/nodes/enable/{node_id}"
@@ -76,6 +64,18 @@ def disable_port(node_id: int) -> None:
 
 
 # Functions for booting and turning off nodes
+def boot_nodes() -> None:
+    logging.debug(f"Enabling all ports")
+    endpoint_url = f"{BASE_URL}/nodes/on"
+    requests.get(endpoint_url, headers=APPLICATION_HEADER)
+
+
+def shutdown_nodes() -> None:
+    logging.debug(f"Disabling all ports")
+    endpoint_url = f"{BASE_URL}/nodes/off"
+    requests.get(endpoint_url, headers=APPLICATION_HEADER)
+
+
 def reboot_nodes() -> None:
     logging.debug(f"Rebooting all nodes (expect missing nodes!)")
     endpoint_url = f"{BASE_URL}/nodes/reset"

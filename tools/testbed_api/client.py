@@ -21,7 +21,7 @@ import api
 
 BATCH_SIZE = 10
 ALL_NODES_COUNT = 84
-sem = Semaphore(10)
+sem = Semaphore(1)
 
 
 def listen_boot_sock():
@@ -31,8 +31,15 @@ def listen_boot_sock():
     sock.listen()
 
     while boot_acks < ALL_NODES_COUNT:
+        sock.settimeout(60)
         print("Waiting for connection")
-        conn, addr = sock.accept()
+        try:
+            conn, addr = sock.accept()
+        except socket.timeout:
+            logging.warning("Time out!")
+            sem.release()
+            continue
+
         with conn:
             boot_acks += 1
             print(f"Connected by {addr}")
@@ -59,7 +66,6 @@ def graceful_boot_nodes(nodes=[], reboot=False):
 
     logging.info(f"Gracefully booting {len(nodes)} nodes")
 
-    counter = 0
     for node in nodes:
         sem.acquire()
         api.enable_port(node.id)
@@ -83,15 +89,16 @@ def enable_all_ports():
 
     for node in nodes:
         api.enable_port(node.id)
+        time.sleep(5)
 
 
 def api_commands(args):
     if args.get_nodes:
         print(api.get_nodes())
-    elif args.enable_ports:
-        api.enable_ports()
-    elif args.disable_ports:
-        api.disable_ports()
+    elif args.boot_nodes:
+        api.boot_nodes()
+    elif args.shutdown_nodes:
+        api.shutdown_nodes()
     elif args.reboot_nodes:
         api.reboot_nodes()
     elif args.get_node:
@@ -111,8 +118,6 @@ def api_commands(args):
 def client_commands(args):
     if args.boot_nodes:
         graceful_boot_nodes()
-    if args.shutdown_nodes:
-        graceful_shutdown_all()
     if args.enable_ports:
         enable_all_ports()
 
@@ -129,12 +134,6 @@ if __name__ == "__main__":
         "-n", "--get_nodes", action="store_true", help="Get all nodes"
     )
     parser_api.add_argument(
-        "-e", "--enable_ports", action="store_true", help="Enable all ports"
-    )
-    parser_api.add_argument(
-        "-d", "--disable_ports", action="store_true", help="Disable all ports"
-    )
-    parser_api.add_argument(
         "-r", "--reboot_nodes", action="store_true", help="Reboot all nodes"
     )
 
@@ -144,6 +143,12 @@ if __name__ == "__main__":
     )
     parser_api.add_argument(
         "-o", "--disable_port", metavar="NODE ID", help="Disable port"
+    )
+    parser_api.add_argument(
+        "-B", "--boot_nodes", action="store_true", help="Boot all nodes"
+    )
+    parser_api.add_argument(
+        "-S", "--shutdown_nodes", action="store_true", help="Shutdown all nodes"
     )
     parser_api.add_argument("-b", "--boot_node", metavar="NODE ID", help="Boot node")
     parser_api.add_argument(
@@ -160,9 +165,6 @@ if __name__ == "__main__":
     )
     parser_client.add_argument(
         "-b", "--boot_nodes", action="store_true", help="Gracefully boot all nodes"
-    )
-    parser_client.add_argument(
-        "-s", "--shutdown_nodes", action="store_true", help="Shutdown all nodes"
     )
     parser_client.add_argument(
         "-e", "--enable_ports", action="store_true", help="Enable all ports"
