@@ -3,7 +3,7 @@
 set -Eeuox pipefail
 
 # Get some base variables required for the setup
-IFNAME="$(grep b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
+IFNAME="$(grep -l b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
 MAC_ADDRESS="$(cat /sys/class/net/$IFNAME/address)"
 
 FST=$(echo "$MAC_ADDRESS" | cut -d':' -f4 | tr -d '[:space:]')

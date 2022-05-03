@@ -23,6 +23,8 @@ RUN bash -c 'chown root:root /etc/ssh/ssh_host_*'
 RUN bash -c 'chmod 600 /etc/ssh/ssh_host_*_key'
 RUN bash -c 'chmod 644 /etc/ssh/ssh_host_*_key.pub'
 RUN systemctl disable regenerate_ssh_host_keys
+RUN bash -c 'chown root:root /etc/ssh/sshd_config'
+RUN bash -c 'chmod 600 /etc/ssh/sshd_config'
 
 # Install user ssh files and fix permissions
 INSTALL /root/ssh/pi /home/pi/.ssh
@@ -45,6 +47,17 @@ RUN chmod 755       /root
 RUN chmod 700       /root/.ssh
 RUN chmod 600       /root/.ssh/id_rsa
 RUN chmod 644       /root/.ssh/id_rsa.pub
+
+# Set root password and allow root ssh login as it is a requirement for tpy
+(echo raspberry; echo raspberry) | RUN passwd root
+
+# Install authorized_keys for the testbed VM
+INSTALL /root/ssh/authorized_keys /root/.ssh/authorized_keys
+RUN chown root:root /root/.ssh/authorized_keys
+RUN chmod 600 /root/.ssh/authorized_keys
+INSTALL /root/ssh/authorized_keys /home/pi/.ssh/authorized_keys
+RUN chown pi:pi /home/pi/.ssh/authorized_keys
+RUN chmod 600 /home/pi/.ssh/authorized_keys
 
 # Allow basic connectivity (0 == success status code - enable)
 RUN raspi-config nonint do_ssh 0
