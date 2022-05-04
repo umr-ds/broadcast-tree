@@ -8,7 +8,7 @@ RUN apt-get install -y raspberrypi-kernel-headers git libgmp3-dev gawk qpdf biso
 RUN apt-get remove -y wpasupplicant
 
 # BTree dependencies
-RUN apt-get install -y libiw-dev libexplain-dev
+RUN apt-get install -y libiw-dev libexplain-dev python3-netifaces
 
 RUN mkdir /broadcast-tree
 INSTALL /root/nexmon /broadcast-tree/nexmon

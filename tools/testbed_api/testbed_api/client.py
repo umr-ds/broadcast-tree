@@ -17,7 +17,7 @@ import _thread
 from threading import Semaphore
 from typing import List, Dict
 
-import api
+import testbed_api.api as api
 
 BATCH_SIZE = 10
 ALL_NODES_COUNT = 84
@@ -27,7 +27,7 @@ sem = Semaphore(1)
 def listen_boot_sock():
     boot_acks = 0
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind(("172.23.42.1", 35039))
+    sock.bind(("0.0.0.0", 35039))
     sock.listen()
 
     while boot_acks < ALL_NODES_COUNT:
@@ -92,6 +92,21 @@ def enable_all_ports():
         time.sleep(5)
 
 
+def get_nodes_by_filter(**kwargs):
+    nodes = api.get_nodes()
+
+    for key in kwargs:
+        if kwargs[key] is None:
+            continue
+
+        if key == "id":
+            nodes = [node for node in nodes if node.id in kwargs[key]]
+        else:
+            nodes = [node for node in nodes if getattr(node, key) == kwargs[key]]
+
+    return nodes
+
+
 def api_commands(args):
     if args.get_nodes:
         print(api.get_nodes())
@@ -120,6 +135,19 @@ def client_commands(args):
         graceful_boot_nodes()
     if args.enable_ports:
         enable_all_ports()
+
+
+def filter_commands(args):
+    filter_dict = {
+        "id": args.id,
+        "floor": args.floor,
+        "room": args.room,
+        "switch": args.switch,
+        "note": args.note,
+        "power": args.power,
+    }
+
+    print(get_nodes_by_filter(**filter_dict))
 
 
 if __name__ == "__main__":
@@ -170,6 +198,21 @@ if __name__ == "__main__":
         "-e", "--enable_ports", action="store_true", help="Enable all ports"
     )
     parser_client.set_defaults(func=client_commands)
+
+    client_subparser = parser_client.add_subparsers()
+    filter_parser = client_subparser.add_parser(
+        "filter", help="Filter nodes by attribute"
+    )
+
+    filter_parser.add_argument(
+        "-i", "--id", nargs="+", type=int, help="Explicit list of node ids"
+    )
+    filter_parser.add_argument("-f", "--floor", help="Floor the nodes are deployed on")
+    filter_parser.add_argument("-r", "--room", help="Room the nodes are deployed in")
+    filter_parser.add_argument("-s", "--switch", help="Filter by switch")
+    filter_parser.add_argument("-n", "--note", help='Filter by note (e.g."OK"')
+    filter_parser.add_argument("-p", "--power", type=int, help="Filter by power state")
+    filter_parser.set_defaults(func=filter_commands)
 
     args = parser.parse_args()
 
