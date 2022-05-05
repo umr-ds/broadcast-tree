@@ -24,14 +24,15 @@ ALL_NODES_COUNT = 84
 sem = Semaphore(1)
 
 
-def listen_boot_sock():
+def listen_boot_sock(nodes_to_boot):
     boot_acks = 0
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind(("0.0.0.0", 35039))
     sock.listen()
 
-    while boot_acks < ALL_NODES_COUNT:
+    while boot_acks < nodes_to_boot:
         sock.settimeout(60)
+        boot_acks += 1
         print("Waiting for connection")
         try:
             conn, addr = sock.accept()
@@ -41,30 +42,21 @@ def listen_boot_sock():
             continue
 
         with conn:
-            boot_acks += 1
             print(f"Connected by {addr}")
             conn.close()
             sem.release()
 
-
-def get_neighbors() -> List[Dict]:
-    logging.info("Requesting all neigbors")
-    command = ["ip", "--json", "neighbor"]
-
-    ip_result = subprocess.run(command, capture_output=True)
-    if ip_result.returncode:
-        raise Exception(f"Could not check for neighbors: {ip_result.stderr}")
-
-    return json.loads(str(ip_result.stdout, encoding="utf-8"))
+    sock.shutdown(socket.SHUT_RDWR)
+    socket.close(sock)
 
 
 def graceful_boot_nodes(nodes=[], reboot=False):
-    boot_listener = _thread.start_new_thread(listen_boot_sock, ())
-
     if len(nodes) == 0:
         nodes = api.get_nodes()
 
     logging.info(f"Gracefully booting {len(nodes)} nodes")
+
+    boot_listener = _thread.start_new_thread(listen_boot_sock, (len(nodes),))
 
     for node in nodes:
         sem.acquire()
@@ -74,22 +66,7 @@ def graceful_boot_nodes(nodes=[], reboot=False):
         else:
             api.boot_node(node.id)
 
-
-def graceful_shutdown_all():
-    logging.info("Shutting down all nodes")
-    nodes = api.get_nodes()
-
-    for node in nodes:
-        api.shutdown_node(node.id)
-
-
-def enable_all_ports():
-    logging.info("Enabling all ports")
-    nodes = api.get_nodes()
-
-    for node in nodes:
-        api.enable_port(node.id)
-        time.sleep(5)
+    logging.info("Just some additional waiting. For good measure.")
 
 
 def get_nodes_by_filter(**kwargs):
@@ -133,8 +110,6 @@ def api_commands(args):
 def client_commands(args):
     if args.boot_nodes:
         graceful_boot_nodes()
-    if args.enable_ports:
-        enable_all_ports()
 
 
 def filter_commands(args):
@@ -193,9 +168,6 @@ if __name__ == "__main__":
     )
     parser_client.add_argument(
         "-b", "--boot_nodes", action="store_true", help="Gracefully boot all nodes"
-    )
-    parser_client.add_argument(
-        "-e", "--enable_ports", action="store_true", help="Enable all ports"
     )
     parser_client.set_defaults(func=client_commands)
 
