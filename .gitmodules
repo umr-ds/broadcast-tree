@@ -1,6 +1,3 @@
 [submodule "nexmon"]
 	path = nexmon
 	url = https://github.com/seemoo-lab/nexmon.git
-[submodule "tpy"]
-	path = tpy
-	url = git@github.com:seemoo-lab/tpy.git
