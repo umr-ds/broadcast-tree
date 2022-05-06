@@ -61,9 +61,9 @@ def run(node_filter, source_id, experiment_config, iteration):
     print("-> Starting experiment")
     max_power = "--max_power" if experiment_config["max_power"] else ""
     iface = "$(grep -l b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
-    logfile_path = f"{logfile_path_base}/source_$(hostname).log"
+    source_logfile_path = f"{logfile_path_base}/source_$(hostname).log"
 
-    btp_client_cmd = f'bash -c "nohup btp --source=source.file --log_file={logfile_path} --log_level=2 {max_power} {iface} > /dev/null 2> {logfile_path}.err &"'
+    btp_client_cmd = f'bash -c "nohup btp --source=source.file --log_file={source_logfile_path} --log_level=2 {max_power} {iface} > /dev/null 2> {source_logfile_path}.err &"'
     source.run_command(btp_client_cmd)
 
     print("-> Waiting for experiment to finish")
@@ -72,6 +72,9 @@ def run(node_filter, source_id, experiment_config, iteration):
     print("-> Stopping BTP on all nodes")
     source.run_command("pkill btp")
     client_nodes.run_command("pkill btp")
+
+    source.run_command(f'ip address show dev eth0 | egrep -o "172.23.42.1[0-9]{{2,}}" >> {source_logfile_path}')
+    client_nodes.run_command(f'ip address show dev eth0 | egrep -o "172.23.42.1[0-9]{{2,}}" >> {logfile_path}')
 
     print("-> Collecting logs and cleaning up")
     source.copy_remote_file(
