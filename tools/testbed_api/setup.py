@@ -8,4 +8,5 @@ setuptools.setup(
     description="Functions to interact with the Piloty testbed",
     # package_dir={"": "src"},
     packages=setuptools.find_packages(),
+    install_requires=["requests"]
 )

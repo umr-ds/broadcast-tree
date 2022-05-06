@@ -1,15 +1,15 @@
+#! /usr/bin/env python3
+
 import argparse
 import time
 import datetime
 import os
-import shutil
 
 import toml
 
 from pssh.clients import ParallelSSHClient, SSHClient
 
 import testbed_api.client as client
-import testbed_api.api as api
 
 
 def run(node_filter, source_id, experiment_config, iteration):
@@ -47,7 +47,7 @@ def run(node_filter, source_id, experiment_config, iteration):
     logfile_path = f"{logfile_path_base}/$(hostname).log"
 
     btp_client_cmd = (
-        f'bash -c "nohup btp --log_level=2 {max_power} {iface} > {logfile_path} 2>&1 &"'
+        f'bash -c "nohup btp --log_file={logfile_path} --log_level=2 {max_power} {iface} > /dev/null 2> {logfile_path}.err &"'
     )
     client_output = client_nodes.run_command(btp_client_cmd)
     for host_out in client_output:
@@ -63,7 +63,7 @@ def run(node_filter, source_id, experiment_config, iteration):
     iface = "$(grep -l b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
     logfile_path = f"{logfile_path_base}/source_$(hostname).log"
 
-    btp_client_cmd = f'bash -c "nohup btp --source=source.file --log_level=2 {max_power} {iface} > {logfile_path} 2>&1 &"'
+    btp_client_cmd = f'bash -c "nohup btp --source=source.file --log_file={logfile_path} --log_level=2 {max_power} {iface} > /dev/null 2> {logfile_path}.err &"'
     source.run_command(btp_client_cmd)
 
     print("-> Waiting for experiment to finish")
