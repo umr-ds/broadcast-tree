@@ -2,6 +2,8 @@
 # Created by https://www.toptal.com/developers/gitignore/api/c,macos,linux,visualstudiocode,jetbrains+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=c,macos,linux,visualstudiocode,jetbrains+all
 
+experiments/results/**
+
 ### C ###
 # Prerequisites
 *.d
