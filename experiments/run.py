@@ -12,7 +12,7 @@ import testbed_api.client as client
 import testbed_api.api as api
 
 
-def run(node_filter, source_id, experiment_config, iteration, local):
+def run(node_filter, source_id, experiment_config, iteration):
     print("Running prepare stage")
 
     _nodes = client.get_nodes_by_filter(**node_filter)
@@ -26,13 +26,13 @@ def run(node_filter, source_id, experiment_config, iteration, local):
     print("Running run stage")
 
     print("Preparing log folder on testbed contoller")
-    if local:
-        os.mkdir(f"/srv/nfs{logfile_path_base}")
-    else:
-        controller = SSHClient(
-            "172.23.42.1", user="testbed", password="testbed", allow_agent=False
-        )
-        controller.run_command(f"mkdir /srv/nfs{logfile_path_base}")
+    source = SSHClient(
+        f"172.23.42.{source_node.id + 100}",
+        user="root",
+        password="raspberry",
+        allow_agent=False,
+    )
+    source.run_command(f"mkdir {logfile_path_base}")
 
     print("Preparing hosts for PSSH")
     pssh_nodes = [f"172.23.42.{node.id + 100}" for node in client_nodes]
@@ -54,13 +54,6 @@ def run(node_filter, source_id, experiment_config, iteration, local):
         print(f"{host_out.host} started")
 
     print("-> Starting source node")
-    source = SSHClient(
-        f"172.23.42.{source_node.id + 100}",
-        user="root",
-        password="raspberry",
-        allow_agent=False,
-    )
-
     source.run_command(
         f"dd bs={experiment_config['payload_size']} count=1 </dev/urandom > source.file"
     )
@@ -81,15 +74,12 @@ def run(node_filter, source_id, experiment_config, iteration, local):
     client_nodes.run_command("pkill btp")
 
     print("-> Collecting logs and cleaning up")
-    if local:
-        shutil.copytree(f"/srv/nfs{logfile_path_base}", f"~/{experiment_time}")
-    else:
-        controller.copy_remote_file(
-            f"/srv/nfs{logfile_path_base}",
-            f"{os.getcwd()}/results/{experiment_time}",
-            recurse=True,
-        )
-        controller.run_command(f"rm -rf /srv/nfs{logfile_path_base}")
+    source.copy_remote_file(
+        f"{logfile_path_base}",
+        f"{os.getcwd()}/results/{experiment_time}",
+        recurse=True,
+    )
+    source.run_command(f"rm -rf {logfile_path_base}")
 
     conf_file = open(f"{os.getcwd()}/results/{experiment_time}/config", "w")
     conf_file.write(
@@ -106,12 +96,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-c", "--config", help="Experiment configuration", required=True
     )
-    parser.add_argument(
-        "-l",
-        "--local",
-        action="store_true",
-        help="Whether this script is executed directly on the testbed controller or not",
-    )
 
     args = parser.parse_args()
 
@@ -124,5 +108,4 @@ if __name__ == "__main__":
             conf["SOURCE"]["id"],
             conf["EXPERIMENT"],
             iteration,
-            args.local,
         )
