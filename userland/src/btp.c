@@ -434,7 +434,7 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
         || hashmap_length(self.children) >= BREADTH
         || potential_child_send_pwr > self.max_pwr
        ) {
-        log_info("Rejecting child (either we have no parent, are the source, have too much children or sending power would be too high). [is_connected: %s, is_source, %s, num children: %i, potential send power: %i, self_max_power: %i]",
+        log_info("Rejecting child (either we have no parent, are the source, have too much children or sending power would be too high). [is_connected: %s, is_source: %s, num children: %i, potential send power: %i, self_max_power: %i]",
                  self_is_connected() ? "true" : "false", self.is_source ? "true" : "false", hashmap_length(self.children), potential_child_send_pwr, self.max_pwr);
         reject_child(in_frame);
     } else {
@@ -670,7 +670,7 @@ void game_round(int cur_time) {
         log_debug("Increased unchanged counter. [is_source: %s, is_connected: %s]", self.is_source ? "true" : "false", self_is_connected() ? "true" : "false");
     }
 
-    log_debug("Current counter: [%i]", self.round_unchanged_cnt);
+    log_debug("Current counter [counter: %i]", self.round_unchanged_cnt);
 
     bool children_fin = all_children_fin();
     if (self.round_unchanged_cnt >= MAX_UNCHANGED_ROUNDS && children_fin) {

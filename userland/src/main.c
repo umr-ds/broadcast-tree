@@ -7,6 +7,7 @@
 #include <time.h>
 #include <limits.h>
 #include <stdlib.h>
+#include<signal.h>
 
 #include "libexplain/socket.h"
 #include "libexplain/ioctl.h"
@@ -30,6 +31,7 @@ extern bool max_power;
 
 int init_sock(char *if_name, char *payload);
 int event_loop(void);
+void sig_handler(int signum);
 
 struct arguments {
     char *payload;
@@ -60,6 +62,11 @@ struct sockaddr_ll L_SOCKADDR = {
         .sll_halen = 0,
         .sll_addr = { 0 }
 };
+
+void sig_handler(int signum){
+    log_info("Received signal. Exiting. [signal: %i]", signum);
+    exit(signum);
+}
 
 static error_t parse_opt (int key, char *arg, struct argp_state *state) {
     struct arguments *arguments = state->input;
@@ -132,20 +139,20 @@ int init_sock(char *if_name, char *payload) {
         log_error("Could not get MAC address. [%s]", explain_ioctl(tmp_sockfd, SIOCGIFHWADDR, &if_mac));
         return ioctl_stat;
     }
-    log_debug("Acquired MAC address.");
+    log_debug("Acquired MAC address. [addr: %s]", mac_to_str((uint8_t *)if_mac.ifr_hwaddr.sa_data));
 
     L_SOCKADDR.sll_ifindex = if_idx.ifr_ifindex;
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
     init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, payload, if_name, tmp_sockfd);
-    log_debug("Initialized self.");
+    log_debug("Initialized self. [source: %s, tree_id: %u]",  self.is_source ? "true" : "false", self.tree_id);
 
     int8_t max_tx_pwr;
     if ((max_tx_pwr = get_max_tx_pwr()) < 0) {
         return -1;
     }
     self.max_pwr = max_tx_pwr;
-    log_debug("Figured out max sending power. [%i]", max_tx_pwr);
+    log_debug("Figured out max sending power. [max_power: %i]", max_tx_pwr);
 
     return tmp_sockfd;
 }
@@ -239,6 +246,10 @@ int main (int argc, char **argv) {
         log_add_fp(lf, arguments.log_level - 1);
     }
 
+    signal(SIGINT, sig_handler);
+    signal(SIGQUIT, sig_handler);
+    signal(SIGKILL, sig_handler);
+
     int sockfd = init_sock(arguments.interface, arguments.payload);
     if (sockfd < 0){
         exit(sockfd);
@@ -248,5 +259,11 @@ int main (int argc, char **argv) {
         broadcast_discovery();
     }
 
-    return event_loop();
+    int res = event_loop();
+
+    if (res == 0) {
+        log_info("Gracefully exiting.");
+    }
+
+    return res;
 }
