@@ -27,19 +27,14 @@ def parse_line(line: str) -> dict:
 
         if len(the_rest) > 1:
             arguments = {}
-            if line_dict["message"] == "Current counter:":
-                arguments["counter"] = int(the_rest[1][:-1])
-            elif line_dict["message"] == "Figured out max sending power.":
-                arguments["max_power"] = int(the_rest[1][:-1])
-            else:
-                args = the_rest[1][:-1].split(",")
-                for arg in args:
-                    key, value_raw = arg.strip().split(": ")
-                    try:
-                        value = int(value_raw.strip())
-                    except ValueError:
-                        value = value_raw.strip()
-                    arguments[key.strip()] = value
+            args = the_rest[1][:-1].split(",")
+            for arg in args:
+                key, value_raw = arg.strip().split(": ")
+                try:
+                    value = int(value_raw.strip())
+                except ValueError:
+                    value = value_raw.strip()
+                arguments[key.strip()] = value
             line_dict["arguments"] = arguments
     elif address := IP_REGEX.match(line):
         line_dict["ip_address"] = address.group(0)
