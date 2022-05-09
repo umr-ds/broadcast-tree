@@ -540,7 +540,7 @@ void handle_child_reject(eth_radio_btp_t *in_frame) {
     char *key = (char *) malloc(18);
     prepare_key(in_frame->eth.ether_shost, key);
     hashmap_put(self.parent_blocklist, key, (void**) &dummy);
-    log_info("Blocked pending parent. [%s]", key);
+    log_info("Blocked pending parent. [addr: %s]", key);
 }
 
 void handle_parent_revocation(eth_radio_btp_t *in_frame) {
@@ -574,7 +574,7 @@ void handle_parent_revocation(eth_radio_btp_t *in_frame) {
 
     free(child);
 
-    log_info("Removed child due to parent revocation. [addr %s]", key);
+    log_info("Removed child due to parent revocation. [addr: %s]", key);
 }
 
 void handle_end_of_game(eth_radio_btp_t *in_frame) {

@@ -73,8 +73,21 @@ def run(node_filter, source_id, experiment_config, iteration):
     source.run_command("pkill btp")
     client_nodes.run_command("pkill btp")
 
-    source.run_command(f'ip address show dev eth0 | egrep -o "172.23.42.1[0-9]{{2,}}" >> {source_logfile_path}')
-    client_nodes.run_command(f'ip address show dev eth0 | egrep -o "172.23.42.1[0-9]{{2,}}" >> {logfile_path}')
+    print("-> Writing node identifications to file")
+    ids_path = f"{logfile_path_base}/$(hostname).ids"
+    source_ids_path = f"{logfile_path_base}/source_$(hostname).ids"
+
+    ip_addr_cmd = 'ip address show dev eth0 | egrep -o "172.23.42.1[0-9]{2,}"'
+    mac_addr_cmd = "ip -o link show dev eth0 | awk '{print $17}'"
+    node_id_cmd = "echo \"$(( $(ip address show dev eth0 | egrep -o '172.23.42.1[0-9]{2,}' | cut -d'.' -f4) - 100 ))\""
+
+    source.run_command(f'{ip_addr_cmd} > {source_ids_path}')
+    source.run_command(f'{mac_addr_cmd} >> {source_ids_path}')
+    source.run_command(f'{node_id_cmd} >> {source_ids_path}')
+
+    client_nodes.run_command(f'{ip_addr_cmd} > {ids_path}')
+    client_nodes.run_command(f'{mac_addr_cmd} >> {ids_path}')
+    client_nodes.run_command(f'{node_id_cmd} >> {ids_path}')
 
     print("-> Collecting logs and cleaning up")
     source.copy_remote_file(
