@@ -52,7 +52,7 @@ def parse_line(line: str) -> dict[str, datetime.datetime | str | dict[str, Any]]
 
 
 def find_node_parent(f: TextIO) -> dict[str, str | int]:
-    parent_data: dict[str, str | int] = {"parent": ""}
+    parent_data: dict[str, str | int] = {"parent": "", "tx_pwr": 0}
     switch_count = 0
 
     for line in f:
@@ -108,7 +108,7 @@ def transform_metadata(
 
 def parse_experiment(
     experiment_path: str,
-) -> (dict[str, str], list[dict[str, str | int]]):
+) -> (dict[str, (str, int)], list[dict[str, str | int]]):
     path = pathlib.Path(experiment_path)
 
     #  parse node_metadata
@@ -127,7 +127,7 @@ def parse_experiment(
     mac_lookup = transform_metadata(metadata=metadata, key="MAC_ETH")
 
     #  build logical representation of the btree
-    btree: dict[str, str] = {}
+    btree: dict[str, (str, int)] = {}
 
     for file in path.glob("*.log"):
         node_name = file.name.split(".")[0].split("-")[1:]
@@ -138,7 +138,7 @@ def parse_experiment(
             print(
                 f"Node {mac_lookup[node_address]['ID']} switched parents {parent_data['switch_count']} times"
             )
-            btree[node_address] = parent_data["parent"]
+            btree[node_address] = (parent_data["parent"], parent_data["tx_pwr"])
 
     return btree, metadata
 
@@ -148,10 +148,14 @@ def plot_graph(
 ) -> None:
     graph = graphviz.Digraph("btree")
 
-    for node, parent in btree.items():
+    for node, (parent, parent_tx) in btree.items():
         graph.node(str(mac_lookup[node]["ID"]))
         if parent:
-            graph.edge(str(mac_lookup[node]["ID"]), str(mac_lookup[parent]["ID"]))
+            graph.edge(
+                str(mac_lookup[node]["ID"]),
+                str(mac_lookup[parent]["ID"]),
+                label=str(parent_tx),
+            )
 
     graph_path = pathlib.Path(f"{out_path}/btree")
     graph.render(graph_path)
