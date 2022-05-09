@@ -15,6 +15,14 @@ LOG_LEVEL_REGEX = re.compile(r"TRACE|DEBUG|INFO|WARN|ERROR|FATAL")
 SOURCEFILE_REGEX = re.compile(r"src/.*:\d*:")
 
 
+def smartcast(value: str) -> str | int:
+    value = value.strip()
+    try:
+        return int(value)
+    except ValueError:
+        return value
+
+
 def parse_line(line: str) -> dict[str, datetime.datetime | str | dict[str, Any]]:
     line_dict = {}
     if timestamp := TIME_REGEX.match(line):
@@ -33,12 +41,8 @@ def parse_line(line: str) -> dict[str, datetime.datetime | str | dict[str, Any]]
             arguments = {}
             args = the_rest[1][:-1].split(",")
             for arg in args:
-                key, value_raw = arg.strip().split(": ")
-                try:
-                    value = int(value_raw.strip())
-                except ValueError:
-                    value = value_raw.strip()
-                arguments[key.strip()] = value
+                key, value = arg.strip().split(": ")
+                arguments[key.strip()] = smartcast(value)
             line_dict["arguments"] = arguments
     elif address := IP_REGEX.match(line):
         line_dict["ip_address"] = address.group(0)
@@ -67,8 +71,6 @@ def find_node_parent(f: TextIO) -> dict[str, str | int]:
             parent_data["parent"] = ""
         if parsed_line["message"] == "Updated self.":
             parent_data["tx_pwr"] = parsed_line["arguments"]["own_prw"]
-        # if parsed_line["message"] == "ip_address":
-        #     own_address = parsed_line["ip_address"]
         if (
             parsed_line["message"]
             == "Received entire payload and have no children. Disconnecting from parent."
@@ -79,9 +81,52 @@ def find_node_parent(f: TextIO) -> dict[str, str | int]:
     return parent_data
 
 
-def parse_experiment(experiment_path: str) -> dict[str, str]:
+def parse_id_file(f: TextIO) -> dict[str, str | int]:
+    metadata: dict[str, str | int] = {}
+
+    for line in f:
+        key, value = line.strip().split()
+        metadata[key[:-1]] = smartcast(value)
+
+    return metadata
+
+
+def transform_metadata(
+    metadata: list[dict[str, str | int]], key: str
+) -> dict[str | int, dict[str, str | int]]:
+    transformed: dict[str | int, dict[str, str | int]] = {}
+
+    for node_metadata in metadata:
+        new_key: str | int = node_metadata[key]
+        new_dict: dict[str, str | int] = {
+            k: v for (k, v) in node_metadata.items() if k != key
+        }
+        transformed[new_key] = new_dict
+
+    return transformed
+
+
+def parse_experiment(
+    experiment_path: str,
+) -> (dict[str, str], list[dict[str, str | int]]):
     path = pathlib.Path(experiment_path)
 
+    #  parse node_metadata
+    metadata: list[dict[str, str | int]] = []
+    for file in path.glob("*.ids"):
+        node_name = file.name.split(".")[0]
+        node_address = f'b8:27:eb:{":".join(node_name.split("-")[1:])}'
+
+        with open(file, "r") as f:
+            node_metadata = parse_id_file(f)
+            node_metadata["NAME"] = node_name
+            node_metadata["MAC_ETH"] = node_address
+            metadata.append(node_metadata)
+
+    # build lookup-table for mac-addresses
+    mac_lookup = transform_metadata(metadata=metadata, key="MAC_ETH")
+
+    #  build logical representation of the btree
     btree: dict[str, str] = {}
 
     for file in path.glob("*.log"):
@@ -91,27 +136,31 @@ def parse_experiment(experiment_path: str) -> dict[str, str]:
         with open(file, "r") as f:
             parent_data = find_node_parent(f)
             print(
-                f"Node {node_address} switched parents {parent_data['switch_count']} times"
+                f"Node {mac_lookup[node_address]['ID']} switched parents {parent_data['switch_count']} times"
             )
             btree[node_address] = parent_data["parent"]
 
-    return btree
+    return btree, metadata
 
 
-def plot_graph(btree: dict[str, str], out_path: str) -> None:
+def plot_graph(
+    btree: dict[str, str], mac_lookup: dict[str, dict[str, str | int]], out_path: str
+) -> None:
     graph = graphviz.Digraph("btree")
 
     for node, parent in btree.items():
-        graph.node(node)
+        graph.node(str(mac_lookup[node]["ID"]))
         if parent:
-            graph.edge(node, parent)
+            graph.edge(str(mac_lookup[node]["ID"]), str(mac_lookup[parent]["ID"]))
 
-    print(graph.source)
-
-    # graph_path = pathlib.Path(f"{out_path}/graphs")
-    # graph.render(graph_path)
+    graph_path = pathlib.Path(f"{out_path}/btree")
+    graph.render(graph_path)
 
 
 if __name__ == "__main__":
-    btree = parse_experiment(sys.argv[1])
-    plot_graph(btree=btree, out_path=sys.argv[1])
+    btree, metadata = parse_experiment(sys.argv[1])
+
+    # build lookup-table for mac-addresses
+    mac_lookup = transform_metadata(metadata=metadata, key="MAC_ETH")
+
+    plot_graph(btree=btree, mac_lookup=mac_lookup, out_path=sys.argv[1])
