@@ -467,7 +467,7 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
 
     // We received a confirmation from a parent we never asked. Ignore.
     if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) {
-        log_debug("Received child confirm from unknown node. [potential parent: %s, received addr: %s]", self.pending_parent->addr, in_frame->eth.ether_shost);
+        log_debug("Received child confirm from unknown node. [potential parent: %s, received addr: %s]", mac_to_str(self.pending_parent->addr), mac_to_str(in_frame->eth.ether_shost));
         return;
     }
 
