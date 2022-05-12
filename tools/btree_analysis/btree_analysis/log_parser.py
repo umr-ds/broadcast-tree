@@ -37,6 +37,9 @@ def parse_line(line: str) -> dict[str, datetime.datetime | str | dict[str, Any]]
 
         line_dict["message"] = the_rest[0].strip()
 
+        if line_dict["level"] == "ERROR":
+            return line_dict
+
         if len(the_rest) > 1:
             arguments = {}
             args = the_rest[1][:-1].split(",")
@@ -106,6 +109,73 @@ def transform_metadata(
     return transformed
 
 
+def get_node_errors(f):
+    f.seek(0)
+    error_messages = {
+        "color": set(),
+        "msg": set(),
+    }
+    for line in f:
+        parsed_line = parse_line(line)
+
+        if not parsed_line:
+            continue
+
+        color = None
+        msg = None
+
+        if parsed_line["level"] == "WARN":
+            color = "yellow"
+            msg = parsed_line["message"]
+
+        if parsed_line["level"] == "ERROR":
+            color = "orange"
+            msg = parsed_line["message"]
+
+        if parsed_line["message"] == "FATAL":
+            color = "red"
+            msg = parsed_line["message"]
+
+        if color:
+            error_messages["color"].add(color)
+            error_messages["msg"].add(msg)
+            color = None
+            msg = None
+
+    return error_messages
+
+
+def check_node_reception(f):
+    f.seek(0)
+    for line in f:
+        parsed_line = parse_line(line)
+
+        if not parsed_line:
+            continue
+
+        if (
+            parsed_line["message"] == "Received entire payload."
+            and "file path" in parsed_line["arguments"]
+        ):
+            return "R"
+
+    return "NR"
+
+
+def check_game_fin(f):
+    f.seek(0)
+    for line in f:
+        parsed_line = parse_line(line)
+
+        if not parsed_line:
+            continue
+
+        if parsed_line["message"] == "Ending game.":
+            return "F"
+
+    return "NF"
+
+
 def parse_experiment(
     experiment_path: str,
 ) -> (dict[str, (str, int)], list[dict[str, str | int]]):
@@ -138,7 +208,20 @@ def parse_experiment(
             print(
                 f"Node {mac_lookup[node_address]['ID']} switched parents {parent_data['switch_count']} times"
             )
-            btree[node_address] = (parent_data["parent"], parent_data["tx_pwr"])
+
+            node_errors = get_node_errors(f)
+
+            reception = check_node_reception(f)
+
+            ended_game = check_game_fin(f)
+
+            btree[node_address] = (
+                parent_data["parent"],
+                parent_data["tx_pwr"],
+                node_errors,
+                reception,
+                ended_game,
+            )
 
     return btree, metadata
 
@@ -148,8 +231,25 @@ def plot_graph(
 ) -> None:
     graph = graphviz.Digraph("btree")
 
-    for node, (parent, parent_tx) in btree.items():
-        graph.node(str(mac_lookup[node]["ID"]))
+    for node, (parent, parent_tx, errors, reception, ended_game) in btree.items():
+        node_color = "lightgrey"
+        err_msg = "\n".join(errors["msg"])
+
+        if "yellow" in errors["color"]:
+            node_color = "yellow"
+        if "orange" in errors["color"]:
+            node_color = "orange"
+        if "red" in errors["color"]:
+            node_color = "red"
+
+        graph.node(
+            str(mac_lookup[node]["ID"]),
+            label=f'{mac_lookup[node]["ID"]}: {ended_game}/{reception}',
+            style="filled",
+            fillcolor=node_color,
+            # xlabel=f'{mac_lookup[node]["ID"]}: {err_msg}',
+        )
+
         if parent:
             graph.edge(
                 str(mac_lookup[node]["ID"]),
