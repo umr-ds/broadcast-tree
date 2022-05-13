@@ -17,11 +17,6 @@
 #define MAX_PAYLOAD (MTU - (BTP_PAYLOAD_HEADER_SIZE))
 #define MAX_DEPTH 20
 
-#define POLL_TIMEOUT 100   // timeout for poll in ms
-#define DISCOVERY_BCAST_INTERVAL_MSEC 100
-#define PENDING_TIMEOUT 100
-#define RETRANSMIT_TIMEOUT 200
-
 #define BTP_ETHERTYPE 35039
 
 #define MINIMAL_SNR 5
@@ -149,7 +144,7 @@ void broadcast_discovery(void);
 
 /**
  * Parse the common btp-header
- * 
+ *
  * @param in_frame: Pointer to a btp_frame_t struct which will serve as the destination
  * @param racv_frame: Pointer to a raw bitstream as it was read from raw socket
  */
@@ -157,7 +152,7 @@ void parse_header(eth_radio_btp_t *in_frame, uint8_t *recv_frame);
 
 /**
  * Do stuf with a received packet
- * 
+ *
  * @param racv_frame: Pointer to a raw bitstream as it was read from raw socket
  */
 void handle_packet(uint8_t *recv_frame);

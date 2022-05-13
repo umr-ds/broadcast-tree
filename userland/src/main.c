@@ -22,12 +22,10 @@ extern self_t self;
 extern bool payload_complete;
 extern bool max_power;
 
-/**
- * TODO: Proposal.
- * The source should repeatedly send its payload until it has no children anymore.
- * And children should disconnect from their parents as soon as they have received the entire payload and do not have
- * children anymore.
- */
+uint16_t poll_timeout_msec;
+uint16_t discovery_bcast_interval_msec;
+uint16_t pending_timeout_msec;
+uint16_t source_retransmit_payload_msec;
 
 int init_sock(char *if_name, char *payload);
 int event_loop(void);
@@ -39,6 +37,10 @@ struct arguments {
     int log_level;
     char *log_file;
     char *interface;
+    uint16_t poll_timeout_msec;
+    uint16_t discovery_bcast_interval_msec;
+    uint16_t pending_timeout_msec;
+    uint16_t source_retransmit_payload_msec;
 };
 
 const char *argp_program_version = "btp 0.1";
@@ -47,9 +49,14 @@ static char doc[] = "BTP -- Broadcast Tree Protocol";
 static char args_doc[] = "INTERFACE";
 static struct argp_option options[] = {
         {"source",    's', "payload", 0, "Path to the payload to be sent (omit this option for client mode)", 0 },
-        {"max_power",  'm', 0,    0, "Whether to use maximum transmission power of fancy power calculations for efficiency.", 0 },
+        {"max_power",  'm', 0,    0, "Whether to use maximum transmission power of fancy power calculations for efficiency", 0 },
         {"log_level", 'l', "level",   0, "Log level\n0: QUIET, 1: TRACE, 2: DEBUG, 3: INFO (default),\n4: WARN, 5: ERROR, 6: FATAL", 1 },
-        {"log_file",  'f', "path",    0, "File path to log file.\nIf not present only stdout and stderr logging will be used.", 1 },
+        {"log_file",  'f', "path",    0, "File path to log file.\nIf not present only stdout and stderr logging will be used", 1 },
+
+        {"poll_timeout",  'p', "msec",    0, "Timeout for poll syscall", 1 },
+        {"broadcast_timeout",  'b', "msec",    0, "How often the discovery frames should be broadcasted", 1 },
+        {"pending_timeout",  't', "msec",    0, "How long to wait for potential parent to answer", 1 },
+        {"retransmit_timeout",  'r', "msec",    0, "How long to wait for retransmitting the payload from the source", 1 },
         { 0 }
 };
 
@@ -93,17 +100,24 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
         case 'm':
             arguments->max_power = true;
             break;
-        case ARGP_KEY_ARG:
-            if (state->arg_num >= 1) argp_usage (state);
-
-            arguments->interface = arg;
-
+        case 'p':
+            arguments->poll_timeout_msec = (uint16_t) strtol(arg, NULL, 10);
             break;
-
+        case 'b':
+            arguments->discovery_bcast_interval_msec = (uint16_t) strtol(arg, NULL, 10);
+            break;
+        case 't':
+            arguments->pending_timeout_msec = (uint16_t) strtol(arg, NULL, 10);
+            break;
+        case 'r':
+            arguments->source_retransmit_payload_msec = (uint16_t) strtol(arg, NULL, 10);
+            break;
+        case ARGP_KEY_ARG : if (state->arg_num >= 1) argp_usage(state);
+            arguments->interface = arg;
+            break;
         case ARGP_KEY_END:
             if (state->arg_num < 1) argp_usage (state);
             break;
-
         default:
             return ARGP_ERR_UNKNOWN;
     }
@@ -176,7 +190,7 @@ int event_loop(void) {
         }
 
         int cur_time = get_time_msec();
-        if (cur_time - bcast_send_time > DISCOVERY_BCAST_INTERVAL_MSEC) {
+        if (cur_time - bcast_send_time > discovery_bcast_interval_msec) {
             if (self.is_source || self_is_connected()) {
                 broadcast_discovery();
             }
@@ -192,10 +206,10 @@ int event_loop(void) {
             .events = POLLIN
         };
 
-        res = poll(&pfd, 1, POLL_TIMEOUT);
+        res = poll(&pfd, 1, poll_timeout_msec);
 
         if (res == -1) {
-            log_error("Poll returned an error. [%s]", explain_poll(&pfd, 1, POLL_TIMEOUT));
+            log_error("Poll returned an error. [%s]", explain_poll(&pfd, 1, poll_timeout_msec));
             return res;
         }
 
@@ -228,11 +242,19 @@ int main (int argc, char **argv) {
             .max_power = false,
             .log_level = 3,
             .log_file = "",
-            .interface = ""
+            .interface = "",
+            .poll_timeout_msec = 100,
+            .discovery_bcast_interval_msec = 100,
+            .pending_timeout_msec = 100,
+            .source_retransmit_payload_msec = 100,
     };
     argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
     max_power = arguments.max_power;
+    poll_timeout_msec = arguments.poll_timeout_msec;
+    discovery_bcast_interval_msec = arguments.discovery_bcast_interval_msec;
+    pending_timeout_msec = arguments.pending_timeout_msec;
+    source_retransmit_payload_msec = arguments.source_retransmit_payload_msec;
 
     // Logging stuff
     if (arguments.log_level == 0) {
@@ -249,6 +271,7 @@ int main (int argc, char **argv) {
     signal(SIGINT, sig_handler);
     signal(SIGQUIT, sig_handler);
     signal(SIGKILL, sig_handler);
+    signal(SIGTERM, sig_handler);
 
     int sockfd = init_sock(arguments.interface, arguments.payload);
     if (sockfd < 0){

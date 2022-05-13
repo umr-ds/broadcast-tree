@@ -21,6 +21,8 @@ int payload_transmit_time = 0;
 bool max_power;
 
 extern struct sockaddr_ll L_SOCKADDR;
+extern uint16_t pending_timeout_msec;
+extern uint16_t source_retransmit_payload_msec;
 
 ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr);
 int disconnect_child(any_t item, any_t args);
@@ -647,7 +649,7 @@ void game_round(int cur_time) {
     // if we are currently waiting to connect to a new parent, we don't modify our state, since we are about to change the topology
     if (self_is_pending()) {
         log_debug("Currently pending new connection. [addr: %s]", mac_to_str(self.pending_parent->addr));
-        if (cur_time >= self.pending_parent->last_seen + PENDING_TIMEOUT) {
+        if (cur_time >= self.pending_parent->last_seen + pending_timeout_msec) {
             log_warn("Pending parent did not respond in time. Removing pending parent. [addr: %s]", mac_to_str(self.pending_parent->addr));
             free(self.pending_parent);
             self.pending_parent = NULL;
@@ -658,7 +660,7 @@ void game_round(int cur_time) {
     // the end-of-game-state is final and once we reach it, we never switch back out of it
     if (self.game_fin) {
         log_debug("Game already finished, doing nothing");
-        if (self.is_source && cur_time - payload_transmit_time > RETRANSMIT_TIMEOUT) {
+        if (self.is_source && cur_time - payload_transmit_time > source_retransmit_payload_msec) {
             send_payload();
             log_debug("Re-sent payload.");
         }

@@ -43,10 +43,20 @@ def run(node_filter, source_id, experiment_config, iteration):
 
     print("-> Starting client nodes")
     max_power = "--max_power" if experiment_config["max_power"] else ""
+
+    poll_timeout = f'--poll_timeout={experiment_config["poll_timeout"]}'
+    discovery_bcast_interval = (
+        f'--broadcast_timeout={experiment_config["discovery_bcast_interval"]}'
+    )
+    pending_timeout = f'--pending_timeout={experiment_config["pending_timeout"]}'
+    source_retransmit_payload = (
+        f'--retransmit_timeout={experiment_config["source_retransmit_payload"]}'
+    )
+
     iface = "$(grep -l b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
     logfile_path = f"{logfile_path_base}/$(hostname).log"
 
-    btp_client_cmd = f'bash -c "nohup btp --log_file={logfile_path} --log_level=2 {max_power} {iface} > /dev/null 2> {logfile_path}.err &"'
+    btp_client_cmd = f'bash -c "nohup btp {poll_timeout} {discovery_bcast_interval} {pending_timeout} {source_retransmit_payload} --log_file={logfile_path} --log_level=2 {max_power} {iface} > /dev/null 2> {logfile_path}.err &"'
     client_output = client_nodes.run_command(btp_client_cmd)
     for host_out in client_output:
         print(f"{host_out.host} started")
@@ -61,33 +71,15 @@ def run(node_filter, source_id, experiment_config, iteration):
     iface = "$(grep -l b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
     source_logfile_path = f"{logfile_path_base}/source_$(hostname).log"
 
-    btp_client_cmd = f'bash -c "nohup btp --source=source.file --log_file={source_logfile_path} --log_level=2 {max_power} {iface} > /dev/null 2> {source_logfile_path}.err &"'
+    btp_client_cmd = f'bash -c "nohup btp --source=source.file {poll_timeout} {discovery_bcast_interval} {pending_timeout} {source_retransmit_payload}  --log_file={source_logfile_path} --log_level=2 {max_power} {iface} > /dev/null 2> {source_logfile_path}.err &"'
     source.run_command(btp_client_cmd)
 
     print("-> Waiting for experiment to finish")
-    time.sleep(10)
+    time.sleep(60)
 
     print("-> Stopping BTP on all nodes")
     source.run_command("pkill btp")
     client_nodes.run_command("pkill btp")
-
-    print("-> Writing node identifications to file")
-    ids_path = f"{logfile_path_base}/$(hostname).ids"
-    source_ids_path = f"{logfile_path_base}/source_$(hostname).ids"
-
-    ip_addr_cmd = (
-        'echo "IP: $(ip address show dev eth0 | egrep -o "172.23.42.1[0-9]{2,}")"'
-    )
-    mac_addr_cmd = "echo \"MAC: $(ip -o link show dev eth0 | awk '{print $17}')\""
-    node_id_cmd = "echo \"ID: $(( $(ip address show dev eth0 | egrep -o '172.23.42.1[0-9]{2,}' | cut -d'.' -f4) - 100 ))\""
-
-    source.run_command(f"{ip_addr_cmd} > {source_ids_path}")
-    source.run_command(f"{mac_addr_cmd} >> {source_ids_path}")
-    source.run_command(f"{node_id_cmd} >> {source_ids_path}")
-
-    client_nodes.run_command(f"{ip_addr_cmd} > {ids_path}")
-    client_nodes.run_command(f"{mac_addr_cmd} >> {ids_path}")
-    client_nodes.run_command(f"{node_id_cmd} >> {ids_path}")
 
     print("-> Collecting logs and cleaning up")
     source.copy_remote_file(
@@ -98,9 +90,7 @@ def run(node_filter, source_id, experiment_config, iteration):
     source.run_command(f"rm -rf {logfile_path_base}")
 
     conf_file = open(f"{os.getcwd()}/results/{experiment_time}/config", "w")
-    conf_file.write(
-        f"Used clients:\n{pssh_nodes}\n\nSource:\n172.23.42.{source_node.id + 100}\n\nConfig:\n{experiment_config}\n\nIteration:\n{iteration}"
-    )
+    toml.dump(experiment_config, conf_file)
     conf_file.close()
 
 
