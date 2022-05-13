@@ -8,6 +8,7 @@ import graphviz
 
 from typing import Any, TextIO
 
+from node_mapping import metadata
 
 IP_REGEX = re.compile(r"\d{3}.\d{2}.\d{2}.\d{3}")
 TIME_REGEX = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
@@ -159,7 +160,7 @@ def check_node_reception(f):
         ):
             return "R"
 
-    return "NR"
+    return "-"
 
 
 def check_game_fin(f):
@@ -173,25 +174,17 @@ def check_game_fin(f):
         if parsed_line["message"] == "Ending game.":
             return "F"
 
-    return "NF"
+    return "-"
 
 
 def parse_experiment(
-    experiment_path: str,
+    experiment_path: pathlib.Path,
 ) -> (dict[str, (str, int)], list[dict[str, str | int]]):
-    path = pathlib.Path(experiment_path)
 
-    #  parse node_metadata
-    metadata: list[dict[str, str | int]] = []
-    for file in path.glob("*.ids"):
-        node_name = file.name.split(".")[0]
-        node_address = f'b8:27:eb:{":".join(node_name.split("-")[1:])}'
-
-        with open(file, "r") as f:
-            node_metadata = parse_id_file(f)
-            node_metadata["NAME"] = node_name
-            node_metadata["MAC_ETH"] = node_address
-            metadata.append(node_metadata)
+    config = ""
+    # parse experiment config
+    with open(experiment_path / "config", "r") as f:
+        config = ", ".join(f.read().splitlines())
 
     # build lookup-table for mac-addresses
     mac_lookup = transform_metadata(metadata=metadata, key="MAC_ETH")
@@ -199,7 +192,7 @@ def parse_experiment(
     #  build logical representation of the btree
     btree: dict[str, (str, int)] = {}
 
-    for file in path.glob("*.log"):
+    for file in experiment_path.glob("*.log"):
         node_name = file.name.split(".")[0].split("-")[1:]
         node_address = f'b8:27:eb:{":".join(node_name)}'
 
@@ -223,14 +216,22 @@ def parse_experiment(
                 ended_game,
             )
 
-    return btree, metadata
+    return btree, metadata, config
 
 
 def plot_graph(
-    btree: dict[str, str], mac_lookup: dict[str, dict[str, str | int]], out_path: str
+    btree: dict[str, str],
+    mac_lookup: dict[str, dict[str, str | int]],
+    config: str,
+    out_path: pathlib.Path,
 ) -> None:
-    graph = graphviz.Digraph("btree")
 
+    graph = graphviz.Digraph("btree")
+    graph.attr(charset="UTF-8")
+
+    unconnected = 0
+    not_ended = 0
+    not_received = 0
     for node, (parent, parent_tx, errors, reception, ended_game) in btree.items():
         node_color = "lightgrey"
         err_msg = "\n".join(errors["msg"])
@@ -242,12 +243,17 @@ def plot_graph(
         if "red" in errors["color"]:
             node_color = "red"
 
+        if reception == "-":
+            not_received += 1
+        if ended_game == "-":
+            not_ended += 1
+
         graph.node(
             str(mac_lookup[node]["ID"]),
             label=f'{mac_lookup[node]["ID"]}: {ended_game}/{reception}',
             style="filled",
             fillcolor=node_color,
-            # xlabel=f'{mac_lookup[node]["ID"]}: {err_msg}',
+            xlabel=f'{mac_lookup[node]["ID"]}: {err_msg}',
         )
 
         if parent:
@@ -256,15 +262,33 @@ def plot_graph(
                 str(mac_lookup[parent]["ID"]),
                 label=str(parent_tx),
             )
+        else:
+            unconnected += 1
 
-    graph_path = pathlib.Path(f"{out_path}/btree")
+    run_stats = f"{config}\n{unconnected} unconnected nodes, {not_ended} not ended, {not_received} not received"
+
+    graph.attr(label=run_stats)
+    print(run_stats)
+
+    graph_path = pathlib.Path(out_path / "btree")
     graph.render(graph_path)
 
 
 if __name__ == "__main__":
-    btree, metadata = parse_experiment(sys.argv[1])
 
-    # build lookup-table for mac-addresses
-    mac_lookup = transform_metadata(metadata=metadata, key="MAC_ETH")
+    experiment_root_path = pathlib.Path(sys.argv[1])
 
-    plot_graph(btree=btree, mac_lookup=mac_lookup, out_path=sys.argv[1])
+    for experiment_path in experiment_root_path.glob("*"):
+        print(f"#### Parsing experiment {experiment_path.name}")
+
+        if ".DS_Store" in experiment_path.parts or ".gitkeep" in experiment_path.parts:
+            continue
+
+        btree, metadata, config = parse_experiment(experiment_path)
+
+        # build lookup-table for mac-addresses
+        mac_lookup = transform_metadata(metadata=metadata, key="MAC_ETH")
+
+        plot_graph(
+            btree=btree, mac_lookup=mac_lookup, config=config, out_path=experiment_path
+        )
