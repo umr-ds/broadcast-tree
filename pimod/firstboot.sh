@@ -43,4 +43,9 @@ BASE_PATH=/btree_data
 mkdir -p "$BASE_PATH"
 mount -t nfs 172.23.42.1:/srv/nfs/btree_data "$BASE_PATH"
 
+# Mount folder where btp binary is located
+BTP_BIN_PATH=/usr/local/bin
+mkdir -p "$BTP_BIN_PATH"
+mount -t nfs 172.23.42.1:/srv/nfs/btree_bin "$BTP_BIN_PATH"
+
 nc -d 172.23.42.1 35039
