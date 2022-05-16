@@ -274,16 +274,18 @@ def plot_graph(
     graph.render(graph_path)
 
 
+def usage():
+    print("Usage: ./log_parser.py [-s <experiment_path>] [-d <experiment_root_path>]")
+
+
 if __name__ == "__main__":
 
-    experiment_root_path = pathlib.Path(sys.argv[1])
+    if len(sys.argv) != 3:
+        usage()
+        exit(1)
 
-    for experiment_path in experiment_root_path.glob("*"):
-        print(f"#### Parsing experiment {experiment_path.name}")
-
-        if ".DS_Store" in experiment_path.parts or ".gitkeep" in experiment_path.parts:
-            continue
-
+    if sys.argv[1] == "-s":
+        experiment_path = pathlib.Path(sys.argv[2])
         btree, metadata, config = parse_experiment(experiment_path)
 
         # build lookup-table for mac-addresses
@@ -292,3 +294,29 @@ if __name__ == "__main__":
         plot_graph(
             btree=btree, mac_lookup=mac_lookup, config=config, out_path=experiment_path
         )
+
+    elif sys.argv[1] == "-d":
+        experiment_root_path = pathlib.Path(sys.argv[2])
+
+        for experiment_path in experiment_root_path.glob("*"):
+            print(f"#### Parsing experiment {experiment_path.name}")
+
+            if (
+                ".DS_Store" in experiment_path.parts
+                or ".gitkeep" in experiment_path.parts
+            ):
+                continue
+
+            btree, metadata, config = parse_experiment(experiment_path)
+
+            # build lookup-table for mac-addresses
+            mac_lookup = transform_metadata(metadata=metadata, key="MAC_ETH")
+
+            plot_graph(
+                btree=btree,
+                mac_lookup=mac_lookup,
+                config=config,
+                out_path=experiment_path,
+            )
+    else:
+        usage()
