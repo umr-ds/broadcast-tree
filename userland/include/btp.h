@@ -21,8 +21,6 @@
 
 #define MINIMAL_SNR 5
 
-#define MAX_UNCHANGED_ROUNDS 5
-
 typedef uint8_t mac_addr_t[6];
 
 typedef enum {

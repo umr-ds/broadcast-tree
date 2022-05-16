@@ -52,12 +52,25 @@ def run(node_filter, source_id, experiment_config, iteration):
     source_retransmit_payload = (
         f'--retransmit_timeout={experiment_config["source_retransmit_payload"]}'
     )
+    unchanged_counter = f'--unchanged_counter={experiment_config["unchanged_counter"]}'
+    omit_roll_back = "--omit_roll_back" if experiment_config["omit_roll_back"] else ""
 
     iface = "$(grep -l b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
-    logfile_path = f"{logfile_path_base}/$(hostname).log"
 
-    btp_client_cmd = f'bash -c "nohup btp {poll_timeout} {discovery_bcast_interval} {pending_timeout} {source_retransmit_payload} --log_file={logfile_path} --log_level=2 {max_power} {iface} > /dev/null 2> {logfile_path}.err &"'
-    client_output = client_nodes.run_command(btp_client_cmd)
+    client_logfile_path = f"{logfile_path_base}/$(hostname).log"
+    source_logfile_path = f"{logfile_path_base}/source_$(hostname).log"
+
+    btp_cmd_common = (
+        f'bash -c "nohup btp --log_level=2'
+        f" {{0}}"
+        f" {max_power} {omit_roll_back} {unchanged_counter}"
+        f" {poll_timeout} {discovery_bcast_interval} {pending_timeout} {source_retransmit_payload}"
+        f' --log_file={{1}} {iface} > /dev/null 2> {{1}}.err &"'
+    )
+
+    client_output = client_nodes.run_command(
+        btp_cmd_common.format("", client_logfile_path)
+    )
     for host_out in client_output:
         print(f"{host_out.host} started")
 
@@ -67,12 +80,11 @@ def run(node_filter, source_id, experiment_config, iteration):
     )
 
     print("-> Starting experiment")
-    max_power = "--max_power" if experiment_config["max_power"] else ""
-    iface = "$(grep -l b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
     source_logfile_path = f"{logfile_path_base}/source_$(hostname).log"
 
-    btp_client_cmd = f'bash -c "nohup btp --source=source.file {poll_timeout} {discovery_bcast_interval} {pending_timeout} {source_retransmit_payload}  --log_file={source_logfile_path} --log_level=2 {max_power} {iface} > /dev/null 2> {source_logfile_path}.err &"'
-    source.run_command(btp_client_cmd)
+    source.run_command(
+        btp_cmd_common.format("--source=source.file", source_logfile_path)
+    )
 
     print("-> Waiting for experiment to finish")
     time.sleep(60)

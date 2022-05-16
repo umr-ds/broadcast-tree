@@ -7,7 +7,8 @@
 #include <time.h>
 #include <limits.h>
 #include <stdlib.h>
-#include<signal.h>
+#include <signal.h>
+#include <string.h>
 
 #include "libexplain/socket.h"
 #include "libexplain/ioctl.h"
@@ -22,13 +23,12 @@ extern self_t self;
 extern bool payload_complete;
 extern bool max_power;
 
-uint16_t poll_timeout_msec;
-uint16_t discovery_bcast_interval_msec;
 uint16_t pending_timeout_msec;
 uint16_t source_retransmit_payload_msec;
+uint8_t unchanged_counter;
 
 int init_sock(char *if_name, char *payload);
-int event_loop(void);
+int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_msec, bool omit_roll_back);
 void sig_handler(int signum);
 
 struct arguments {
@@ -41,6 +41,8 @@ struct arguments {
     uint16_t discovery_bcast_interval_msec;
     uint16_t pending_timeout_msec;
     uint16_t source_retransmit_payload_msec;
+    uint8_t unchanged_counter;
+    bool omit_roll_back;
 };
 
 const char *argp_program_version = "btp 0.1";
@@ -57,6 +59,10 @@ static struct argp_option options[] = {
         {"broadcast_timeout",  'b', "msec",    0, "How often the discovery frames should be broadcasted", 1 },
         {"pending_timeout",  't', "msec",    0, "How long to wait for potential parent to answer", 1 },
         {"retransmit_timeout",  'r', "msec",    0, "How long to wait for retransmitting the payload from the source", 1 },
+
+        {"unchanged_counter",  'u', "number",    0, "How many rounds to wait until declaring game finished", 1 },
+        {"omit_roll_back",  'o', 0,    0, "Do not roll back tree after payload is completely received", 1 },
+
         { 0 }
 };
 
@@ -111,6 +117,12 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
             break;
         case 'r':
             arguments->source_retransmit_payload_msec = (uint16_t) strtol(arg, NULL, 10);
+            break;
+        case 'u':
+            arguments->unchanged_counter = (uint8_t) strtol(arg, NULL, 10);
+            break;
+        case 'o':
+            arguments->omit_roll_back = true;
             break;
         case ARGP_KEY_ARG : if (state->arg_num >= 1) argp_usage(state);
             arguments->interface = arg;
@@ -171,7 +183,7 @@ int init_sock(char *if_name, char *payload) {
     return tmp_sockfd;
 }
 
-int event_loop(void) {
+int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_msec, bool omit_roll_back) {
     ssize_t read_bytes;
     uint8_t recv_frame[MTU];
     memset(recv_frame, 0, MTU * sizeof (uint8_t));
@@ -183,7 +195,7 @@ int event_loop(void) {
         // If we have received the entire payload, we can shutdown or execution.
         // If if we received the entire payload and have no children, we disconnect from our parent to notify them,
         // that we are finished.
-        if (payload_complete && hashmap_length(self.children) == 0) {
+        if (!omit_roll_back && payload_complete && hashmap_length(self.children) == 0) {
             log_info("Received entire payload and have no children. Disconnecting from parent.");
             disconnect_from_parent();
             return 0;
@@ -247,14 +259,15 @@ int main (int argc, char **argv) {
             .discovery_bcast_interval_msec = 100,
             .pending_timeout_msec = 100,
             .source_retransmit_payload_msec = 100,
+            .unchanged_counter = 5,
+            .omit_roll_back = false,
     };
     argp_parse (&argp, argc, argv, 0, 0, &arguments);
 
     max_power = arguments.max_power;
-    poll_timeout_msec = arguments.poll_timeout_msec;
-    discovery_bcast_interval_msec = arguments.discovery_bcast_interval_msec;
     pending_timeout_msec = arguments.pending_timeout_msec;
     source_retransmit_payload_msec = arguments.source_retransmit_payload_msec;
+    unchanged_counter = arguments.unchanged_counter;
 
     // Logging stuff
     if (arguments.log_level == 0) {
@@ -273,16 +286,42 @@ int main (int argc, char **argv) {
     signal(SIGKILL, sig_handler);
     signal(SIGTERM, sig_handler);
 
+    log_debug(
+            "Initialized program. ["
+            "payload_path: %s, "
+            "max_power: %s, "
+            "log_level: %i, "
+            "log_file: %s, "
+            "poll_timeout: %hu, "
+            "discovery_timeout: %hu, "
+            "pending_timeout: %hu, "
+            "retransmit_timeout: %hu, "
+            "unchanged_counter: %hu, "
+            "omit_roll_back: %s, "
+            "interface: %s]",
+            strnlen(arguments.payload, PATH_MAX) == 0 ? "-" : arguments.payload,
+            arguments.max_power ? "true" : "false",
+            arguments.log_level,
+            strnlen(arguments.log_file, PATH_MAX) == 0 ? "-" : arguments.log_file,
+            arguments.poll_timeout_msec,
+            arguments.discovery_bcast_interval_msec,
+            arguments.pending_timeout_msec,
+            arguments.source_retransmit_payload_msec,
+            arguments.unchanged_counter,
+            arguments.omit_roll_back ? "true" : "false",
+            arguments.interface
+            );
+
     int sockfd = init_sock(arguments.interface, arguments.payload);
     if (sockfd < 0){
         exit(sockfd);
     }
 
-    if (strlen(arguments.payload) != 0) {
+    if (strnlen(arguments.payload, PATH_MAX) != 0) {
         broadcast_discovery();
     }
 
-    int res = event_loop();
+    int res = event_loop(arguments.poll_timeout_msec, arguments.discovery_bcast_interval_msec, arguments.omit_roll_back);
 
     if (res == 0) {
         log_info("Gracefully exiting.");

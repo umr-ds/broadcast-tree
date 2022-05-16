@@ -23,6 +23,7 @@ bool max_power;
 extern struct sockaddr_ll L_SOCKADDR;
 extern uint16_t pending_timeout_msec;
 extern uint16_t source_retransmit_payload_msec;
+uint8_t unchanged_counter;
 
 ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr);
 int disconnect_child(any_t item, any_t args);
@@ -675,7 +676,7 @@ void game_round(int cur_time) {
     log_debug("Current counter [counter: %i]", self.round_unchanged_cnt);
 
     bool children_fin = all_children_fin();
-    if (self.round_unchanged_cnt >= MAX_UNCHANGED_ROUNDS && children_fin) {
+    if (self.round_unchanged_cnt >= unchanged_counter && children_fin) {
         log_info("Ending game. [unchanged counter: %i, children_fin: %s]", self.round_unchanged_cnt, children_fin ? "true" : "false");
         self.game_fin = true;
 
