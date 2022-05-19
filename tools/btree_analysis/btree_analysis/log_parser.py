@@ -9,6 +9,7 @@ import graphviz
 from typing import Any, TextIO
 
 from node_mapping import metadata
+from testbed_api import api as tb_api
 
 IP_REGEX = re.compile(r"\d{3}.\d{2}.\d{2}.\d{3}")
 TIME_REGEX = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
@@ -32,6 +33,7 @@ def parse_line(line: str) -> dict[str, datetime.datetime | str | dict[str, Any]]
         )
 
         line_dict["level"] = LOG_LEVEL_REGEX.search(line).group(0)
+
         line_dict["sourcefile"] = SOURCEFILE_REGEX.search(line).group(0)[:-1]
 
         the_rest = " ".join(line.split()[4:]).split("[")
@@ -60,7 +62,11 @@ def find_node_parent(f: TextIO) -> dict[str, str | int]:
     switch_count = 0
 
     for line in f:
-        parsed_line = parse_line(line)
+        try:
+            parsed_line = parse_line(line)
+        except (AttributeError, KeyError):
+            return None
+
         if not parsed_line:
             continue
 
@@ -117,7 +123,10 @@ def get_node_errors(f):
         "msg": set(),
     }
     for line in f:
-        parsed_line = parse_line(line)
+        try:
+            parsed_line = parse_line(line)
+        except (AttributeError, KeyError):
+            return None
 
         if not parsed_line:
             continue
@@ -149,7 +158,10 @@ def get_node_errors(f):
 def check_node_reception(f):
     f.seek(0)
     for line in f:
-        parsed_line = parse_line(line)
+        try:
+            parsed_line = parse_line(line)
+        except (AttributeError, KeyError):
+            return None
 
         if not parsed_line:
             continue
@@ -166,7 +178,10 @@ def check_node_reception(f):
 def check_game_fin(f):
     f.seek(0)
     for line in f:
-        parsed_line = parse_line(line)
+        try:
+            parsed_line = parse_line(line)
+        except (AttributeError, KeyError):
+            return None
 
         if not parsed_line:
             continue
@@ -197,16 +212,26 @@ def parse_experiment(
         node_address = f'b8:27:eb:{":".join(node_name)}'
 
         with open(file, "r") as f:
-            parent_data = find_node_parent(f)
+            if (parent_data := find_node_parent(f)) is None:
+                print(experiment_path)
+                continue
+
             print(
-                f"Node {mac_lookup[node_address]['ID']} switched parents {parent_data['switch_count']} times"
+                f"Node {mac_lookup[node_address]['ID']} switched parents {parent_data['switch_count']} times",
+                flush=True,
             )
 
-            node_errors = get_node_errors(f)
+            if (node_errors := get_node_errors(f)) is None:
+                print(experiment_path)
+                continue
 
-            reception = check_node_reception(f)
+            if (reception := check_node_reception(f)) is None:
+                print(experiment_path)
+                continue
 
-            ended_game = check_game_fin(f)
+            if (ended_game := check_game_fin(f)) is None:
+                print(experiment_path)
+                continue
 
             btree[node_address] = (
                 parent_data["parent"],
@@ -219,6 +244,26 @@ def parse_experiment(
     return btree, metadata, config
 
 
+floor_mapping = {
+    0: "box",
+    1: "oval",
+    2: "triangle",
+    3: "diamond",
+}
+
+
+def place_node_core(node_id, nodes):
+    for node in nodes:
+        if node.id == node_id:
+            break
+
+    node_room = node.room
+    core = node_room[0]
+    floor = floor_mapping[int(node_room[1])]
+
+    return floor, core
+
+
 def plot_graph(
     btree: dict[str, str],
     mac_lookup: dict[str, dict[str, str | int]],
@@ -226,8 +271,10 @@ def plot_graph(
     out_path: pathlib.Path,
 ) -> None:
 
-    graph = graphviz.Digraph("btree")
-    graph.attr(charset="UTF-8")
+    cluter_graph = graphviz.Digraph(name="btree")
+    regular_graph = graphviz.Digraph(name="btree")
+
+    all_nodes = tb_api.get_nodes()
 
     unconnected = 0
     not_ended = 0
@@ -248,34 +295,61 @@ def plot_graph(
         if ended_game == "-":
             not_ended += 1
 
-        graph.node(
-            str(mac_lookup[node]["ID"]),
-            label=f'{mac_lookup[node]["ID"]}: {ended_game}/{reception}',
+        node_id = mac_lookup[node]["ID"]
+
+        shape, core = place_node_core(node_id, all_nodes)
+
+        with cluter_graph.subgraph(name=f"cluster_{core}") as sg:
+            sg.attr(label=core)
+            sg.attr(newrank="true")
+
+            sg.node(
+                str(node_id),
+                label=f"{node_id}: {ended_game}/{reception}",
+                style="filled",
+                fillcolor=node_color,
+                shape=shape,
+                # xlabel=f'{node_id}: {err_msg}',
+            )
+
+        regular_graph.node(
+            str(node_id),
+            label=f"{node_id}: {ended_game}/{reception}",
             style="filled",
             fillcolor=node_color,
-            xlabel=f'{mac_lookup[node]["ID"]}: {err_msg}',
+            shape=shape,
+            # xlabel=f'{node_id}: {err_msg}',
         )
 
         if parent:
-            graph.edge(
-                str(mac_lookup[node]["ID"]),
+            cluter_graph.edge(
+                str(node_id),
+                str(mac_lookup[parent]["ID"]),
+                label=str(parent_tx),
+            )
+
+            regular_graph.edge(
+                str(node_id),
                 str(mac_lookup[parent]["ID"]),
                 label=str(parent_tx),
             )
         else:
             unconnected += 1
 
-    run_stats = f"{config}\n{unconnected} unconnected nodes, {not_ended} not ended, {not_received} not received"
+    run_stats = f"{config}\n{unconnected} unconnected nodes, {not_ended} not ended, {not_received} not received\nBox: -1, Oval: 0, Triangle: 1, Diamond: 2"
+    cluter_graph.attr(label=run_stats)
+    regular_graph.attr(label=run_stats)
+    print(run_stats, flush=True)
 
-    graph.attr(label=run_stats)
-    print(run_stats)
-
-    graph_path = pathlib.Path(out_path / "btree")
-    graph.render(graph_path)
+    cluter_graph.render(pathlib.Path(out_path / "cluster"))
+    regular_graph.render(pathlib.Path(out_path / "tree"))
 
 
 def usage():
-    print("Usage: ./log_parser.py [-s <experiment_path>] [-d <experiment_root_path>]")
+    print(
+        "Usage: ./log_parser.py [-s <experiment_path>] [-d <experiment_root_path>]",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":
@@ -299,7 +373,7 @@ if __name__ == "__main__":
         experiment_root_path = pathlib.Path(sys.argv[2])
 
         for experiment_path in experiment_root_path.glob("*"):
-            print(f"#### Parsing experiment {experiment_path.name}")
+            print(f"#### Parsing experiment {experiment_path.name}", flush=True)
 
             if (
                 ".DS_Store" in experiment_path.parts
