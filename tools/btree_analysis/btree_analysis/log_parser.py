@@ -12,7 +12,7 @@ from node_mapping import metadata
 from testbed_api import api as tb_api
 
 IP_REGEX = re.compile(r"\d{3}.\d{2}.\d{2}.\d{3}")
-TIME_REGEX = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
+TIME_REGEX = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{6}")
 LOG_LEVEL_REGEX = re.compile(r"TRACE|DEBUG|INFO|WARN|ERROR|FATAL")
 SOURCEFILE_REGEX = re.compile(r"src/.*:\d*:")
 
@@ -29,7 +29,7 @@ def parse_line(line: str) -> dict[str, datetime.datetime | str | dict[str, Any]]
     line_dict = {}
     if timestamp := TIME_REGEX.match(line):
         line_dict["timestamp"] = datetime.datetime.strptime(
-            timestamp.group(0), "%Y-%m-%d %H:%M:%S"
+            timestamp.group(0), "%Y-%m-%d %H:%M:%S.%f"
         )
 
         line_dict["level"] = LOG_LEVEL_REGEX.search(line).group(0)
@@ -57,38 +57,43 @@ def parse_line(line: str) -> dict[str, datetime.datetime | str | dict[str, Any]]
     return line_dict
 
 
-def find_node_parent(f: TextIO) -> dict[str, str | int]:
-    parent_data: dict[str, str | int] = {"parent": "", "tx_pwr": 0}
+def find_node_parent(f: TextIO) -> tuple[list[dict[str, str | int]] | None, int]:
+    parent_data: list[dict[str, str | int | datetime.datetime]] = []
     switch_count = 0
+    start_time: datetime.datetime | None = None
 
     for line in f:
         try:
             parsed_line = parse_line(line)
         except (AttributeError, KeyError):
-            return None
+            return None, 0
 
         if not parsed_line:
             continue
 
+        # take the first log entry as the start time
+        if not start_time:
+            start_time = parsed_line["timestamp"]
+            parent_data.append({"parent": "", "tx_pwr": 0, "timestamp": start_time})
+
         if parsed_line["message"] == "Parent confirmed our request.":
-            parent_data["parent"] = parsed_line["arguments"]["addr"]
+            parent_data.append({"parent": parsed_line["arguments"]["addr"], "tx_pwr": 0, "timestamp": parsed_line["timestamp"]})
             switch_count += 1
         if (
             parsed_line["message"] == "Disconnected from parent."
             or parsed_line["message"]
             == "Received disconnection command from our parent."
         ):
-            parent_data["parent"] = ""
+            parent_data.append({"parent": "", "tx_pwr": 0, "timestamp": parsed_line["timestamp"]})
         if parsed_line["message"] == "Updated self.":
-            parent_data["tx_pwr"] = parsed_line["arguments"]["own_prw"]
+            parent_data[-1]["tx_pwr"] = parsed_line["arguments"]["own_prw"]
         if (
             parsed_line["message"]
             == "Received entire payload and have no children. Disconnecting from parent."
         ):
             break
 
-    parent_data["switch_count"] = switch_count
-    return parent_data
+    return parent_data, switch_count
 
 
 def parse_id_file(f: TextIO) -> dict[str, str | int]:
@@ -207,17 +212,20 @@ def parse_experiment(
     #  build logical representation of the btree
     btree: dict[str, (str, int)] = {}
 
-    for file in experiment_path.glob("*.log"):
+    log_files = experiment_path.glob("*.log")
+
+    for file in log_files:
         node_name = file.name.split(".")[0].split("-")[1:]
         node_address = f'b8:27:eb:{":".join(node_name)}'
 
         with open(file, "r") as f:
-            if (parent_data := find_node_parent(f)) is None:
+            parent_data, switches = find_node_parent(f)
+            if parent_data is None:
                 print(experiment_path)
                 continue
 
             print(
-                f"Node {mac_lookup[node_address]['ID']} switched parents {parent_data['switch_count']} times",
+                f"Node {mac_lookup[node_address]['ID']} switched parents {switches} times",
                 flush=True,
             )
 
@@ -234,8 +242,8 @@ def parse_experiment(
                 continue
 
             btree[node_address] = (
-                parent_data["parent"],
-                parent_data["tx_pwr"],
+                parent_data[-1]["parent"],
+                parent_data[-1]["tx_pwr"],
                 node_errors,
                 reception,
                 ended_game,
