@@ -78,8 +78,8 @@ static void file_callback(log_Event *ev) {
     gettimeofday(&tv, NULL);
 
     fprintf(
-            ev->udata, "%s.%03d %-5s %s:%d: ",
-            buf, (int) tv.tv_usec/1000, level_strings[ev->level], ev->file, ev->line);
+            ev->udata, "%s.%06lu %-5s %s:%d: ",
+            buf, tv.tv_usec, level_strings[ev->level], ev->file, ev->line);
     vfprintf(ev->udata, ev->fmt, ev->ap);
     fprintf(ev->udata, "\n");
     fflush(ev->udata);
