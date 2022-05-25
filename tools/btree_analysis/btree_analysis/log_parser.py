@@ -7,6 +7,7 @@ import pathlib
 import graphviz
 
 from typing import Any, TextIO
+from copy import deepcopy
 
 from node_mapping import metadata
 from testbed_api import api as tb_api
@@ -57,10 +58,14 @@ def parse_line(line: str) -> dict[str, datetime.datetime | str | dict[str, Any]]
     return line_dict
 
 
-def find_node_parent(f: TextIO) -> tuple[list[dict[str, str | int]] | None, int]:
-    parent_data: list[dict[str, str | int | datetime.datetime]] = []
+def parse_node(
+    f: TextIO, node_id: int
+) -> tuple[list[dict[str, str | int]] | None, int]:
+    events: list[dict[str, str | int | datetime.datetime]] = []
     switch_count = 0
     start_time: datetime.datetime | None = None
+
+    mac_wifi_lookup = transform_metadata(metadata=metadata, key="MAC_WIFI")
 
     for line in f:
         try:
@@ -74,36 +79,74 @@ def find_node_parent(f: TextIO) -> tuple[list[dict[str, str | int]] | None, int]
         # take the first log entry as the start time
         if not start_time:
             start_time = parsed_line["timestamp"]
-            parent_data.append({"parent": "", "tx_pwr": 0, "timestamp": start_time})
+            events.append(
+                {"event": "start", "timestamp": start_time, "node_id": node_id}
+            )
 
         if parsed_line["message"] == "Parent confirmed our request.":
-            parent_data.append({"parent": parsed_line["arguments"]["addr"], "tx_pwr": 0, "timestamp": parsed_line["timestamp"]})
+            events.append(
+                {
+                    "event": "connect",
+                    "parent": mac_wifi_lookup[parsed_line["arguments"]["addr"]]["ID"],
+                    "tx_pwr": 0,
+                    "timestamp": parsed_line["timestamp"],
+                    "node_id": node_id,
+                }
+            )
             switch_count += 1
+
         if (
             parsed_line["message"] == "Disconnected from parent."
             or parsed_line["message"]
             == "Received disconnection command from our parent."
         ):
-            parent_data.append({"parent": "", "tx_pwr": 0, "timestamp": parsed_line["timestamp"]})
+            events.append(
+                {
+                    "event": "disconnect",
+                    "timestamp": parsed_line["timestamp"],
+                    "node_id": node_id,
+                }
+            )
+
         if parsed_line["message"] == "Updated self.":
-            parent_data[-1]["tx_pwr"] = parsed_line["arguments"]["own_prw"]
+            for event in reversed(events):
+                if event["event"] == "connect":
+                    event["tx_pwr"] = parsed_line["arguments"]["own_prw"]
+                    break
+
         if (
-            parsed_line["message"]
-            == "Received entire payload and have no children. Disconnecting from parent."
+            parsed_line["message"] == "Received entire payload."
+            and "file path" in parsed_line["arguments"]
         ):
-            break
+            events.append(
+                {
+                    "event": "receive",
+                    "timestamp": parsed_line["timestamp"],
+                    "node_id": node_id,
+                }
+            )
 
-    return parent_data, switch_count
+        if parsed_line["level"] in ["WARN", "ERROR", "FATAL"]:
+            events.append(
+                {
+                    "event": "error",
+                    "timestamp": parsed_line["timestamp"],
+                    "node_id": node_id,
+                    "level": parsed_line["level"],
+                    "message": parsed_line["message"],
+                }
+            )
 
+        if parsed_line["message"] == "Ending game.":
+            events.append(
+                {
+                    "event": "finish",
+                    "timestamp": parsed_line["timestamp"],
+                    "node_id": node_id,
+                }
+            )
 
-def parse_id_file(f: TextIO) -> dict[str, str | int]:
-    metadata: dict[str, str | int] = {}
-
-    for line in f:
-        key, value = line.strip().split()
-        metadata[key[:-1]] = smartcast(value)
-
-    return metadata
+    return events, switch_count
 
 
 def transform_metadata(
@@ -121,135 +164,40 @@ def transform_metadata(
     return transformed
 
 
-def get_node_errors(f):
-    f.seek(0)
-    error_messages = {
-        "color": set(),
-        "msg": set(),
-    }
-    for line in f:
-        try:
-            parsed_line = parse_line(line)
-        except (AttributeError, KeyError):
-            return None
-
-        if not parsed_line:
-            continue
-
-        color = None
-        msg = None
-
-        if parsed_line["level"] == "WARN":
-            color = "yellow"
-            msg = parsed_line["message"]
-
-        if parsed_line["level"] == "ERROR":
-            color = "orange"
-            msg = parsed_line["message"]
-
-        if parsed_line["message"] == "FATAL":
-            color = "red"
-            msg = parsed_line["message"]
-
-        if color:
-            error_messages["color"].add(color)
-            error_messages["msg"].add(msg)
-            color = None
-            msg = None
-
-    return error_messages
-
-
-def check_node_reception(f):
-    f.seek(0)
-    for line in f:
-        try:
-            parsed_line = parse_line(line)
-        except (AttributeError, KeyError):
-            return None
-
-        if not parsed_line:
-            continue
-
-        if (
-            parsed_line["message"] == "Received entire payload."
-            and "file path" in parsed_line["arguments"]
-        ):
-            return "R"
-
-    return "-"
-
-
-def check_game_fin(f):
-    f.seek(0)
-    for line in f:
-        try:
-            parsed_line = parse_line(line)
-        except (AttributeError, KeyError):
-            return None
-
-        if not parsed_line:
-            continue
-
-        if parsed_line["message"] == "Ending game.":
-            return "F"
-
-    return "-"
-
-
 def parse_experiment(
     experiment_path: pathlib.Path,
-) -> (dict[str, (str, int)], list[dict[str, str | int]]):
-
-    config = ""
-    # parse experiment config
-    with open(experiment_path / "config", "r") as f:
-        config = ", ".join(f.read().splitlines())
-
+) -> ([{str, str | int}], [int]):
     # build lookup-table for mac-addresses
-    mac_lookup = transform_metadata(metadata=metadata, key="MAC_ETH")
-
-    #  build logical representation of the btree
-    btree: dict[str, (str, int)] = {}
+    mac_eth_lookup = transform_metadata(metadata=metadata, key="MAC_WIFI")
 
     log_files = experiment_path.glob("*.log")
+
+    all_events: list[dict[str, str | int]] = []
+
+    all_nodes: list[int] = []
 
     for file in log_files:
         node_name = file.name.split(".")[0].split("-")[1:]
         node_address = f'b8:27:eb:{":".join(node_name)}'
+        node_id: int = mac_eth_lookup[node_address]["ID"]
+        all_nodes.append(node_id)
 
         with open(file, "r") as f:
-            parent_data, switches = find_node_parent(f)
-            if parent_data is None:
+            events, switches = parse_node(f, node_id=node_id)
+            if events is None:
                 print(experiment_path)
                 continue
 
             print(
-                f"Node {mac_lookup[node_address]['ID']} switched parents {switches} times",
+                f"Node {node_id} switched parents {switches} times",
                 flush=True,
             )
 
-            if (node_errors := get_node_errors(f)) is None:
-                print(experiment_path)
-                continue
+            all_events += events
 
-            if (reception := check_node_reception(f)) is None:
-                print(experiment_path)
-                continue
+    all_events.sort(key=lambda event: event["timestamp"])
 
-            if (ended_game := check_game_fin(f)) is None:
-                print(experiment_path)
-                continue
-
-            btree[node_address] = (
-                parent_data[-1]["parent"],
-                parent_data[-1]["tx_pwr"],
-                node_errors,
-                reception,
-                ended_game,
-            )
-
-    return btree, metadata, config
+    return all_events, all_nodes
 
 
 floor_mapping = {
@@ -257,6 +205,13 @@ floor_mapping = {
     1: "oval",
     2: "triangle",
     3: "diamond",
+}
+
+
+error_colours = {
+    "WARN": "yellow",
+    "ERROR": "orange",
+    "FATAL": "red",
 }
 
 
@@ -353,6 +308,38 @@ def plot_graph(
     regular_graph.render(pathlib.Path(out_path / "tree"))
 
 
+def build_graph_series(
+    events: [{str, str | int}], nodes: [int]
+) -> list[dict[str, dict[str | int, str | int]]]:
+    graph = {"nodes": {}, "edges": {}}
+    for node in nodes:
+        graph["nodes"][node] = {"received": "-", "finish": "-"}
+
+    graph_series = [graph]
+
+    for event in events:
+        graph = deepcopy(graph)
+
+        if event["event"] == "connect":
+            graph["edges"][event["node_id"]] = event["parent"]
+
+        if event["event"] == "disconnect":
+            del graph["edges"][event["node_id"]]
+
+        if event["event"] == "receive":
+            graph["nodes"][event["node_id"]]["received"] = "R"
+
+        if event["event"] == "finish":
+            graph["nodes"][event["node_id"]]["finish"] = "E"
+
+        if event["event"] == "error":
+            graph["nodes"][event["node_id"]]["error"] = error_colours[event["level"]]
+
+        graph_series.append(graph)
+
+    return graph_series
+
+
 def usage():
     print(
         "Usage: ./log_parser.py [-s <experiment_path>] [-d <experiment_root_path>]",
@@ -368,14 +355,14 @@ if __name__ == "__main__":
 
     if sys.argv[1] == "-s":
         experiment_path = pathlib.Path(sys.argv[2])
-        btree, metadata, config = parse_experiment(experiment_path)
 
-        # build lookup-table for mac-addresses
-        mac_lookup = transform_metadata(metadata=metadata, key="MAC_ETH")
+        # parse experiment config
+        with open(experiment_path / "config", "r") as f:
+            config = ", ".join(f.read().splitlines())
 
-        plot_graph(
-            btree=btree, mac_lookup=mac_lookup, config=config, out_path=experiment_path
-        )
+        events, nodes = parse_experiment(experiment_path)
+
+        graph_series = build_graph_series(events=events, nodes=nodes)
 
     elif sys.argv[1] == "-d":
         experiment_root_path = pathlib.Path(sys.argv[2])
@@ -389,16 +376,10 @@ if __name__ == "__main__":
             ):
                 continue
 
-            btree, metadata, config = parse_experiment(experiment_path)
+            # parse experiment config
+            with open(experiment_path / "config", "r") as f:
+                config = ", ".join(f.read().splitlines())
 
-            # build lookup-table for mac-addresses
-            mac_lookup = transform_metadata(metadata=metadata, key="MAC_ETH")
-
-            plot_graph(
-                btree=btree,
-                mac_lookup=mac_lookup,
-                config=config,
-                out_path=experiment_path,
-            )
+            events, nodes = parse_experiment(experiment_path)
     else:
         usage()
