@@ -313,7 +313,7 @@ def build_graph_series(
 ) -> list[dict[str, dict[str | int, str | int]]]:
     graph = {"nodes": {}, "edges": {}}
     for node in nodes:
-        graph["nodes"][node] = {"received": "-", "finish": "-"}
+        graph["nodes"][node] = {"receive": "-", "finish": "-", "error": "white"}
 
     graph_series = [graph]
 
@@ -327,7 +327,7 @@ def build_graph_series(
             del graph["edges"][event["node_id"]]
 
         if event["event"] == "receive":
-            graph["nodes"][event["node_id"]]["received"] = "R"
+            graph["nodes"][event["node_id"]]["receive"] = "R"
 
         if event["event"] == "finish":
             graph["nodes"][event["node_id"]]["finish"] = "E"
@@ -338,6 +338,37 @@ def build_graph_series(
         graph_series.append(graph)
 
     return graph_series
+
+
+def graph_to_string(graph: dict[str, dict[str | int, str | int]]) -> [str]:
+    all_nodes = tb_api.get_nodes()
+
+    lines = ["'digraph {'"]
+
+    for node, attributes in graph["nodes"].items():
+        shape, _ = place_node_core(node, all_nodes)
+        lines.append(f'\'{node} [style="filled", fillcolor="{attributes["error"]}", shape="{shape}", label="{node}: {attributes["finish"]}/{attributes["receive"]}"\'')
+
+    for node, parent in graph["edges"].items():
+        lines.append(f"'{node} -> {parent}'")
+
+    lines.append("'}'")
+
+    return lines
+
+
+def write_graph_series(graph_series: list[dict[str, dict[str | int, str | int]]]):
+    dots = ""
+
+    for graph in graph_series:
+        dots += "[\n" + ",\n".join(graph_to_string(graph)) + "],\n"
+
+    with open("graph_animation_template.html", "r") as f:
+        template = f.read()
+        animation = template.replace("{graph_series}", dots)
+
+    with open("graph_animation.html", "w") as f:
+        f.write(animation)
 
 
 def usage():
@@ -363,6 +394,8 @@ if __name__ == "__main__":
         events, nodes = parse_experiment(experiment_path)
 
         graph_series = build_graph_series(events=events, nodes=nodes)
+
+        write_graph_series(graph_series)
 
     elif sys.argv[1] == "-d":
         experiment_root_path = pathlib.Path(sys.argv[2])
