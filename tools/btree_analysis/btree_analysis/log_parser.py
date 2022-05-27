@@ -343,16 +343,14 @@ def build_graph_series(
 def graph_to_string(graph: dict[str, dict[str | int, str | int]]) -> [str]:
     all_nodes = tb_api.get_nodes()
 
-    lines = ["'digraph {'"]
+    lines = []
 
     for node, attributes in graph["nodes"].items():
         shape, _ = place_node_core(node, all_nodes)
-        lines.append(f'\'{node} [style="filled", fillcolor="{attributes["error"]}", shape="{shape}", label="{node}: {attributes["finish"]}/{attributes["receive"]}"]\'')
+        lines.append(f'{node} [style="filled", fillcolor="{attributes["error"]}", shape="{shape}", label="{node}: {attributes["finish"]}/{attributes["receive"]}"]')
 
     for node, parent in graph["edges"].items():
-        lines.append(f"'{node} -> {parent}'")
-
-    lines.append("'}'")
+        lines.append(f"{node} -> {parent}")
 
     return lines
 
@@ -361,7 +359,9 @@ def write_graph_series(graph_series: list[dict[str, dict[str | int, str | int]]]
     dots = ""
 
     for graph in graph_series:
-        dots += "[\n" + ",\n".join(graph_to_string(graph)) + "],\n"
+        dots += "`digraph {\n"
+        dots += "\n".join(graph_to_string(graph)) + "\n"
+        dots += "}`,\n"
 
     with open("graph_animation_template.html", "r") as f:
         template = f.read()

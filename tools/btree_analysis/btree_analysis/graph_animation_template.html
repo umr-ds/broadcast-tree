@@ -19,8 +19,7 @@ var graphviz = d3.select("#graph").graphviz()
     .on("initEnd", render);
 
 function render() {
-    var dotLines = dots[dotIndex];
-    var dot = dotLines.join('');
+    var dot = dots[dotIndex];
     graphviz
         .renderDot(dot)
         .on("end", function () {
