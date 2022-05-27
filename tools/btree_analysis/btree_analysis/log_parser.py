@@ -347,7 +347,7 @@ def graph_to_string(graph: dict[str, dict[str | int, str | int]]) -> [str]:
 
     for node, attributes in graph["nodes"].items():
         shape, _ = place_node_core(node, all_nodes)
-        lines.append(f'\'{node} [style="filled", fillcolor="{attributes["error"]}", shape="{shape}", label="{node}: {attributes["finish"]}/{attributes["receive"]}"\'')
+        lines.append(f'\'{node} [style="filled", fillcolor="{attributes["error"]}", shape="{shape}", label="{node}: {attributes["finish"]}/{attributes["receive"]}"]\'')
 
     for node, parent in graph["edges"].items():
         lines.append(f"'{node} -> {parent}'")
