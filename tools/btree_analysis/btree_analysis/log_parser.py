@@ -313,17 +313,22 @@ def plot_graph(
 def build_graph_series(
     events: [{str, str | int}], nodes: [int]
 ) -> list[dict[str, dict[str | int, str | int]]]:
-    graph = {"nodes": {}, "edges": {}}
-    for node in nodes:
-        graph["nodes"][node] = {"receive": "-", "finish": "-", "error": "white"}
+    graph = {"nodes": {}, "edges": {}, "metadata": {}}
 
-    graph_series = [graph]
+    graph_series = []
 
     for event in events:
         graph = deepcopy(graph)
 
+        if event["event"] == "start":
+            graph["nodes"][event["node_id"]] = {
+                "receive": "-",
+                "finish": "-",
+                "error": "white",
+            }
+
         if event["event"] == "connect":
-            graph["edges"][event["node_id"]] = event["parent"]
+            graph["edges"][event["node_id"]] = (event["parent"], event["tx_pwr"])
 
         if event["event"] == "disconnect":
             del graph["edges"][event["node_id"]]
@@ -336,6 +341,11 @@ def build_graph_series(
 
         if event["event"] == "error":
             graph["nodes"][event["node_id"]]["error"] = error_colours[event["level"]]
+            graph["nodes"][event["node_id"]]["message"] = event["message"]
+
+        graph["metadata"]["node_id"] = event["node_id"]
+        graph["metadata"]["timestamp"] = event["timestamp"]
+        graph["metadata"]["type"] = event["event"]
 
         graph_series.append(graph)
 
@@ -347,23 +357,33 @@ def graph_to_string(
 ) -> [str]:
     all_nodes = tb_api.get_nodes()
 
-    lines = []
+    lines = {
+        "A": ["subgraph cluster_A {\nlabel=A\n"],
+        "B": ["subgraph cluster_B {\nlabel=B\n"],
+        "C": ["subgraph cluster_C {\nlabel=C\n"],
+        "D": ["subgraph cluster_D {\nlabel=D\n"],
+        "E": ["subgraph cluster_E {\nlabel=E\n"],
+        "root": [],
+    }
 
     for node, attributes in graph["nodes"].items():
-        shape, _ = place_node_core(node, all_nodes)
+        shape, core = place_node_core(node, all_nodes)
+
         color = attributes["error"]
 
         if node == config["SOURCE"]["id"]:
             color = "green"
 
-        lines.append(
-            f'{node} [style="filled", fillcolor="{color}", shape="{shape}", label="{node}: {attributes["finish"]}/{attributes["receive"]}"]'
+        lines[core].append(
+            f'{node} [tooltip="{attributes.get("message", "")}", style="filled", fillcolor="{color}", shape="{shape}", label="{node}: {attributes["finish"]}/{attributes["receive"]}"]'
         )
 
-    for node, parent in graph["edges"].items():
-        lines.append(f"{node} -> {parent}")
+    for node, (parent, tx_pwr) in graph["edges"].items():
+        lines["root"].append(f"{node} -> {parent} [label={tx_pwr}]")
 
-    return lines
+    lines = {k: "".join(v + ["}"]) for k, v in lines.items()}
+
+    return lines.values()
 
 
 def write_graph_series(
@@ -374,9 +394,9 @@ def write_graph_series(
     step_counter = 1
     for graph in graph_series:
         dots += "`digraph {\n"
-        dots += f"label={step_counter}\n"
+        dots += f'label="{step_counter}, {graph["metadata"]["timestamp"]}, {graph["metadata"]["type"]}, {graph["metadata"]["node_id"]}"\n'
         dots += "\n".join(graph_to_string(graph, config)) + "\n"
-        dots += "}`,\n"
+        dots += "`,\n"
 
         step_counter += 1
 

@@ -5,17 +5,30 @@
 <script src="https://unpkg.com/@hpcc-js/wasm@1.14.1/dist/index.min.js"></script>
 <script src="https://unpkg.com/d3-graphviz@4.1.1/build/d3-graphviz.js"></script>
 
-<button onclick="run_button(false)">Stop</button>
-<button onclick="run_button(true)">Resume</button>
+<button onclick="run_button(true)">Play</button>
+<button onclick="run_button(false)">Pause</button>
 
-<button onclick="step_button(1)">Step</button>
 <button onclick="step_button(-1)">Back</button>
+<button onclick="step_button(1)">Step</button>
+
+<form id="step_form">
+    Step: <input type="number" name="step" id="step_value">
+</form>
+<button onclick="set_step()">Jump</button>
 
 <div id="graph" style="text-align: center;"></div>
 
 <script>
-var running = true;
+var running = false;
 var dotIndex = 0;
+
+function set_step() {
+    if (running) {
+        return;
+    }
+    dotIndex = document.getElementById("step_value").value;
+    render()
+}
 
 function run_button(state) {
     running = state;
@@ -26,7 +39,7 @@ function run_button(state) {
 }
 
 function step_button(direction) {
-    dotIndex += direction;
+    dotIndex = (((dotIndex + direction) % dots.length) + dots.length) % dots.length;
     render();
 }
 
@@ -47,6 +60,9 @@ function render() {
         .on("end", function () {
             if (running) {
                 dotIndex = (dotIndex + 1) % dots.length;
+                if (dotIndex == dots.length - 1) {
+                    running = false;
+                }
                 render();
             }
         });
