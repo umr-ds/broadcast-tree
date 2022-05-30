@@ -12,7 +12,11 @@ from pssh.clients import ParallelSSHClient, SSHClient
 import testbed_api.client as client
 
 
-def run(node_filter, source_id, experiment_config, iteration):
+def run(conf, iteration):
+    node_filter = conf["CLIENTS"]
+    source_id = conf["SOURCE"]["id"]
+    experiment_config = conf["EXPERIMENT"]
+
     print("Running prepare stage")
 
     _nodes = client.get_nodes_by_filter(**node_filter)
@@ -102,7 +106,7 @@ def run(node_filter, source_id, experiment_config, iteration):
     source.run_command(f"rm -rf {logfile_path_base}")
 
     conf_file = open(f"{os.getcwd()}/results/{experiment_time}/config", "w")
-    toml.dump(experiment_config, conf_file)
+    toml.dump(conf, conf_file)
     conf_file.close()
 
 
@@ -122,8 +126,6 @@ if __name__ == "__main__":
     for iteration in range(iterations):
         print(f"Running iteration {iteration + 1} out of {iterations}")
         run(
-            conf["CLIENTS"],
-            conf["SOURCE"]["id"],
-            conf["EXPERIMENT"],
+            conf,
             iteration,
         )

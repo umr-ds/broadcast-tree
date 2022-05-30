@@ -9,6 +9,8 @@ import graphviz
 from typing import Any, TextIO
 from copy import deepcopy
 
+import toml
+
 from node_mapping import metadata
 from testbed_api import api as tb_api
 
@@ -340,14 +342,23 @@ def build_graph_series(
     return graph_series
 
 
-def graph_to_string(graph: dict[str, dict[str | int, str | int]]) -> [str]:
+def graph_to_string(
+    graph: dict[str, dict[str | int, str | int]], config: dict[str, Any]
+) -> [str]:
     all_nodes = tb_api.get_nodes()
 
     lines = []
 
     for node, attributes in graph["nodes"].items():
         shape, _ = place_node_core(node, all_nodes)
-        lines.append(f'{node} [style="filled", fillcolor="{attributes["error"]}", shape="{shape}", label="{node}: {attributes["finish"]}/{attributes["receive"]}"]')
+        color = attributes["error"]
+
+        if node == config["SOURCE"]["id"]:
+            color = "green"
+
+        lines.append(
+            f'{node} [style="filled", fillcolor="{color}", shape="{shape}", label="{node}: {attributes["finish"]}/{attributes["receive"]}"]'
+        )
 
     for node, parent in graph["edges"].items():
         lines.append(f"{node} -> {parent}")
@@ -355,13 +366,19 @@ def graph_to_string(graph: dict[str, dict[str | int, str | int]]) -> [str]:
     return lines
 
 
-def write_graph_series(graph_series: list[dict[str, dict[str | int, str | int]]]):
+def write_graph_series(
+    graph_series: list[dict[str, dict[str | int, str | int]]], config: dict[str, Any]
+):
     dots = ""
 
+    step_counter = 1
     for graph in graph_series:
         dots += "`digraph {\n"
-        dots += "\n".join(graph_to_string(graph)) + "\n"
+        dots += f"label={step_counter}\n"
+        dots += "\n".join(graph_to_string(graph, config)) + "\n"
         dots += "}`,\n"
+
+        step_counter += 1
 
     with open("graph_animation_template.html", "r") as f:
         template = f.read()
@@ -389,13 +406,13 @@ if __name__ == "__main__":
 
         # parse experiment config
         with open(experiment_path / "config", "r") as f:
-            config = ", ".join(f.read().splitlines())
+            config = toml.load(f)
 
         events, nodes = parse_experiment(experiment_path)
 
         graph_series = build_graph_series(events=events, nodes=nodes)
 
-        write_graph_series(graph_series)
+        write_graph_series(graph_series, config)
 
     elif sys.argv[1] == "-d":
         experiment_root_path = pathlib.Path(sys.argv[2])
