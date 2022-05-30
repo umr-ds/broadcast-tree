@@ -229,87 +229,6 @@ def place_node_core(node_id, nodes):
     return floor, core
 
 
-def plot_graph(
-    btree: dict[str, str],
-    mac_lookup: dict[str, dict[str, str | int]],
-    config: str,
-    out_path: pathlib.Path,
-) -> None:
-
-    cluter_graph = graphviz.Digraph(name="btree")
-    regular_graph = graphviz.Digraph(name="btree")
-
-    all_nodes = tb_api.get_nodes()
-
-    unconnected = 0
-    not_ended = 0
-    not_received = 0
-    for node, (parent, parent_tx, errors, reception, ended_game) in btree.items():
-        node_color = "lightgrey"
-        err_msg = "\n".join(errors["msg"])
-
-        if "yellow" in errors["color"]:
-            node_color = "yellow"
-        if "orange" in errors["color"]:
-            node_color = "orange"
-        if "red" in errors["color"]:
-            node_color = "red"
-
-        if reception == "-":
-            not_received += 1
-        if ended_game == "-":
-            not_ended += 1
-
-        node_id = mac_lookup[node]["ID"]
-
-        shape, core = place_node_core(node_id, all_nodes)
-
-        with cluter_graph.subgraph(name=f"cluster_{core}") as sg:
-            sg.attr(label=core)
-            sg.attr(newrank="true")
-
-            sg.node(
-                str(node_id),
-                label=f"{node_id}: {ended_game}/{reception}",
-                style="filled",
-                fillcolor=node_color,
-                shape=shape,
-                # xlabel=f'{node_id}: {err_msg}',
-            )
-
-        regular_graph.node(
-            str(node_id),
-            label=f"{node_id}: {ended_game}/{reception}",
-            style="filled",
-            fillcolor=node_color,
-            shape=shape,
-            # xlabel=f'{node_id}: {err_msg}',
-        )
-
-        if parent:
-            cluter_graph.edge(
-                str(node_id),
-                str(mac_lookup[parent]["ID"]),
-                label=str(parent_tx),
-            )
-
-            regular_graph.edge(
-                str(node_id),
-                str(mac_lookup[parent]["ID"]),
-                label=str(parent_tx),
-            )
-        else:
-            unconnected += 1
-
-    run_stats = f"{config}\n{unconnected} unconnected nodes, {not_ended} not ended, {not_received} not received\nBox: -1, Oval: 0, Triangle: 1, Diamond: 2"
-    cluter_graph.attr(label=run_stats)
-    regular_graph.attr(label=run_stats)
-    print(run_stats, flush=True)
-
-    cluter_graph.render(pathlib.Path(out_path / "cluster"))
-    regular_graph.render(pathlib.Path(out_path / "tree"))
-
-
 def build_graph_series(
     events: [{str, str | int}], nodes: [int]
 ) -> list[dict[str, dict[str | int, str | int]]]:
@@ -387,7 +306,7 @@ def graph_to_string(
 
 
 def write_graph_series(
-    graph_series: list[dict[str, dict[str | int, str | int]]], config: dict[str, Any]
+    graph_series: list[dict[str, dict[str | int, str | int]]], config: dict[str, Any], experiment_path: pathlib.Path,
 ):
     dots = ""
 
@@ -404,7 +323,7 @@ def write_graph_series(
         template = f.read()
         animation = template.replace("{graph_series}", dots)
 
-    with open("graph_animation.html", "w") as f:
+    with open(experiment_path / "graph_animation.html", "w") as f:
         f.write(animation)
 
 
@@ -432,7 +351,7 @@ if __name__ == "__main__":
 
         graph_series = build_graph_series(events=events, nodes=nodes)
 
-        write_graph_series(graph_series, config)
+        write_graph_series(graph_series, config, experiment_path)
 
     elif sys.argv[1] == "-d":
         experiment_root_path = pathlib.Path(sys.argv[2])
@@ -447,9 +366,16 @@ if __name__ == "__main__":
                 continue
 
             # parse experiment config
+            experiment_path = pathlib.Path(sys.argv[2])
+
+            # parse experiment config
             with open(experiment_path / "config", "r") as f:
-                config = ", ".join(f.read().splitlines())
+                config = toml.load(f)
 
             events, nodes = parse_experiment(experiment_path)
+
+            graph_series = build_graph_series(events=events, nodes=nodes)
+
+            write_graph_series(graph_series, config, experiment_path)
     else:
         usage()
