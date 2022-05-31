@@ -285,6 +285,14 @@ def graph_to_string(
         "root": [],
     }
 
+    last_nodes = {
+        "A": None,
+        "B": None,
+        "C": None,
+        "D": None,
+        "E": None,
+    }
+
     for node, attributes in graph["nodes"].items():
         shape, core = place_node_core(node, all_nodes)
 
@@ -297,8 +305,30 @@ def graph_to_string(
             f'{node} [tooltip="{attributes.get("message", "")}", style="filled", fillcolor="{color}", shape="{shape}", label="{node}: {attributes["finish"]}/{attributes["receive"]}"]'
         )
 
+        last_nodes[core] = node
+
     for node, (parent, tx_pwr) in graph["edges"].items():
         lines["root"].append(f"{node} -> {parent} [label={tx_pwr}]")
+
+    if last_nodes["A"] is not None and last_nodes["B"] is not None:
+        lines["root"].append(
+            f"{last_nodes['A']} -> {last_nodes['B']} [ltail=cluster_A, lhead=cluster_B, style=invis]"
+        )
+
+    if last_nodes["B"] is not None and last_nodes["C"] is not None:
+        lines["root"].append(
+            f"{last_nodes['B']} -> {last_nodes['C']} [ltail=cluster_B, lhead=cluster_C, style=invis]"
+        )
+
+    if last_nodes["C"] is not None and last_nodes["D"] is not None:
+        lines["root"].append(
+            f"{last_nodes['C']} -> {last_nodes['D']} [ltail=cluster_C, lhead=cluster_D, style=invis]"
+        )
+
+    if last_nodes["D"] is not None and last_nodes["E"] is not None:
+        lines["root"].append(
+            f"{last_nodes['D']} -> {last_nodes['E']} [ltail=cluster_D, lhead=cluster_E, style=invis]"
+        )
 
     lines = {k: "".join(v + ["}"]) for k, v in lines.items()}
 
@@ -306,13 +336,16 @@ def graph_to_string(
 
 
 def write_graph_series(
-    graph_series: list[dict[str, dict[str | int, str | int]]], config: dict[str, Any], experiment_path: pathlib.Path,
+    graph_series: list[dict[str, dict[str | int, str | int]]],
+    config: dict[str, Any],
+    experiment_path: pathlib.Path,
 ):
     dots = ""
 
     step_counter = 1
     for graph in graph_series:
         dots += "`digraph {\n"
+        dots += 'rankdir="TB"\n'
         dots += f'label="{step_counter}, {graph["metadata"]["timestamp"]}, {graph["metadata"]["type"]}, {graph["metadata"]["node_id"]}"\n'
         dots += "\n".join(graph_to_string(graph, config)) + "\n"
         dots += "`,\n"
