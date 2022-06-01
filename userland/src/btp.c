@@ -38,7 +38,7 @@ void reject_child(eth_radio_btp_t *in_frame);
 void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr);
 void handle_child_request(eth_radio_btp_t *in_frame);
 void handle_child_confirm(eth_radio_btp_t *in_frame);
-void handle_child_reject(eth_radio_btp_t *in_frame);
+void handle_child_reject(mac_addr_t shost);
 void handle_parent_revocation(eth_radio_btp_t *in_frame);
 void handle_end_of_game(eth_radio_btp_t *in_frame);
 void handle_cycle_detection_ping(uint8_t *recv_frame);
@@ -94,6 +94,7 @@ void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
     dummy = (char *) malloc(sizeof(char));
 }
 
+// Callback function to disconnect a particular child called from disconnect_all_children
 int disconnect_child(any_t item, any_t args) {
     (void)(item);
     child_t *tmp_child = (child_t *) args;
@@ -283,9 +284,6 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
     self.pending_parent->snd_high_pwr = snd_high_pwr;
     self.pending_parent->last_seen = get_time_msec();
 
-    if (self.prev_parent) free(self.prev_parent);
-    self.prev_parent = self.parent;
-
     log_debug("Updated self. [own_prw: %i, high_pwr: %i, snd_high_pwr: %i, last_seen: %i]", self.pending_parent->own_pwr, self.pending_parent->high_pwr, self.pending_parent->snd_high_pwr, self.pending_parent->last_seen);
 
     eth_btp_t child_request_frame = { 0x0 };
@@ -426,7 +424,9 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
 
     log_info("Received Child Request frame. [addr: %s]", mac_to_str(in_frame->eth.ether_shost));
     if (already_child(in_frame->eth.ether_shost)) {
-        log_debug("Child is aready our child. [addr: %s]", mac_to_str(in_frame->eth.ether_shost));
+        // TODO: If it turns out that the child requests us as the parent multiple times, we should try to accept the child again.
+        // TODO (cont.): Based on our tests, this has not happened so far.
+        log_debug("Child is already our child. [addr: %s]", mac_to_str(in_frame->eth.ether_shost));
         return;
     }
 
@@ -483,6 +483,9 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
 
     self.tree_id = in_frame->btp.tree_id;
 
+    if (self.prev_parent) free(self.prev_parent);
+    self.prev_parent = self.parent;
+
     self.parent = self.pending_parent;
     self.parent->last_seen = get_time_msec();
     self.pending_parent = NULL;
@@ -500,50 +503,77 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
     }
 }
 
-void handle_child_reject(eth_radio_btp_t *in_frame) {
-    // If we are not currently pending, but receive a reject from our current parent, then we are no longer part of the tree and disconnect all our children as well.
-    if (!self_is_pending()) {
-        if (memcmp(in_frame->eth.ether_shost, self.parent->addr, 6) != 0) {
-            log_debug("Ignoring child reject from node that is not our parent. [addr: %s, parent addr: %s]", mac_to_str(in_frame->eth.ether_shost), mac_to_str(self.parent->addr));
+void handle_child_reject(mac_addr_t shost) {
+    // We have no parent but for some reason got rejected. Ignore.
+    if (!self_is_connected() && !self_is_pending()) {
+        log_warn("We neither connected nor pending, but received reject frame. [addr: %s]", mac_to_str(shost));
+        return;
+    }
+
+    // We are connected but not pending and receive a reject from our current parent, then we are no longer part of the tree and disconnect all our children as well.
+    if (self_is_connected() && !self_is_pending()) {
+        if (memcmp(shost, self.parent->addr, 6) != 0) {
+            log_debug("Ignoring child reject from node that is not our parent. [addr: %s, parent addr: %s]", mac_to_str(shost), mac_to_str(self.parent->addr));
             return;
         }
 
         log_info("Received disconnection command from our parent. [addr: %s]", mac_to_str(self.parent->addr));
 
-        disconnect_all_children();
+        establish_connection(self.prev_parent->addr, self.prev_parent->own_pwr, self.prev_parent->high_pwr, self.prev_parent->snd_high_pwr, self.tree_id);
+        log_debug("Trying to connect to previous parent. [addr: %s]", mac_to_str(self.prev_parent->addr));
+
         free(self.parent);
         self.parent = NULL;
-        log_debug("Disconnected all children and reset parent.");
         return;
     }
 
-    // We received a confirmation from a node we never asked. Ignore.
-    if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) {
-        log_debug("Ignoring child reject from unknown node. [addr: %s, parent addr: %s]", mac_to_str(in_frame->eth.ether_shost), mac_to_str(self.pending_parent->addr));
-        return;
-    }
+    if (!self_is_connected() && self_is_pending()) {
+        // We received a confirmation from a node we never asked. Ignore.
+        if (memcmp(shost, self.pending_parent->addr, 6) != 0) {
+            log_debug("Ignoring child reject from unknown node. [addr: %s, parent addr: %s]", mac_to_str(shost), mac_to_str(self.pending_parent->addr));
+            return;
+        }
 
-    if (self.prev_parent && (memcmp(in_frame->eth.ether_shost, self.prev_parent->addr, 6) == 0)) {
-        log_debug("Were unable to reconnect to previous parent. [prev parent addr: %s]", mac_to_str(self.prev_parent->addr));
-
-        disconnect_all_children();
-        free(self.prev_parent);
-        self.prev_parent = NULL;
+        log_info("Pending parent rejected our request. [pending parent: %s]", mac_to_str(shost));
         free(self.pending_parent);
         self.pending_parent = NULL;
+
+        char *key = (char *) malloc(18);
+        prepare_key(shost, key);
+        hashmap_put(self.parent_blocklist, key, (void**) &dummy);
+        log_info("Blocked pending parent. [addr: %s]", key);
+
+        if (self.prev_parent && (memcmp(shost, self.prev_parent->addr, 6) == 0)) {
+            log_debug("Were unable to reconnect to previous parent. [prev parent addr: %s]", mac_to_str(self.prev_parent->addr));
+
+            disconnect_all_children();
+            free(self.prev_parent);
+            self.prev_parent = NULL;
+            free(self.pending_parent);
+            self.pending_parent = NULL;
+        }
+
         return;
     }
 
-    // TODO: If we have a previous parent, try to connect to them
+    if (self_is_connected() && self_is_pending()) {
+        // We received a confirmation from a node we never asked. Ignore.
+        if (memcmp(shost, self.pending_parent->addr, 6) != 0) {
+            log_debug("Ignoring child reject from unknown node. [addr: %s, parent addr: %s]", mac_to_str(shost), mac_to_str(self.pending_parent->addr));
+            return;
+        }
 
-    log_info("Pending parent rejected our request. [pending parent: %s]", mac_to_str(in_frame->eth.ether_shost));
-    free(self.pending_parent);
-    self.pending_parent = NULL;
+        log_info("Pending parent rejected our request. [pending parent: %s]", mac_to_str(shost));
+        free(self.pending_parent);
+        self.pending_parent = NULL;
 
-    char *key = (char *) malloc(18);
-    prepare_key(in_frame->eth.ether_shost, key);
-    hashmap_put(self.parent_blocklist, key, (void**) &dummy);
-    log_info("Blocked pending parent. [addr: %s]", key);
+        char *key = (char *) malloc(18);
+        prepare_key(shost, key);
+        hashmap_put(self.parent_blocklist, key, (void**) &dummy);
+        log_info("Blocked pending parent. [addr: %s]", key);
+
+        return;
+    }
 }
 
 void handle_parent_revocation(eth_radio_btp_t *in_frame) {
@@ -657,10 +687,7 @@ void game_round(int cur_time) {
         log_debug("Currently pending new connection. [addr: %s]", mac_to_str(self.pending_parent->addr));
         if (cur_time >= self.pending_parent->last_seen + pending_timeout_msec) {
             log_warn("Pending parent did not respond in time. Removing pending parent. [addr: %s]", mac_to_str(self.pending_parent->addr));
-            free(self.pending_parent);
-            self.pending_parent = NULL;
-
-            // TODO: If this is from a retry to previous parent, remove all children.
+            handle_child_reject(self.pending_parent->addr);
         }
         return;
     }
@@ -799,7 +826,7 @@ void handle_packet(uint8_t *recv_frame) {
             handle_child_confirm(&in_frame);
             break;
         case child_reject:
-            handle_child_reject(&in_frame);
+            handle_child_reject(in_frame.eth.ether_shost);
             break;
         case parent_revocaction:
             handle_parent_revocation(&in_frame);
