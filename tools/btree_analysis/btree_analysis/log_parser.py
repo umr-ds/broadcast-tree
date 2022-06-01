@@ -85,6 +85,8 @@ def parse_node(
                 {"event": "start", "timestamp": start_time, "node_id": node_id}
             )
 
+        # TODO: Maybe first log that request is confirmed before disconnecting from old parent
+        # This would require storing potentially multiple parents at this point.
         if parsed_line["message"] == "Parent confirmed our request.":
             events.append(
                 {
