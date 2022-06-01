@@ -129,6 +129,8 @@ def parse_node(
             )
 
         if parsed_line["level"] in ["WARN", "ERROR", "FATAL"]:
+            if parsed_line["message"] == "Payload frame expired.":
+                continue
             events.append(
                 {
                     "event": "error",
@@ -233,6 +235,7 @@ def build_graph_series(
     events: [{str, str | int}], nodes: [int]
 ) -> list[dict[str, dict[str | int, str | int]]]:
     graph = {"nodes": {}, "edges": {}, "metadata": {}}
+    print("Building graph series")
 
     graph_series = []
 
