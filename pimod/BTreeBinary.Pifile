@@ -1,0 +1,9 @@
+INPLACE BTree.img
+
+# Step 1: Compile the binary
+INSTALL /root/btp /broadcast-tree/btp
+WORKDIR /broadcast-tree/btp
+RUN make
+
+# Step 2: Copy the binary to the root directory of the image so that it can be copied to the testbed
+EXTRACT /broadcast-tree/btp/btp /root/btp_exe
