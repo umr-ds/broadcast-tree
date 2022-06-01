@@ -4,7 +4,9 @@
 #include "btp.h"
 #include "hashmap.h"
 
-#define BREADTH 10
+#define MAX_BREADTH 10
+#define MAX_DEPTH 20
+#define MAX_TTL (MAX_DEPTH * 2) + 1;
 
 /**
  * State of our parent

@@ -15,7 +15,6 @@
 #define BTP_HEADER_SIZE sizeof(eth_btp_t)
 #define BTP_PAYLOAD_HEADER_SIZE sizeof(uint16_t) * 3 + BTP_HEADER_SIZE
 #define MAX_PAYLOAD (MTU - (BTP_PAYLOAD_HEADER_SIZE))
-#define MAX_DEPTH 20
 
 #define BTP_ETHERTYPE 35039
 
@@ -98,6 +97,7 @@ typedef struct {
     uint16_t seq_num; // payload sequence number - separate from btp sequence number
     uint16_t payload_len;
     uint16_t payload_chunk_len;
+    uint8_t ttl;
     uint8_t payload[MAX_PAYLOAD];
 } __attribute__((packed)) eth_radio_btp_payload_t;
 
@@ -109,6 +109,7 @@ typedef struct {
     uint16_t seq_num; // payload sequence number - separate from btp sequence number
     uint16_t payload_len;
     uint16_t payload_chunk_len;
+    uint8_t ttl;
     uint8_t payload[MAX_PAYLOAD];
 } __attribute__((packed)) eth_btp_payload_t;
 
@@ -118,6 +119,7 @@ typedef struct {
  */
 typedef struct {
     eth_radio_btp_t btp_frame;
+    uint8_t ttl;
     mac_addr_t sender;
     mac_addr_t old_parent;
     mac_addr_t new_parent;
@@ -128,6 +130,7 @@ typedef struct {
  */
 typedef struct {
     eth_btp_t btp_frame;
+    uint8_t ttl;
     mac_addr_t sender;
     mac_addr_t old_parent;
     mac_addr_t new_parent;

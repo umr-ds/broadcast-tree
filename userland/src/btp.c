@@ -60,10 +60,6 @@ bool self_has_children(void) {
 }
 
 ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
-#ifdef NEXMON
-    // TODO implement with nexmon.
-    return -1;
-#else
     set_tx_pwr(set_pwr(tx_pwr));
     ssize_t sent_bytes = sendto(self.sockfd, buf, data_len, 0, (struct sockaddr *) &L_SOCKADDR, sizeof(struct sockaddr_ll));
     if (sent_bytes < 0) {
@@ -73,7 +69,6 @@ ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
     log_debug("Successfully sent frame. [sent_bytes: %i, tx_pwr: %i]", sent_bytes, set_pwr(tx_pwr));
 
     return sent_bytes;
-#endif
 }
 
 void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
@@ -149,6 +144,7 @@ void send_payload(void) {
     eth_btp_payload_t payload_frame = { 0x0 };
     payload_frame.btp_frame = payload_base;
     payload_frame.payload_len = file_stats.st_size;
+    payload_frame.ttl = MAX_TTL;
 
     log_debug("Starting chunking file for transfer.");
     while (bytes_read > 0) {
@@ -186,11 +182,13 @@ void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
     // If the in_frame is given, we are meant to forward a ping to source to our parent.
     // Thus, copy the ping to source relevant stuff.
     if (in_frame) {
+        pts_frame.ttl = in_frame->ttl - 1;
         memcpy(pts_frame.sender, in_frame->sender, 6);
         memcpy(pts_frame.new_parent, in_frame->new_parent, 6);
         memcpy(pts_frame.old_parent, in_frame->old_parent, 6);
-        log_debug("Forwarding Ping to Source frame. [sender: %s, destination: %s]", mac_to_str(pts_frame.sender), mac_to_str(self.parent->addr));
+        log_debug("Forwarding Ping to Source frame. [sender: %s, destination: %s, ttl: %u]", mac_to_str(pts_frame.sender), mac_to_str(self.parent->addr), pts_frame.ttl);
     } else {
+        pts_frame.ttl = MAX_TTL;
         memcpy(pts_frame.sender, self.laddr, 6);
         memcpy(pts_frame.new_parent, self.parent->addr, 6);
         if (self.prev_parent){
@@ -434,7 +432,7 @@ void handle_child_request(eth_radio_btp_t *in_frame) {
 
     int8_t potential_child_send_pwr = compute_tx_pwr(in_frame);
     if ((!self_is_connected())
-        || hashmap_length(self.children) >= BREADTH
+        || hashmap_length(self.children) >= MAX_BREADTH
         || potential_child_send_pwr > self.max_pwr
        ) {
         log_info("Rejecting child (either we have no parent, are the source, have too much children or sending power would be too high). [is_connected: %s, is_source: %s, num children: %i, potential send power: %i, self_max_power: %i]",
@@ -535,6 +533,8 @@ void handle_child_reject(eth_radio_btp_t *in_frame) {
         self.pending_parent = NULL;
         return;
     }
+
+    // TODO: If we have a previous parent, try to connect to them
 
     log_info("Pending parent rejected our request. [pending parent: %s]", mac_to_str(in_frame->eth.ether_shost));
     free(self.pending_parent);
@@ -640,7 +640,12 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
         }
         // In this case, we received our own ping to source frame, which indicated a cycle.
     } else {
-        // We just receive a ping to source as an intermediate node. Simply forward.
+        // We just receive a ping to source as an intermediate node. First, check if it is expired. If not, forward.
+        if (in_frame.ttl == 0) {
+            log_warn("Ping to Source frame expired. [sender: %s, destination: %s]", mac_to_str(in_frame.sender), mac_to_str(self.parent->addr));
+            return;
+        }
+
         log_info("Forwarding Ping to Source.");
         cycle_detection_ping(&in_frame);
     }
@@ -654,6 +659,8 @@ void game_round(int cur_time) {
             log_warn("Pending parent did not respond in time. Removing pending parent. [addr: %s]", mac_to_str(self.pending_parent->addr));
             free(self.pending_parent);
             self.pending_parent = NULL;
+
+            // TODO: If this is from a retry to previous parent, remove all children.
         }
         return;
     }
@@ -703,12 +710,13 @@ void forward_payload(eth_radio_btp_payload_t *in_frame) {
     out_frame.seq_num = in_frame->seq_num;
     out_frame.payload_len = in_frame->payload_len;
     out_frame.payload_chunk_len = in_frame->payload_chunk_len;
+    out_frame.ttl = in_frame->ttl - 1;
     memcpy(out_frame.payload, in_frame->payload, in_frame->payload_chunk_len);
 
     if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len, self.high_pwr) < 0) {
         log_warn("Could not forward payload. [seq num: %i]", out_frame.seq_num);
     } else {
-        log_info("Successfully forwarded payload. [seq num: %i]", out_frame.seq_num);
+        log_info("Successfully forwarded payload. [seq num: %i, ttl: %u]", out_frame.seq_num, out_frame.ttl);
     }
 }
 
@@ -769,6 +777,10 @@ void handle_data(uint8_t *recv_frame) {
         payload_complete = true;
     }
 
+    if (in_frame.ttl == 0) {
+        log_warn("Payload frame expired. [seq_num: %i]", in_frame.seq_num);
+        return;
+    }
     forward_payload(&in_frame);
 }
 
