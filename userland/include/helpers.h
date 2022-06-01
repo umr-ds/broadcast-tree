@@ -18,7 +18,7 @@ uint32_t gen_tree_id(mac_addr_t laddr);
 /**
  * 
  */
-void hexdump(const void* buf, size_t size);
+void hexdump(const void *buf, size_t size);
 
 /**
  * Pretty-print a BTP-frame
@@ -38,15 +38,21 @@ void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t mut
                  frame_t frame_type, uint32_t tree_id, int8_t tx_pwr);
 
 int8_t get_tx_pwr(void);
+
 bool set_tx_pwr(int8_t tx_pwr);
+
 int8_t get_max_tx_pwr(void);
+
 bool set_max_tx_pwr(void);
 
 int8_t get_snd_pwr(void);
+
 bool all_children_fin(void);
 
 char *mac_to_str(mac_addr_t addr);
+
 void prepare_key(mac_addr_t addr, char *res);
+
 int8_t set_pwr(int8_t pwr);
 
 #endif // __HELPERS_H__

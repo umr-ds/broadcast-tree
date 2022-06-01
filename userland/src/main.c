@@ -28,7 +28,9 @@ uint16_t source_retransmit_payload_msec;
 uint8_t unchanged_counter;
 
 int init_sock(char *if_name, char *payload);
+
 int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_msec, bool omit_roll_back);
+
 void sig_handler(int signum);
 
 struct arguments {
@@ -50,20 +52,20 @@ const char *argp_program_bug_address = "<sterz@mathematik.uni-marburg.de>";
 static char doc[] = "BTP -- Broadcast Tree Protocol";
 static char args_doc[] = "INTERFACE";
 static struct argp_option options[] = {
-        {"source",    's', "payload", 0, "Path to the payload to be sent (omit this option for client mode)", 0 },
-        {"max_power",  'm', 0,    0, "Whether to use maximum transmission power of fancy power calculations for efficiency", 0 },
-        {"log_level", 'l', "level",   0, "Log level\n0: QUIET, 1: TRACE, 2: DEBUG, 3: INFO (default),\n4: WARN, 5: ERROR, 6: FATAL", 1 },
-        {"log_file",  'f', "path",    0, "File path to log file.\nIf not present only stdout and stderr logging will be used", 1 },
+        {"source",             's', "payload", 0, "Path to the payload to be sent (omit this option for client mode)",                        0},
+        {"max_power",          'm', 0,         0, "Whether to use maximum transmission power of fancy power calculations for efficiency",     0},
+        {"log_level",          'l', "level",   0, "Log level\n0: QUIET, 1: TRACE, 2: DEBUG, 3: INFO (default),\n4: WARN, 5: ERROR, 6: FATAL", 1},
+        {"log_file",           'f', "path",    0, "File path to log file.\nIf not present only stdout and stderr logging will be used",       1},
 
-        {"poll_timeout",  'p', "msec",    0, "Timeout for poll syscall", 1 },
-        {"broadcast_timeout",  'b', "msec",    0, "How often the discovery frames should be broadcasted", 1 },
-        {"pending_timeout",  't', "msec",    0, "How long to wait for potential parent to answer", 1 },
-        {"retransmit_timeout",  'r', "msec",    0, "How long to wait for retransmitting the payload from the source", 1 },
+        {"poll_timeout",       'p', "msec",    0, "Timeout for poll syscall",                                                                 1},
+        {"broadcast_timeout",  'b', "msec",    0, "How often the discovery frames should be broadcasted",                                     1},
+        {"pending_timeout",    't', "msec",    0, "How long to wait for potential parent to answer",                                          1},
+        {"retransmit_timeout", 'r', "msec",    0, "How long to wait for retransmitting the payload from the source",                          1},
 
-        {"unchanged_counter",  'u', "number",    0, "How many rounds to wait until declaring game finished", 1 },
-        {"omit_roll_back",  'o', 0,    0, "Do not roll back tree after payload is completely received", 1 },
+        {"unchanged_counter",  'u', "number",  0, "How many rounds to wait until declaring game finished",                                    1},
+        {"omit_roll_back",     'o', 0,         0, "Do not roll back tree after payload is completely received",                               1},
 
-        { 0 }
+        {0}
 };
 
 struct sockaddr_ll L_SOCKADDR = {
@@ -73,15 +75,15 @@ struct sockaddr_ll L_SOCKADDR = {
         .sll_hatype = 0,
         .sll_pkttype = 0,
         .sll_halen = 0,
-        .sll_addr = { 0 }
+        .sll_addr = {0}
 };
 
-void sig_handler(int signum){
+void sig_handler(int signum) {
     log_info("Received signal. Exiting. [signal: %i]", signum);
     exit(signum);
 }
 
-static error_t parse_opt (int key, char *arg, struct argp_state *state) {
+static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     struct arguments *arguments = state->input;
 
     char buf[PATH_MAX]; /* PATH_MAX incudes the \0 so +1 is not required */
@@ -124,11 +126,12 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
         case 'o':
             arguments->omit_roll_back = true;
             break;
-        case ARGP_KEY_ARG : if (state->arg_num >= 1) argp_usage(state);
+        case ARGP_KEY_ARG :
+            if (state->arg_num >= 1) argp_usage(state);
             arguments->interface = arg;
             break;
         case ARGP_KEY_END:
-            if (state->arg_num < 1) argp_usage (state);
+            if (state->arg_num < 1) argp_usage(state);
             break;
         default:
             return ARGP_ERR_UNKNOWN;
@@ -136,7 +139,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state) {
     return 0;
 }
 
-static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
+static struct argp argp = {options, parse_opt, args_doc, doc, 0, 0, 0};
 
 int init_sock(char *if_name, char *payload) {
     log_info("Initialising socket. [interface: %s]", if_name);
@@ -165,13 +168,13 @@ int init_sock(char *if_name, char *payload) {
         log_error("Could not get MAC address. [%s]", explain_ioctl(tmp_sockfd, SIOCGIFHWADDR, &if_mac));
         return ioctl_stat;
     }
-    log_debug("Acquired MAC address. [addr: %s]", mac_to_str((uint8_t *)if_mac.ifr_hwaddr.sa_data));
+    log_debug("Acquired MAC address. [addr: %s]", mac_to_str((uint8_t *) if_mac.ifr_hwaddr.sa_data));
 
     L_SOCKADDR.sll_ifindex = if_idx.ifr_ifindex;
     L_SOCKADDR.sll_halen = ETH_ALEN;
 
-    init_self((uint8_t *)&if_mac.ifr_hwaddr.sa_data, payload, if_name, tmp_sockfd);
-    log_debug("Initialized self. [source: %s, tree_id: %u]",  self.is_source ? "true" : "false", self.tree_id);
+    init_self((uint8_t *) &if_mac.ifr_hwaddr.sa_data, payload, if_name, tmp_sockfd);
+    log_debug("Initialized self. [source: %s, tree_id: %u]", self.is_source ? "true" : "false", self.tree_id);
 
     int8_t max_tx_pwr;
     if ((max_tx_pwr = get_max_tx_pwr()) < 0) {
@@ -186,7 +189,7 @@ int init_sock(char *if_name, char *payload) {
 int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_msec, bool omit_roll_back) {
     ssize_t read_bytes;
     uint8_t recv_frame[MTU];
-    memset(recv_frame, 0, MTU * sizeof (uint8_t));
+    memset(recv_frame, 0, MTU * sizeof(uint8_t));
 
     int bcast_send_time = get_time_msec();
     int res;
@@ -214,8 +217,8 @@ int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_mse
         log_debug("Evaluated game round.");
 
         struct pollfd pfd = {
-            .fd = self.sockfd,
-            .events = POLLIN
+                .fd = self.sockfd,
+                .events = POLLIN
         };
 
         res = poll(&pfd, 1, poll_timeout_msec);
@@ -235,7 +238,7 @@ int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_mse
                 handle_packet(recv_frame);
             } else {
                 if (errno == EINTR) {
-                    memset(recv_frame, 0, MTU * sizeof (uint8_t));
+                    memset(recv_frame, 0, MTU * sizeof(uint8_t));
                     log_error("Receive was interrupted. [error: %s]", strerror(errno));
                     continue;
                 } else {
@@ -247,7 +250,7 @@ int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_mse
     }
 }
 
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
 
     struct arguments arguments = {
             .payload = "",
@@ -262,7 +265,7 @@ int main (int argc, char **argv) {
             .unchanged_counter = 5,
             .omit_roll_back = false,
     };
-    argp_parse (&argp, argc, argv, 0, 0, &arguments);
+    argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
     max_power = arguments.max_power;
     pending_timeout_msec = arguments.pending_timeout_msec;
@@ -310,10 +313,10 @@ int main (int argc, char **argv) {
             arguments.unchanged_counter,
             arguments.omit_roll_back ? "true" : "false",
             arguments.interface
-            );
+    );
 
     int sockfd = init_sock(arguments.interface, arguments.payload);
-    if (sockfd < 0){
+    if (sockfd < 0) {
         exit(sockfd);
     }
 
@@ -321,7 +324,8 @@ int main (int argc, char **argv) {
         broadcast_discovery();
     }
 
-    int res = event_loop(arguments.poll_timeout_msec, arguments.discovery_bcast_interval_msec, arguments.omit_roll_back);
+    int res = event_loop(arguments.poll_timeout_msec, arguments.discovery_bcast_interval_msec,
+                         arguments.omit_roll_back);
 
     if (res == 0) {
         log_info("Gracefully exiting.");

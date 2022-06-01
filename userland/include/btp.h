@@ -39,30 +39,30 @@ typedef enum {
  */
 typedef struct {
     /* radiotap header */
-    uint8_t   it_version;
-    uint8_t   it_pad;
-    uint16_t  it_len;
-    uint32_t  it_present;
+    uint8_t it_version;
+    uint8_t it_pad;
+    uint16_t it_len;
+    uint32_t it_present;
     /* radiotap fields */
-    uint32_t  tsf_l;
-    uint32_t  tsf_h;
-    uint8_t   flags;
-    uint8_t   data_rate;
-    uint16_t  chan_freq;
-    uint16_t  chan_flags;
-    int8_t    dbm_antsignal;
-    int8_t    dbm_antnoise;   /* constant value -91 for bcm43430a1 */
+    uint32_t tsf_l;
+    uint32_t tsf_h;
+    uint8_t flags;
+    uint8_t data_rate;
+    uint16_t chan_freq;
+    uint16_t chan_flags;
+    int8_t dbm_antsignal;
+    int8_t dbm_antnoise;   /* constant value -91 for bcm43430a1 */
 } __attribute__((packed)) radiotap_header_t;
 
 /**
  * Common header of all BTP-frames
  */
 typedef struct {
-    uint8_t recv_err:1; // flag set if the channel has been very noisy; NOTE: Why? Really needed? Might remove.
-    uint8_t game_fin:1; // flag set if the node has already finished its game
-    uint8_t mutex:1; // flags set if something-something mutex
-    uint8_t unused:2;
-    frame_t frame_type:3; // see frame_t enum
+    uint8_t recv_err: 1; // flag set if the channel has been very noisy; NOTE: Why? Really needed? Might remove.
+    uint8_t game_fin: 1; // flag set if the node has already finished its game
+    uint8_t mutex: 1; // flags set if something-something mutex
+    uint8_t unused: 2;
+    frame_t frame_type: 3; // see frame_t enum
     uint32_t tree_id; // unique ID for each broadcast-tree
     int8_t tx_pwr; // power with which this frame has been sent
     mac_addr_t parent_addr; // address of the parent of the sending node

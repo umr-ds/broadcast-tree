@@ -22,13 +22,15 @@ int8_t set_pwr(int8_t pwr) {
 }
 
 int hashmap_child_fin(any_t item, any_t args);
+
 int hashmap_snd_pwr(any_t item, any_t args);
 
 int hashmap_child_fin(any_t item, any_t args) {
-    (void)(item);
+    (void) (item);
     child_t *tmp_child = (child_t *) args;
 
-    log_debug("Game fin status. [addr: %s, game_fin: %s]", mac_to_str(tmp_child->addr), tmp_child->game_fin ? "true" : "false");
+    log_debug("Game fin status. [addr: %s, game_fin: %s]", mac_to_str(tmp_child->addr),
+              tmp_child->game_fin ? "true" : "false");
 
     return tmp_child->game_fin ? MAP_OK : MAP_MISSING;
 }
@@ -74,9 +76,9 @@ int get_time_msec() {
 
 bool already_child(mac_addr_t potential_child_addr) {
     child_t child = {0x0};
-    char key[18] = { 0x0 };
+    char key[18] = {0x0};
     prepare_key(potential_child_addr, key);
-    if (hashmap_get(self.children, key, (any_t*)&child) == MAP_OK) {
+    if (hashmap_get(self.children, key, (any_t *) &child) == MAP_OK) {
         return true;
     }
 
@@ -121,7 +123,7 @@ bool set_tx_pwr(int8_t tx_pwr) {
     wrq.u.txpower.disabled = 0;
     wrq.u.txpower.flags = IW_TXPOW_DBM;
 
-    if(iw_set_ext(self.sockfd, self.if_name, SIOCSIWTXPOW, &wrq) < 0) {
+    if (iw_set_ext(self.sockfd, self.if_name, SIOCSIWTXPOW, &wrq) < 0) {
         log_error("Could not set txpower. [error: %s]", explain_ioctl(self.sockfd, SIOCSIWTXPOW, &wrq));
         return false;
     }
@@ -136,12 +138,12 @@ int8_t get_tx_pwr() {
 
     int res;
     /* Get current Transmit Power */
-    if((res = iw_get_ext(self.sockfd, self.if_name, SIOCGIWTXPOW, wrq)) >= 0) {
-        if(wrq->u.txpower.disabled) {
+    if ((res = iw_get_ext(self.sockfd, self.if_name, SIOCGIWTXPOW, wrq)) >= 0) {
+        if (wrq->u.txpower.disabled) {
             log_error("Transmission is disabled.");
             return -1;
         } else {
-            if(wrq->u.txpower.flags & IW_TXPOW_MWATT) {
+            if (wrq->u.txpower.flags & IW_TXPOW_MWATT) {
                 dbm = iw_mwatt2dbm(wrq->u.txpower.value);
             } else {
                 dbm = wrq->u.txpower.value;
@@ -265,8 +267,10 @@ void pprint_frame(eth_radio_btp_t *in_frame) {
               "    Parent Addr:.......%x:%x:%x:%x:%x:%x\n"
               "    Highest Power:.....%hhu\n"
               "    2nd highest power:.%hhu",
-              eth.ether_shost[0], eth.ether_shost[1], eth.ether_shost[2], eth.ether_shost[3], eth.ether_shost[4], eth.ether_shost[5],
-              eth.ether_dhost[0], eth.ether_dhost[1], eth.ether_dhost[2], eth.ether_dhost[3], eth.ether_dhost[4], eth.ether_dhost[5],
+              eth.ether_shost[0], eth.ether_shost[1], eth.ether_shost[2], eth.ether_shost[3], eth.ether_shost[4],
+              eth.ether_shost[5],
+              eth.ether_dhost[0], eth.ether_dhost[1], eth.ether_dhost[2], eth.ether_dhost[3], eth.ether_dhost[4],
+              eth.ether_dhost[5],
               ntohs(eth.ether_type),
               rdio.it_version,
               rdio.it_len,
@@ -284,14 +288,15 @@ void pprint_frame(eth_radio_btp_t *in_frame) {
               btp.frame_type,
               btp.tree_id,
               btp.tx_pwr,
-              btp.parent_addr[0], btp.parent_addr[1], btp.parent_addr[2], btp.parent_addr[3], btp.parent_addr[4], btp.parent_addr[5],
+              btp.parent_addr[0], btp.parent_addr[1], btp.parent_addr[2], btp.parent_addr[3], btp.parent_addr[4],
+              btp.parent_addr[5],
               btp.high_pwr,
               btp.snd_high_pwr
     );
 }
 
 void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t mutex,
-            frame_t frame_type, uint32_t tree_id, int8_t tx_pwr) {
+                 frame_t frame_type, uint32_t tree_id, int8_t tx_pwr) {
     out->btp.recv_err = recv_err;
     out->btp.game_fin = self.game_fin;
     out->btp.mutex = mutex;
