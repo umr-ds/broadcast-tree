@@ -277,7 +277,7 @@ def build_graph_series(
 
 
 def graph_to_string(
-    graph: dict[str, dict[str | int, str | int]], config: dict[str, Any]
+    graph: dict[str, dict[str | int, str | int]], config: dict[str, Any], cluster: bool
 ) -> [str]:
     all_nodes = tb_api.get_nodes()
 
@@ -287,7 +287,7 @@ def graph_to_string(
         "C": ["subgraph cluster_C {\nlabel=C\n"],
         "D": ["subgraph cluster_D {\nlabel=D\n"],
         "E": ["subgraph cluster_E {\nlabel=E\n"],
-        "root": [],
+        "root": [""],
     }
 
     last_nodes = {
@@ -315,29 +315,33 @@ def graph_to_string(
     for node, (parent, tx_pwr) in graph["edges"].items():
         lines["root"].append(f"{node} -> {parent} [label={tx_pwr}]")
 
-    if last_nodes["A"] is not None and last_nodes["B"] is not None:
-        lines["root"].append(
-            f"{last_nodes['A']} -> {last_nodes['B']} [ltail=cluster_A, lhead=cluster_B, style=invis]"
-        )
+    if cluster:
+        if last_nodes["A"] is not None and last_nodes["B"] is not None:
+            lines["root"].append(
+                f"{last_nodes['A']} -> {last_nodes['B']} [ltail=cluster_A, lhead=cluster_B, style=invis]"
+            )
 
-    if last_nodes["B"] is not None and last_nodes["C"] is not None:
-        lines["root"].append(
-            f"{last_nodes['B']} -> {last_nodes['C']} [ltail=cluster_B, lhead=cluster_C, style=invis]"
-        )
+        if last_nodes["B"] is not None and last_nodes["C"] is not None:
+            lines["root"].append(
+                f"{last_nodes['B']} -> {last_nodes['C']} [ltail=cluster_B, lhead=cluster_C, style=invis]"
+            )
 
-    if last_nodes["C"] is not None and last_nodes["D"] is not None:
-        lines["root"].append(
-            f"{last_nodes['C']} -> {last_nodes['D']} [ltail=cluster_C, lhead=cluster_D, style=invis]"
-        )
+        if last_nodes["C"] is not None and last_nodes["D"] is not None:
+            lines["root"].append(
+                f"{last_nodes['C']} -> {last_nodes['D']} [ltail=cluster_C, lhead=cluster_D, style=invis]"
+            )
 
-    if last_nodes["D"] is not None and last_nodes["E"] is not None:
-        lines["root"].append(
-            f"{last_nodes['D']} -> {last_nodes['E']} [ltail=cluster_D, lhead=cluster_E, style=invis]"
-        )
+        if last_nodes["D"] is not None and last_nodes["E"] is not None:
+            lines["root"].append(
+                f"{last_nodes['D']} -> {last_nodes['E']} [ltail=cluster_D, lhead=cluster_E, style=invis]"
+            )
 
-    lines = {k: "".join(v + ["}"]) for k, v in lines.items()}
+        lines = {k: "".join(v + ["}"]) for k, v in lines.items()}
 
-    return lines.values()
+    else:
+        lines = {k: "\n".join(v[1:]) for k, v in lines.items()}
+
+    return lines.values() if cluster else list(lines.values()) + ["}"]
 
 
 def write_graph_series(
@@ -352,7 +356,7 @@ def write_graph_series(
         dots += "`digraph {\n"
         dots += 'rankdir="TB"\n'
         dots += f'label="{step_counter}, {graph["metadata"]["timestamp"]}, {graph["metadata"]["type"]}, {graph["metadata"]["node_id"]}"\n'
-        dots += "\n".join(graph_to_string(graph, config)) + "\n"
+        dots += "\n".join(graph_to_string(graph, config, False)) + "\n"
         dots += "`,\n"
 
         step_counter += 1
