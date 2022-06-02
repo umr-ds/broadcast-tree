@@ -91,7 +91,7 @@ def run(conf, iteration):
     )
 
     print("-> Waiting for experiment to finish")
-    time.sleep(30)
+    time.sleep(experiment_config["experiment_duration"])
 
     print("-> Stopping BTP on all nodes")
     source.run_command("pkill --signal SIGINT btp")
