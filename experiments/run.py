@@ -17,8 +17,6 @@ def run(conf, iteration):
     source_id = conf["SOURCE"]["id"]
     experiment_config = conf["EXPERIMENT"]
 
-    print("Running prepare stage")
-
     _nodes = client.get_nodes_by_filter(**node_filter)
     client_nodes = [node for node in _nodes if node.id != source_id]
     source_node = client.get_nodes_by_filter(**{"id": [source_id]})[0]
@@ -26,8 +24,6 @@ def run(conf, iteration):
     print("-> Generating log file path")
     experiment_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     logfile_path_base = f"/btree_data/{experiment_time}"
-
-    print("Running run stage")
 
     print("Preparing log folder on testbed contoller")
     source = SSHClient(
@@ -73,8 +69,8 @@ def run(conf, iteration):
     )
 
     print("Stopping potential zombie BTP processes")
-    source.run_command("pkill btp")
-    client_nodes.run_command("pkill btp")
+    source.run_command("pkill -9 btp")
+    client_nodes.run_command("pkill -9 btp")
 
     client_output = client_nodes.run_command(
         btp_cmd_common.format("", client_logfile_path)
@@ -95,11 +91,11 @@ def run(conf, iteration):
     )
 
     print("-> Waiting for experiment to finish")
-    time.sleep(60)
+    time.sleep(30)
 
     print("-> Stopping BTP on all nodes")
-    source.run_command("pkill btp")
-    client_nodes.run_command("pkill btp")
+    source.run_command("pkill --signal SIGINT btp")
+    client_nodes.run_command("pkill --signal SIGINT btp")
 
     print("-> Collecting logs and cleaning up")
     source.copy_remote_file(
@@ -107,7 +103,7 @@ def run(conf, iteration):
         f"{os.getcwd()}/results/{experiment_time}",
         recurse=True,
     )
-    source.run_command(f"rm -rf {logfile_path_base}")
+    # source.run_command(f"rm -rf {logfile_path_base}")
 
     conf_file = open(f"{os.getcwd()}/results/{experiment_time}/config", "w")
     toml.dump(conf, conf_file)
