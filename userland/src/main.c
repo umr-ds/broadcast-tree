@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <netinet/ip.h>
@@ -81,25 +83,20 @@ struct sockaddr_ll L_SOCKADDR = {
 void sig_handler(int signum) {
     switch (signum) {
         case SIGINT:
-            log_warn("Received CTRL-C. [signal: %s]", strsignal(signum));
+            log_info("Received CTRL-C. [signal: %s]", strsignal(signum));
             exit(signum);
-            break;
         case SIGQUIT:
             log_fatal("Dumping core. [signal: %s]", strsignal(signum));
             exit(signum);
-            break;
         case SIGTERM:
             log_warn("Terminating. [signal: %s]", strsignal(signum));
             exit(signum);
-            break;
         case SIGABRT:
             log_fatal("Have to abort. [signal: %s]", strsignal(signum));
             exit(signum);
-            break;
         case SIGSEGV:
             log_fatal("Violated memory!. [signal: %s]", strsignal(signum));
             exit(signum);
-            break;
         default:
             log_error("Received signal we should not get.", strsignal(signum));
             exit(signum);
@@ -214,6 +211,17 @@ int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_mse
     uint8_t recv_frame[MTU];
     memset(recv_frame, 0, MTU * sizeof(uint8_t));
 
+    struct timespec poll_timeout = {.tv_sec = 0, .tv_nsec = 0,};
+    poll_timeout.tv_sec = poll_timeout_msec / 1000;
+    poll_timeout.tv_nsec = (poll_timeout_msec % 1000) * 1000000;
+
+    sigset_t signals = { 0 };
+    sigaddset(&signals, SIGINT);
+    sigaddset(&signals, SIGQUIT);
+    sigaddset(&signals, SIGTERM);
+    sigaddset(&signals, SIGABRT);
+    sigaddset(&signals, SIGSEGV);
+
     int bcast_send_time = get_time_msec();
     int res;
     log_info("Waiting for BTP packets.");
@@ -244,7 +252,7 @@ int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_mse
                 .events = POLLIN
         };
 
-        res = poll(&pfd, 1, poll_timeout_msec);
+        res = ppoll(&pfd, 1, &poll_timeout, &signals);
 
         if (res == -1) {
             log_error("Poll returned an error. [%s]", explain_poll(&pfd, 1, poll_timeout_msec));
