@@ -559,6 +559,8 @@ void handle_child_reject(mac_addr_t shost) {
         return;
     }
 
+    self.round_unchanged_cnt = 0;
+
     // We are connected but not pending and receive a reject from our current parent, then we are no longer part of the tree and disconnect all our children as well.
     if (self_is_connected() && !self_is_pending()) {
         if (memcmp(shost, self.parent->addr, 6) != 0) {
@@ -791,6 +793,13 @@ void game_round(int cur_time) {
             send_payload();
             log_debug("Sent payload.");
         } else {
+            if (!self_is_connected()) {
+                log_error("We are not connected, can not es the game.");
+                self.game_fin = false;
+                self.round_unchanged_cnt = 0;
+                return;
+            }
+
             eth_btp_t eog = {0x0};
             build_frame(&eog, self.parent->addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
 
