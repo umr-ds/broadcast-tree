@@ -72,6 +72,10 @@ def run(conf, iteration):
         f' --log_file={{1}} {iface} > /dev/null 2> {{1}}.err &"'
     )
 
+    print("Stopping potential zombie BTP processes")
+    source.run_command("pkill btp")
+    client_nodes.run_command("pkill btp")
+
     client_output = client_nodes.run_command(
         btp_cmd_common.format("", client_logfile_path)
     )
