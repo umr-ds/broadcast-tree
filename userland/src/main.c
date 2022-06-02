@@ -79,8 +79,31 @@ struct sockaddr_ll L_SOCKADDR = {
 };
 
 void sig_handler(int signum) {
-    log_info("Received signal. Exiting. [signal: %i]", signum);
-    exit(signum);
+    switch (signum) {
+        case SIGINT:
+            log_warn("Received CTRL-C. [signal: %s]", strsignal(signum));
+            exit(signum);
+            break;
+        case SIGQUIT:
+            log_fatal("Dumping core. [signal: %s]", strsignal(signum));
+            exit(signum);
+            break;
+        case SIGTERM:
+            log_warn("Terminating. [signal: %s]", strsignal(signum));
+            exit(signum);
+            break;
+        case SIGABRT:
+            log_fatal("Have to abort. [signal: %s]", strsignal(signum));
+            exit(signum);
+            break;
+        case SIGSEGV:
+            log_fatal("Violated memory!. [signal: %s]", strsignal(signum));
+            exit(signum);
+            break;
+        default:
+            log_error("Received signal we should not get.", strsignal(signum));
+            exit(signum);
+    }
 }
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
@@ -286,8 +309,9 @@ int main(int argc, char **argv) {
 
     signal(SIGINT, sig_handler);
     signal(SIGQUIT, sig_handler);
-    signal(SIGKILL, sig_handler);
     signal(SIGTERM, sig_handler);
+    signal(SIGABRT, sig_handler);
+    signal(SIGSEGV, sig_handler);
 
     log_debug(
             "Initialized program. ["
