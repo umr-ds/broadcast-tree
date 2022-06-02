@@ -569,9 +569,14 @@ void handle_child_reject(mac_addr_t shost) {
 
         log_info("Received disconnection command from our parent. [addr: %s]", mac_to_str(self.parent->addr));
 
-        establish_connection(self.prev_parent->addr, self.prev_parent->own_pwr, self.prev_parent->high_pwr,
-                             self.prev_parent->snd_high_pwr, self.tree_id);
-        log_debug("Trying to connect to previous parent. [addr: %s]", mac_to_str(self.prev_parent->addr));
+        if (self.prev_parent) {
+            establish_connection(self.prev_parent->addr, self.prev_parent->own_pwr, self.prev_parent->high_pwr,
+                                 self.prev_parent->snd_high_pwr, self.tree_id);
+            log_debug("Trying to connect to previous parent. [addr: %s]", mac_to_str(self.prev_parent->addr));
+        } else {
+            log_info("Have not previous parent. Disconnecting all children.");
+            disconnect_all_children();
+        }
 
         free(self.parent);
         self.parent = NULL;
