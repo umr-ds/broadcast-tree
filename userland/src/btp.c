@@ -81,7 +81,13 @@ bool self_has_children(void) {
 }
 
 ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
-    set_tx_pwr(set_pwr(tx_pwr));
+    for (uint8_t retries = 0; retries < 2; retries++) {
+        if (set_tx_pwr(set_pwr(tx_pwr))) {
+            break;
+        }
+        log_warn("Retrying to set tx power. [retry: %u]", retries);
+    }
+
     ssize_t sent_bytes = sendto(self.sockfd, buf, data_len, 0, (struct sockaddr *) &L_SOCKADDR,
                                 sizeof(struct sockaddr_ll));
     if (sent_bytes < 0) {
