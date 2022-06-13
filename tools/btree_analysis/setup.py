@@ -7,5 +7,5 @@ setuptools.setup(
     version="0.1",
     description="Analyse btree experiments",
     packages=setuptools.find_packages(),
-    install_requires=["graphviz"]
+    install_requires=["graphviz"],
 )

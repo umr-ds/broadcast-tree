@@ -15,7 +15,6 @@ import socket
 import _thread
 
 from threading import Semaphore
-from typing import List, Dict
 
 import testbed_api.api as api
 

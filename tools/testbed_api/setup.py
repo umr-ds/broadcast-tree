@@ -6,7 +6,7 @@ setuptools.setup(
     name="testbed-api",
     version="0.1",
     description="Functions to interact with the Piloty testbed",
-    # package_dir={"": "src"},
     packages=setuptools.find_packages(),
-    install_requires=["requests"]
+    install_requires=["requests"],
+    scripts=["testbed_api/testbed_client.py"],
 )

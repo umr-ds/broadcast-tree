@@ -5,14 +5,15 @@ import time
 import datetime
 import os
 
+from typing import Any
+
 import toml
+import testbed_api.testbed_client as client
 
 from pssh.clients import ParallelSSHClient, SSHClient
 
-import testbed_api.client as client
 
-
-def run(conf, iteration):
+def run(conf: dict[str, Any], iteration: int):
     node_filter = conf["CLIENTS"]
     source_id = conf["SOURCE"]["id"]
     experiment_config = conf["EXPERIMENT"]
@@ -25,7 +26,7 @@ def run(conf, iteration):
     experiment_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     logfile_path_base = f"/btree_data/{experiment_time}"
 
-    print("Preparing log folder on testbed contoller")
+    print("Preparing log folder on testbed controller")
     source = SSHClient(
         f"172.23.42.{source_node.id + 100}",
         user="root",
@@ -105,9 +106,8 @@ def run(conf, iteration):
     )
     # source.run_command(f"rm -rf {logfile_path_base}")
 
-    conf_file = open(f"{os.getcwd()}/results/{experiment_time}/config", "w")
-    toml.dump(conf, conf_file)
-    conf_file.close()
+    with open(f"{os.getcwd()}/results/{experiment_time}/config", "w") as conf_file:
+        toml.dump(conf, conf_file)
 
 
 if __name__ == "__main__":
@@ -125,7 +125,10 @@ if __name__ == "__main__":
     iterations = conf["EXPERIMENT"]["iterations"]
     for iteration in range(iterations):
         print(f"Running iteration {iteration + 1} out of {iterations}")
-        run(
-            conf,
-            iteration,
-        )
+        try:
+            run(
+                conf,
+                iteration,
+            )
+        except ConnectionError as err:
+            print(f"Node: {err.args[1]}")
