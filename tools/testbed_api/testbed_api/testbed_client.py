@@ -10,6 +10,8 @@ import argparse
 import logging
 import socket
 import _thread
+import sys
+import time
 
 from threading import Semaphore
 
@@ -79,34 +81,6 @@ def get_nodes_by_filter(**kwargs):
     return nodes
 
 
-def api_commands(args):
-    if args.get_nodes:
-        print(api.get_nodes())
-    elif args.boot_nodes:
-        api.boot_nodes()
-    elif args.shutdown_nodes:
-        api.shutdown_nodes()
-    elif args.reboot_nodes:
-        api.reboot_nodes()
-    elif args.get_node:
-        print(api.get_node(args.get_node))
-    elif args.enable_port:
-        api.enable_port(args.enable_port)
-    elif args.disable_port:
-        api.disable_port(args.disable_port)
-    elif args.shutdown_node:
-        api.shutdown_node(args.shutdown_node)
-    elif args.reboot_node:
-        api.reboot_node(args.reboot_node)
-    elif args.boot_node:
-        api.boot_node(args.boot_node)
-
-
-def client_commands(args):
-    if args.boot_nodes:
-        graceful_boot_nodes()
-
-
 def filter_commands(args):
     filter_dict = {
         "id": args.id,
@@ -120,57 +94,98 @@ def filter_commands(args):
     print(get_nodes_by_filter(**filter_dict))
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+def _cli_get(args: argparse.Namespace) -> None:
+    if args.all:
+        print(api.get_nodes())
+    elif args.node:
+        print(api.get_node(args.node))
+    else:
+        print("Provide node id or use switch to get all", file=sys.stderr, flush=True)
+        sys.exit(1)
 
+
+def _cli_boot(args: argparse.Namespace) -> None:
+    if args.graceful:
+        graceful_boot_nodes()
+    elif args.all:
+        api.boot_nodes()
+    elif args.node:
+        api.boot_node(args.node)
+    else:
+        print("Provide node id or use switch to boot all", file=sys.stderr, flush=True)
+        sys.exit(1)
+
+
+def _cli_shutdown(args: argparse.Namespace) -> None:
+    if args.all:
+        api.shutdown_nodes()
+    elif args.node:
+        api.shutdown_node(args.node)
+    else:
+        print(
+            "Provide node id or use switch to shutdown all", file=sys.stderr, flush=True
+        )
+        sys.exit(1)
+
+
+def _cli_reboot(args: argparse.Namespace) -> None:
+    if args.graceful:
+        print("Shutting down nodes")
+        api.shutdown_nodes()
+        print("Waiting for nodes to shut down")
+        time.sleep(30)
+        print("Booting all nodes gracefully")
+        graceful_boot_nodes()
+    elif args.all:
+        api.reboot_nodes()
+    elif args.node:
+        api.reboot_node(args.node)
+    else:
+        print(
+            "Provide node id or use switch to reboot all", file=sys.stderr, flush=True
+        )
+        sys.exit(1)
+
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Orchestrate piloty testbed")
+    parser.add_argument("-l", "--log", default="INFO", help="Set log level")
+
     subparsers = parser.add_subparsers()
 
-    # Create the parser for simple API commands
-    parser_api = subparsers.add_parser("api", help="Commands for native API calls")
-    parser_api.add_argument(
-        "-n", "--get_nodes", action="store_true", help="Get all nodes"
+    command_get = subparsers.add_parser("get", help="Get information on nodes")
+    command_get.add_argument(
+        "-a", "--all", action="store_true", help="Get list of all nodes"
     )
-    parser_api.add_argument(
-        "-r", "--reboot_nodes", action="store_true", help="Reboot all nodes"
-    )
+    command_get.add_argument("node", nargs="?", help="Node ID")
+    command_get.set_defaults(func=_cli_get)
 
-    parser_api.add_argument("-g", "--get_node", metavar="NODE ID", help="Get node")
-    parser_api.add_argument(
-        "-p", "--enable_port", metavar="NODE ID", help="Enable port"
+    command_boot = subparsers.add_parser("boot", help="Boot nodes")
+    command_boot.add_argument("-a", "--all", action="store_true", help="Boot all nodes")
+    command_boot.add_argument(
+        "-g", "--graceful", action="store_true", help="Boot all nodes gracefully"
     )
-    parser_api.add_argument(
-        "-o", "--disable_port", metavar="NODE ID", help="Disable port"
-    )
-    parser_api.add_argument(
-        "-B", "--boot_nodes", action="store_true", help="Boot all nodes"
-    )
-    parser_api.add_argument(
-        "-S", "--shutdown_nodes", action="store_true", help="Shutdown all nodes"
-    )
-    parser_api.add_argument("-b", "--boot_node", metavar="NODE ID", help="Boot node")
-    parser_api.add_argument(
-        "-s", "--shutdown_node", metavar="NODE ID", help="Shut down node"
-    )
-    parser_api.add_argument(
-        "-t", "--reboot_node", metavar="NODE ID", help="Reboot node"
-    )
-    parser_api.set_defaults(func=api_commands)
+    command_boot.add_argument("node", nargs="?", help="Node ID")
+    command_boot.set_defaults(func=_cli_boot)
 
-    # Create the parser for high-level commands
-    parser_client = subparsers.add_parser(
-        "client", help="Commands for high-level client commands"
+    command_shutdown = subparsers.add_parser("shutdown", help="Shutdown nodes")
+    command_shutdown.add_argument(
+        "-a", "--all", action="store_true", help="Shutdown all nodes"
     )
-    parser_client.add_argument(
-        "-b", "--boot_nodes", action="store_true", help="Gracefully boot all nodes"
-    )
-    parser_client.set_defaults(func=client_commands)
+    command_shutdown.add_argument("node", nargs="?", help="Node ID")
+    command_shutdown.set_defaults(func=_cli_shutdown)
 
-    client_subparser = parser_client.add_subparsers()
-    filter_parser = client_subparser.add_parser(
-        "filter", help="Filter nodes by attribute"
+    command_reboot = subparsers.add_parser("reboot", help="Reboot nodes")
+    command_reboot.add_argument(
+        "-a", "--all", action="store_true", help="Reboot all nodes"
     )
+    command_reboot.add_argument(
+        "-g", "--graceful", action="store_true", help="Reboot all nodes gracefully"
+    )
+    command_reboot.add_argument("node", nargs="?", help="Node ID")
+    command_reboot.set_defaults(func=_cli_reboot)
 
+    filter_parser = subparsers.add_parser("filter", help="Filter nodes by attribute")
     filter_parser.add_argument(
         "-i", "--id", nargs="+", type=int, help="Explicit list of node ids"
     )
@@ -182,5 +197,8 @@ if __name__ == "__main__":
     filter_parser.set_defaults(func=filter_commands)
 
     args = parser.parse_args()
+
+    log_level = logging.getLevelName(args.log.upper())
+    logging.basicConfig(level=log_level)
 
     args.func(args)
