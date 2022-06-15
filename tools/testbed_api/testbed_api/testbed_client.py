@@ -6,10 +6,7 @@
 ##################################################################
 ##################################################################
 
-import time
 import argparse
-import subprocess
-import json
 import logging
 import socket
 import _thread
@@ -24,38 +21,37 @@ sem = Semaphore(1)
 
 
 def listen_boot_sock(nodes_to_boot):
-    boot_acks = 0
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind(("0.0.0.0", 35039))
-    sock.listen()
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        boot_acks = 0
+        sock.bind(("0.0.0.0", 35039))
+        sock.listen()
 
-    while boot_acks < nodes_to_boot:
-        sock.settimeout(60)
-        boot_acks += 1
-        print("Waiting for connection")
-        try:
-            conn, addr = sock.accept()
-        except socket.timeout:
-            logging.warning("Time out!")
-            sem.release()
-            continue
+        while boot_acks < nodes_to_boot:
+            sock.settimeout(60)
+            boot_acks += 1
+            print("Waiting for connection")
+            try:
+                conn, addr = sock.accept()
+            except socket.timeout:
+                logging.warning("Time out!")
+                sem.release()
+                continue
 
-        with conn:
-            print(f"Connected by {addr}")
-            conn.close()
-            sem.release()
+            with conn:
+                print(f"Connected by {addr}")
+                conn.close()
+                sem.release()
 
-    sock.shutdown(socket.SHUT_RDWR)
-    socket.close(sock)
+        sock.shutdown(socket.SHUT_RDWR)
 
 
-def graceful_boot_nodes(nodes=[], reboot=False):
-    if len(nodes) == 0:
+def graceful_boot_nodes(nodes=None, reboot=False):
+    if not nodes:
         nodes = api.get_nodes()
 
     logging.info(f"Gracefully booting {len(nodes)} nodes")
 
-    boot_listener = _thread.start_new_thread(listen_boot_sock, (len(nodes),))
+    _ = _thread.start_new_thread(listen_boot_sock, (len(nodes),))
 
     for node in nodes:
         sem.acquire()

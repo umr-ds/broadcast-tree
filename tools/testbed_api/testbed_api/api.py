@@ -9,7 +9,6 @@
 import logging
 
 from dataclasses import dataclass
-from typing import List
 
 import requests
 
@@ -31,7 +30,7 @@ class Node:
 
 
 # Functions to get nodes
-def get_nodes() -> List[Node]:
+def get_nodes() -> list[Node]:
     logging.debug("Requesting all nodes")
     endpoint_url = f"{BASE_URL}/nodes"
     r = requests.get(endpoint_url, headers=APPLICATION_HEADER)
@@ -42,7 +41,7 @@ def get_nodes() -> List[Node]:
     return nodes
 
 
-def get_node(node_id: int) -> None:
+def get_node(node_id: int) -> Node:
     logging.debug(f"Requesting node {node_id}")
     endpoint_url = f"{BASE_URL}/nodes/{node_id}"
     r = requests.get(endpoint_url, headers=APPLICATION_HEADER)
@@ -98,7 +97,3 @@ def reboot_node(node_id: int) -> None:
     logging.debug(f"Rebooting node {node_id}")
     endpoint_url = f"{BASE_URL}/nodes/reset/{node_id}"
     requests.get(endpoint_url, headers=APPLICATION_HEADER)
-
-
-if __name__ == "__main__":
-    print(get_nodes())
