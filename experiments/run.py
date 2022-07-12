@@ -53,21 +53,21 @@ def run(conf):
     source_node = client.get_nodes_by_filter(**{"id": [source_id]})[0]
 
     if not fix_testbed(client_nodes, source_node):
-        print(f"Some nodes were down. Retrying ({retry}) times.")
+        print(f"# -> Some nodes were down. Retrying ({retry}) times.")
         time.sleep(30)
         conf["retry"] -= 1
         run(conf)
         return
 
     if retry == 0:
-        print("Could not boot all nodes. Stopping.")
+        print("# -> Could not boot all nodes. Stopping.")
         return
 
-    print("-> Generating log file path")
+    print("# -> Generating log file path")
     experiment_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     logfile_path_base = f"/btree_data/{experiment_time}"
 
-    print("Preparing log folder on testbed controller")
+    print("# -> Preparing log folder on testbed controller")
     source = SSHClient(
         f"172.23.42.{source_node.id + 100}",
         user="root",
@@ -76,14 +76,14 @@ def run(conf):
     )
     source.run_command(f"mkdir {logfile_path_base}")
 
-    print("Preparing hosts for PSSH")
+    print("# -> Preparing hosts for PSSH")
     pssh_nodes = [f"172.23.42.{node.id + 100}" for node in client_nodes]
 
     client_nodes = ParallelSSHClient(
         pssh_nodes, user="root", password="raspberry", allow_agent=False
     )
 
-    print("-> Starting client nodes")
+    print("# -> Starting client nodes")
     max_power = "--max_power" if conf['max_power'] else ""
 
     poll_timeout = f"--poll_timeout={conf['poll_timeout']}"
@@ -106,7 +106,7 @@ def run(conf):
         f' --log_file={{1}} {iface} > /dev/null 2> {{1}}.err &"'
     )
 
-    print("Stopping potential zombie BTP processes")
+    print("# -> Stopping potential zombie BTP processes")
     source.run_command("pkill -9 btp")
     client_nodes.run_command("pkill -9 btp")
 
@@ -114,26 +114,26 @@ def run(conf):
         btp_cmd_common.format("", client_logfile_path)
     )
     for host_out in client_output:
-        print(f"{host_out.host} started")
+        print(f"# -> {host_out.host} started")
 
-    print("-> Starting source node")
+    print("# -> Starting source node")
     source.run_command(f"dd bs={conf['payload_size']} count=1 </dev/urandom > source.file")
 
-    print("-> Starting experiment")
+    print("# -> Starting experiment")
     source_logfile_path = f"{logfile_path_base}/source_$(hostname).log"
 
     source.run_command(
         btp_cmd_common.format("--source=source.file", source_logfile_path)
     )
 
-    print("-> Waiting for experiment to finish")
+    print("# -> Waiting for experiment to finish")
     time.sleep(conf['experiment_duration'])
 
-    print("-> Stopping BTP on all nodes")
+    print("# -> Stopping BTP on all nodes")
     source.run_command("pkill --signal SIGINT btp")
     client_nodes.run_command("pkill --signal SIGINT btp")
 
-    print("-> Collecting logs and cleaning up")
+    print("# -> Collecting logs and cleaning up")
     source.copy_remote_file(
         f"{logfile_path_base}",
         f"{os.getcwd()}/results/{experiment_time}",
@@ -172,7 +172,6 @@ if __name__ == "__main__":
                             for unchanged_counter in experiment_config["unchanged_counter"]:
                                 for omit_roll_back in experiment_config["omit_roll_back"]:
                                     for iteration in range(experiment_config["iterations"]):
-                                        print(f"Running iteration {iteration + 1}.")
                                         current_conf = {
                                             "payload_size": payload_size,
                                             "max_power": max_power,
@@ -188,6 +187,7 @@ if __name__ == "__main__":
                                             "node_filter": node_filter,
                                             "source_id": source_id,
                                         }
+                                        print(f"# Running iteration {iteration + 1} of configuration {current_conf}")
                                         run(
                                             current_conf
                                         )
