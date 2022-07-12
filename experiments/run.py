@@ -4,16 +4,50 @@ import argparse
 import time
 import datetime
 import os
+import subprocess
 
 from typing import Any
 
 import toml
 import testbed_api.testbed_client as client
+import testbed_api.api as tb_api
 
 from pssh.clients import ParallelSSHClient, SSHClient
 
 
-def run(conf: dict[str, Any], iteration: int):
+def ping(host):
+    command = ["ping", "-c", "1", host]
+    return subprocess.call(command, stdout=subprocess.DEVNULL) == 0
+
+
+def fix_testbed(clients, source) -> None:
+    all_up_and_running = True
+
+    if not ping(f"172.23.42.{100 + source.id}"):
+        print(f"Source node ({source.id}) is down.")
+        tb_api.shutdown_node(source.id)
+        time.sleep(1)
+        tb_api.enable_port(source.id)
+        time.sleep(1)
+        tb_api.boot_node(source.id)
+        time.sleep(1)
+        all_up_and_running = False
+
+    for client in clients:
+        if not ping(f"172.23.42.{100 + client.id}"):
+            print(f"Node {client.id} is down.")
+            tb_api.shutdown_node(client.id)
+            time.sleep(1)
+            tb_api.enable_port(client.id)
+            time.sleep(1)
+            tb_api.boot_node(client.id)
+            time.sleep(1)
+            all_up_and_running = False
+
+    return all_up_and_running
+
+
+def run(conf: dict[str, Any], iteration: int, retry=3):
     node_filter = conf["CLIENTS"]
     source_id = conf["SOURCE"]["id"]
     experiment_config = conf["EXPERIMENT"]
@@ -21,6 +55,16 @@ def run(conf: dict[str, Any], iteration: int):
     _nodes = client.get_nodes_by_filter(**node_filter)
     client_nodes = [node for node in _nodes if node.id != source_id]
     source_node = client.get_nodes_by_filter(**{"id": [source_id]})[0]
+
+    if not fix_testbed(client_nodes, source_node):
+        print(f"Some nodes were down. Retrying ({retry}) times.")
+        time.sleep(30)
+        run(conf, iteration, retry - 1)
+        return
+
+    if retry == 0:
+        print("Could not boot all nodes. Stopping.")
+        return
 
     print("-> Generating log file path")
     experiment_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
