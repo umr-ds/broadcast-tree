@@ -47,11 +47,7 @@ def fix_testbed(clients, source) -> None:
     return all_up_and_running
 
 
-def run(conf: dict[str, Any], iteration: int, retry=3):
-    node_filter = conf["CLIENTS"]
-    source_id = conf["SOURCE"]["id"]
-    experiment_config = conf["EXPERIMENT"]
-
+def run(conf):
     _nodes = client.get_nodes_by_filter(**node_filter)
     client_nodes = [node for node in _nodes if node.id != source_id]
     source_node = client.get_nodes_by_filter(**{"id": [source_id]})[0]
@@ -59,7 +55,8 @@ def run(conf: dict[str, Any], iteration: int, retry=3):
     if not fix_testbed(client_nodes, source_node):
         print(f"Some nodes were down. Retrying ({retry}) times.")
         time.sleep(30)
-        run(conf, iteration, retry - 1)
+        conf["retry"] -= 1
+        run(conf)
         return
 
     if retry == 0:
@@ -87,18 +84,14 @@ def run(conf: dict[str, Any], iteration: int, retry=3):
     )
 
     print("-> Starting client nodes")
-    max_power = "--max_power" if experiment_config["max_power"] else ""
+    max_power = "--max_power" if conf['max_power'] else ""
 
-    poll_timeout = f'--poll_timeout={experiment_config["poll_timeout"]}'
-    discovery_bcast_interval = (
-        f'--broadcast_timeout={experiment_config["discovery_bcast_interval"]}'
-    )
-    pending_timeout = f'--pending_timeout={experiment_config["pending_timeout"]}'
-    source_retransmit_payload = (
-        f'--retransmit_timeout={experiment_config["source_retransmit_payload"]}'
-    )
-    unchanged_counter = f'--unchanged_counter={experiment_config["unchanged_counter"]}'
-    omit_roll_back = "--omit_roll_back" if experiment_config["omit_roll_back"] else ""
+    poll_timeout = f"--poll_timeout={conf['poll_timeout']}"
+    discovery_bcast_interval = f"--broadcast_timeout={conf['discovery_bcast_interval']}"
+    pending_timeout = f"--pending_timeout={conf['pending_timeout']}"
+    source_retransmit_payload = f"--retransmit_timeout={conf['source_retransmit_payload']}"
+    unchanged_counter = f"--unchanged_counter={conf['unchanged_counter']}"
+    omit_roll_back = "--omit_roll_back" if conf['omit_roll_back'] else ""
 
     iface = "$(grep -l b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
 
@@ -124,9 +117,7 @@ def run(conf: dict[str, Any], iteration: int, retry=3):
         print(f"{host_out.host} started")
 
     print("-> Starting source node")
-    source.run_command(
-        f"dd bs={experiment_config['payload_size']} count=1 </dev/urandom > source.file"
-    )
+    source.run_command(f"dd bs={conf['payload_size']} count=1 </dev/urandom > source.file")
 
     print("-> Starting experiment")
     source_logfile_path = f"{logfile_path_base}/source_$(hostname).log"
@@ -136,7 +127,7 @@ def run(conf: dict[str, Any], iteration: int, retry=3):
     )
 
     print("-> Waiting for experiment to finish")
-    time.sleep(experiment_config["experiment_duration"])
+    time.sleep(conf['experiment_duration'])
 
     print("-> Stopping BTP on all nodes")
     source.run_command("pkill --signal SIGINT btp")
@@ -148,7 +139,6 @@ def run(conf: dict[str, Any], iteration: int, retry=3):
         f"{os.getcwd()}/results/{experiment_time}",
         recurse=True,
     )
-    # source.run_command(f"rm -rf {logfile_path_base}")
 
     with open(f"{os.getcwd()}/results/{experiment_time}/config", "w") as conf_file:
         toml.dump(conf, conf_file)
@@ -164,15 +154,40 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
     conf = toml.load(args.config)
-    iterations = conf["EXPERIMENT"]["iterations"]
-    for iteration in range(iterations):
-        print(f"Running iteration {iteration + 1} out of {iterations}")
-        try:
-            run(
-                conf,
-                iteration,
-            )
-        except ConnectionError as err:
-            print(f"Node: {err.args[1]}")
+
+    node_filter = conf["CLIENTS"]
+    source_id = conf["SOURCE"]["id"]
+    experiment_config = conf["EXPERIMENTS"]
+
+    experiment_duration = experiment_config["experiment_duration"]
+    retry = experiment_config["retry"]
+
+    for payload_size in experiment_config["payload_size"]:
+        for max_power in experiment_config["max_power"]:
+            for poll_timeout in experiment_config["poll_timeout"]:
+                for discovery_bcast_interval in experiment_config["discovery_bcast_interval"]:
+                    for pending_timeout in experiment_config["pending_timeout"]:
+                        for source_retransmit_payload in experiment_config["source_retransmit_payload"]:
+                            for unchanged_counter in experiment_config["unchanged_counter"]:
+                                for omit_roll_back in experiment_config["omit_roll_back"]:
+                                    for iteration in range(experiment_config["iterations"]):
+                                        print(f"Running iteration {iteration + 1}.")
+                                        current_conf = {
+                                            "payload_size": payload_size,
+                                            "max_power": max_power,
+                                            "poll_timeout": poll_timeout,
+                                            "discovery_bcast_interval": discovery_bcast_interval,
+                                            "pending_timeout": pending_timeout,
+                                            "source_retransmit_payload": source_retransmit_payload,
+                                            "unchanged_counter": unchanged_counter,
+                                            "omit_roll_back": omit_roll_back,
+                                            "experiment_duration": experiment_duration,
+                                            "retry": retry,
+                                            "iteration": iteration,
+                                            "node_filter": node_filter,
+                                            "source_id": source_id,
+                                        }
+                                        run(
+                                            current_conf
+                                        )
