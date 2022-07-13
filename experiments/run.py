@@ -47,7 +47,23 @@ def fix_testbed(clients, source) -> None:
     return all_up_and_running
 
 
+def experiment_already_done(experiment_config):
+    results_path = f"{os.getcwd()}/results/"
+    for entry in os.listdir(results_path):
+        if os.path.isdir(f"{results_path}{entry}"):
+            finished_experiment_config = toml.load(f"{results_path}{entry}/config")
+
+            if finished_experiment_config == experiment_config:
+                return True
+
+    return False
+
+
 def run(conf):
+    if experiment_already_done(conf):
+        print("# -> Experiment already done.")
+        return
+
     _nodes = client.get_nodes_by_filter(**node_filter)
     client_nodes = [node for node in _nodes if node.id != source_id]
     source_node = client.get_nodes_by_filter(**{"id": [source_id]})[0]
