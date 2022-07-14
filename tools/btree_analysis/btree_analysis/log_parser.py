@@ -379,6 +379,18 @@ def usage():
     )
 
 
+def stats(events):
+    received = 0
+    ended = 0
+    for event in events:
+        if event["event"] == "receive":
+            received += 1
+        if event["event"] == "finish":
+            ended += 1
+
+    print(f"Received: {received}, ended {ended}")
+
+
 if __name__ == "__main__":
 
     if len(sys.argv) != 3:
@@ -393,6 +405,7 @@ if __name__ == "__main__":
             config = toml.load(f)
 
         events, nodes = parse_experiment(experiment_path)
+        stats(events)
 
         graph_series = build_graph_series(events=events, nodes=nodes)
 
@@ -418,6 +431,7 @@ if __name__ == "__main__":
                 config = toml.load(f)
 
             events, nodes = parse_experiment(experiment_path)
+            stats(events)
 
             graph_series = build_graph_series(events=events, nodes=nodes)
 
