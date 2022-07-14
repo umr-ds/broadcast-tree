@@ -431,9 +431,6 @@ if __name__ == "__main__":
                 continue
 
             # parse experiment config
-            experiment_path = pathlib.Path(sys.argv[2])
-
-            # parse experiment config
             with open(experiment_path / "config", "r") as f:
                 config = toml.load(f)
 
