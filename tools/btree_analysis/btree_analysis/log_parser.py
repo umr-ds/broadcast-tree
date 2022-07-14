@@ -303,7 +303,7 @@ def graph_to_string(
 
         color = attributes["error"]
 
-        if node == config["SOURCE"]["id"]:
+        if node == config["source_id"]:
             color = "green"
 
         lines[core].append(
