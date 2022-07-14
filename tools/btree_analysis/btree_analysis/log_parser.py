@@ -50,7 +50,10 @@ def parse_line(line: str) -> dict[str, datetime.datetime | str | dict[str, Any]]
             arguments = {}
             args = the_rest[1][:-1].split(",")
             for arg in args:
-                key, value = arg.strip().split(": ")
+                try:
+                    key, value = arg.strip().split(": ")
+                except ValueError:
+                    continue
                 arguments[key.strip()] = smartcast(value)
             line_dict["arguments"] = arguments
     elif address := IP_REGEX.match(line):
