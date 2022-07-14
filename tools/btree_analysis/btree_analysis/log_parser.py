@@ -400,6 +400,10 @@ if __name__ == "__main__":
     if sys.argv[1] == "-s":
         experiment_path = pathlib.Path(sys.argv[2])
 
+        if pathlib.Path(experiment_path / "graph_animation.html").is_file():
+            print("Graph animation already exists")
+            exit(0)
+
         # parse experiment config
         with open(experiment_path / "config", "r") as f:
             config = toml.load(f)
@@ -416,6 +420,9 @@ if __name__ == "__main__":
 
         for experiment_path in experiment_root_path.glob("*"):
             print(f"#### Parsing experiment {experiment_path.name}", flush=True)
+            if pathlib.Path(experiment_path / "graph_animation.html").is_file():
+                print("Graph animation already exists")
+                continue
 
             if (
                 ".DS_Store" in experiment_path.parts
