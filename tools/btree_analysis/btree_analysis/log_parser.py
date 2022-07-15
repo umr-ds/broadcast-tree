@@ -258,7 +258,10 @@ def build_graph_series(
             graph["edges"][event["node_id"]] = (event["parent"], event["tx_pwr"])
 
         if event["event"] == "disconnect":
-            del graph["edges"][event["node_id"]]
+            try:
+                del graph["edges"][event["node_id"]]
+            except KeyError:
+                print(f"Node not found for disconnect")
 
         if event["event"] == "receive":
             graph["nodes"][event["node_id"]]["receive"] = "R"
@@ -267,8 +270,11 @@ def build_graph_series(
             graph["nodes"][event["node_id"]]["finish"] = "E"
 
         if event["event"] == "error":
-            graph["nodes"][event["node_id"]]["error"] = error_colours[event["level"]]
-            graph["nodes"][event["node_id"]]["message"] = event["message"]
+            try:
+                graph["nodes"][event["node_id"]]["error"] = error_colours[event["level"]]
+                graph["nodes"][event["node_id"]]["message"] = event["message"]
+            except KeyError:
+                print(f"Node not found for error")
 
         graph["metadata"]["node_id"] = event["node_id"]
         graph["metadata"]["timestamp"] = event["timestamp"]
