@@ -59,10 +59,11 @@ def experiment_already_done(experiment_config):
     return False
 
 
-def run(conf):
-    if experiment_already_done(conf):
-        print("# -> Experiment already done.")
-        return
+def run(conf, repeat):
+    if not repeat:
+        if experiment_already_done(conf):
+            print("# -> Experiment already done.")
+            return
 
     _nodes = client.get_nodes_by_filter(**node_filter)
     client_nodes = [node for node in _nodes if node.id != source_id]
@@ -72,7 +73,7 @@ def run(conf):
         print(f"# -> Some nodes were down. Retrying ({retry}) times.")
         time.sleep(30)
         conf["retry"] -= 1
-        run(conf)
+        run(conf, repeat)
         return
 
     if retry == 0:
@@ -168,6 +169,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-c", "--config", help="Experiment configuration", required=True
     )
+    parser.add_argument(
+        "-r", "--repeat", help="Repeat already done experiments", action="store_true"
+    )
 
     args = parser.parse_args()
     conf = toml.load(args.config)
@@ -205,5 +209,6 @@ if __name__ == "__main__":
                                         }
                                         print(f"# Running iteration {iteration + 1} of configuration {current_conf}")
                                         run(
-                                            current_conf
+                                            current_conf,
+                                            args.repeat
                                         )
