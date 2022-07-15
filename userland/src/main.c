@@ -231,7 +231,9 @@ int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_mse
         // that we are finished.
         if (!omit_roll_back && payload_complete && hashmap_length(self.children) == 0) {
             log_info("Received entire payload and have no children. Disconnecting from parent.");
-            disconnect_from_parent();
+            if (self_is_connected()) {
+                disconnect_from_parent();
+            }
             return 0;
         }
 
