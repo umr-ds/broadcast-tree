@@ -4,14 +4,14 @@ id = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 
 # ID of the source node
 [SOURCE]
-id = 0
+id = [ 0, 54 ]
 
 # Experiement Settings
 [EXPERIMENTS]
 # Payload size (list if strings)
 payload_size = [ "1K",]
 # Whether to use maximum power or not (list of booleans)
-flood = [ false, true ]
+flood = [ false ]
 # Timeout for poll syscall (list of integers in ms)
 poll_timeout = [ 100 ]
 # How often to sent bcast frames (list of integers in ms)

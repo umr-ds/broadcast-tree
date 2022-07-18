@@ -177,7 +177,6 @@ if __name__ == "__main__":
     conf = toml.load(args.config)
 
     node_filter = conf["CLIENTS"]
-    source_id = conf["SOURCE"]["id"]
     experiment_config = conf["EXPERIMENTS"]
 
     experiment_duration = experiment_config["experiment_duration"]
@@ -192,23 +191,24 @@ if __name__ == "__main__":
                             for unchanged_counter in experiment_config["unchanged_counter"]:
                                 for omit_roll_back in experiment_config["omit_roll_back"]:
                                     for iteration in range(experiment_config["iterations"]):
-                                        current_conf = {
-                                            "payload_size": payload_size,
-                                            "flood": flood,
-                                            "poll_timeout": poll_timeout,
-                                            "discovery_bcast_interval": discovery_bcast_interval,
-                                            "pending_timeout": pending_timeout,
-                                            "source_retransmit_payload": source_retransmit_payload,
-                                            "unchanged_counter": unchanged_counter,
-                                            "omit_roll_back": omit_roll_back,
-                                            "experiment_duration": experiment_duration,
-                                            "retry": retry,
-                                            "iteration": iteration,
-                                            "node_filter": node_filter,
-                                            "source_id": source_id,
-                                        }
-                                        print(f"# Running iteration {iteration + 1} of configuration {current_conf}")
-                                        run(
-                                            current_conf,
-                                            args.repeat
-                                        )
+                                        for source_id in conf["SOURCE"]["id"]:
+                                            current_conf = {
+                                                "payload_size": payload_size,
+                                                "flood": flood,
+                                                "poll_timeout": poll_timeout,
+                                                "discovery_bcast_interval": discovery_bcast_interval,
+                                                "pending_timeout": pending_timeout,
+                                                "source_retransmit_payload": source_retransmit_payload,
+                                                "unchanged_counter": unchanged_counter,
+                                                "omit_roll_back": omit_roll_back,
+                                                "experiment_duration": experiment_duration,
+                                                "retry": retry,
+                                                "iteration": iteration,
+                                                "node_filter": node_filter,
+                                                "source_id": source_id,
+                                            }
+                                            print(f"# Running iteration {iteration + 1} of configuration {current_conf}")
+                                            run(
+                                                current_conf,
+                                                args.repeat
+                                            )
