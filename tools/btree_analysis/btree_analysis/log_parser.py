@@ -11,7 +11,7 @@ from copy import deepcopy
 
 import toml
 
-from node_mapping import metadata
+from btree_analysis.node_mapping import metadata
 from testbed_api import api as tb_api
 
 IP_REGEX = re.compile(r"\d{3}.\d{2}.\d{2}.\d{3}")
@@ -64,7 +64,7 @@ def parse_line(line: str) -> dict[str, datetime.datetime | str | dict[str, Any]]
 
 
 def parse_node(
-    f: TextIO, node_id: int
+    f: TextIO, node_id: int, config: dict[str, Any]
 ) -> tuple[list[dict[str, str | int]] | None, int]:
     events: list[dict[str, str | int | datetime.datetime]] = []
     switch_count = 0
@@ -81,25 +81,24 @@ def parse_node(
         if not parsed_line:
             continue
 
+        event = None
+
         # take the first log entry as the start time
         if not start_time:
             start_time = parsed_line["timestamp"]
-            events.append(
-                {"event": "start", "timestamp": start_time, "node_id": node_id}
-            )
+            event = {"event": "start", "timestamp": start_time, "node_id": node_id}
 
         # TODO: Maybe first log that request is confirmed before disconnecting from old parent
         # This would require storing potentially multiple parents at this point.
         if parsed_line["message"] == "Parent confirmed our request.":
-            events.append(
-                {
-                    "event": "connect",
-                    "parent": mac_wifi_lookup[parsed_line["arguments"]["addr"]]["ID"],
-                    "tx_pwr": 0,
-                    "timestamp": parsed_line["timestamp"],
-                    "node_id": node_id,
-                }
-            )
+            event = {
+                "event": "connect",
+                "parent": mac_wifi_lookup[parsed_line["arguments"]["addr"]]["ID"],
+                "tx_pwr": 0,
+                "timestamp": parsed_line["timestamp"],
+                "node_id": node_id,
+            }
+
             switch_count += 1
 
         if (
@@ -107,53 +106,61 @@ def parse_node(
             or parsed_line["message"]
             == "Received disconnection command from our parent."
         ):
-            events.append(
-                {
-                    "event": "disconnect",
-                    "timestamp": parsed_line["timestamp"],
-                    "node_id": node_id,
-                }
-            )
+            event = {
+                "event": "disconnect",
+                "timestamp": parsed_line["timestamp"],
+                "node_id": node_id,
+            }
 
         if parsed_line["message"] == "Updated self.":
-            for event in reversed(events):
-                if event["event"] == "connect":
-                    event["tx_pwr"] = parsed_line["arguments"]["own_prw"]
+            for _event in reversed(events):
+                if _event["event"] == "connect":
+                    _event["tx_pwr"] = parsed_line["arguments"]["own_prw"]
                     break
 
         if (
             parsed_line["message"] == "Received entire payload."
             and "file path" in parsed_line["arguments"]
         ):
-            events.append(
-                {
-                    "event": "receive",
-                    "timestamp": parsed_line["timestamp"],
-                    "node_id": node_id,
-                }
-            )
+            event = {
+                "event": "receive",
+                "timestamp": parsed_line["timestamp"],
+                "node_id": node_id,
+            }
 
         if parsed_line["level"] in ["WARN", "ERROR", "FATAL"]:
             if parsed_line["message"] == "Payload frame expired.":
                 continue
-            events.append(
-                {
-                    "event": "error",
-                    "timestamp": parsed_line["timestamp"],
-                    "node_id": node_id,
-                    "level": parsed_line["level"],
-                    "message": parsed_line["message"],
-                }
-            )
+            event = {
+                "event": "error",
+                "timestamp": parsed_line["timestamp"],
+                "node_id": node_id,
+                "level": parsed_line["level"],
+                "message": parsed_line["message"],
+            }
 
         if parsed_line["message"] == "Ending game.":
-            events.append(
-                {
-                    "event": "finish",
-                    "timestamp": parsed_line["timestamp"],
-                    "node_id": node_id,
-                }
-            )
+            event = {
+                "event": "finish",
+                "timestamp": parsed_line["timestamp"],
+                "node_id": node_id,
+            }
+
+        if (
+            "arguments" in parsed_line
+            and "tx_pwr" in parsed_line["arguments"]
+        ):
+            event = {
+                "event": "send",
+                "timestamp": parsed_line["timestamp"],
+                "node_id": node_id,
+                "message": parsed_line["message"],
+                "tx_pwr": parsed_line["arguments"]["tx_pwr"],
+                "data_len": parsed_line["arguments"]["data_len"],
+            }
+
+        if event:
+            events.append(event | config)
 
     return events, switch_count
 
@@ -175,7 +182,7 @@ def transform_metadata(
 
 def parse_experiment(
     experiment_path: pathlib.Path,
-) -> ([{str, str | int}], [int]):
+) -> ([{str, str | int}], [int], dict):
     # build lookup-table for mac-addresses
     mac_eth_lookup = transform_metadata(metadata=metadata, key="MAC_WIFI")
 
@@ -185,6 +192,10 @@ def parse_experiment(
 
     all_nodes: list[int] = []
 
+    with open(experiment_path / "config", "r") as f:
+        config = toml.load(f)
+        del config["node_filter"]
+
     for file in log_files:
         node_name = file.name.split(".")[0].split("-")[1:]
         node_address = f'b8:27:eb:{":".join(node_name)}'
@@ -192,7 +203,7 @@ def parse_experiment(
         all_nodes.append(node_id)
 
         with open(file, "r") as f:
-            events, switches = parse_node(f, node_id=node_id)
+            events, switches = parse_node(f, node_id=node_id, config=config)
             if events is None:
                 print(experiment_path)
                 continue
@@ -206,7 +217,7 @@ def parse_experiment(
 
     all_events.sort(key=lambda event: event["timestamp"])
 
-    return all_events, all_nodes
+    return all_events, all_nodes, config
 
 
 floor_mapping = {
@@ -271,7 +282,9 @@ def build_graph_series(
 
         if event["event"] == "error":
             try:
-                graph["nodes"][event["node_id"]]["error"] = error_colours[event["level"]]
+                graph["nodes"][event["node_id"]]["error"] = error_colours[
+                    event["level"]
+                ]
                 graph["nodes"][event["node_id"]]["message"] = event["message"]
             except KeyError:
                 print(f"Node not found for error")
@@ -410,11 +423,7 @@ if __name__ == "__main__":
             print("Graph animation already exists")
             exit(0)
 
-        # parse experiment config
-        with open(experiment_path / "config", "r") as f:
-            config = toml.load(f)
-
-        events, nodes = parse_experiment(experiment_path)
+        events, nodes, config = parse_experiment(experiment_path)
         stats(events)
 
         graph_series = build_graph_series(events=events, nodes=nodes)
@@ -436,11 +445,7 @@ if __name__ == "__main__":
             ):
                 continue
 
-            # parse experiment config
-            with open(experiment_path / "config", "r") as f:
-                config = toml.load(f)
-
-            events, nodes = parse_experiment(experiment_path)
+            events, nodes, config = parse_experiment(experiment_path)
             stats(events)
 
             graph_series = build_graph_series(events=events, nodes=nodes)

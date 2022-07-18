@@ -11,7 +11,7 @@ id = 0
 # Payload size (list if strings)
 payload_size = [ "1K", "100K" , "1M" ]
 # Whether to use maximum power or not (list of booleans)
-max_power = [ true, false ]
+max_power = [ false, true ]
 # Timeout for poll syscall (list of integers in ms)
 poll_timeout = [ 100 ]
 # How often to sent bcast frames (list of integers in ms)
