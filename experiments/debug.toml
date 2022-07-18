@@ -9,15 +9,15 @@ id = 0
 # Experiement Settings
 [EXPERIMENTS]
 # Payload size (list if strings)
-payload_size = [ "1K", "10K" ]
+payload_size = [ "1K",]
 # Whether to use maximum power or not (list of booleans)
-max_power = [ true ]
+flood = [ false, true ]
 # Timeout for poll syscall (list of integers in ms)
-poll_timeout = [ 100, 500 ]
+poll_timeout = [ 100 ]
 # How often to sent bcast frames (list of integers in ms)
 discovery_bcast_interval = [ 100 ]
 # How long to wait until a parent is considered not responding (list of integers in ms)
-pending_timeout = [ 100 ]
+pending_timeout = [ 1000 ]
 # How often the source should re-transmit the payload (list of integers in ms)
 source_retransmit_payload = [ 100 ]
 # How many rounds to wait until a node finished its game (list of integers)
@@ -26,7 +26,7 @@ unchanged_counter = [ 5 ]
 omit_roll_back = [ true ]
 
 # How often a experiment configuration should be repeated
-iterations = 2
+iterations = 1
 # Timeout for hard killing an experiment
 experiment_duration = 20
 # How often to retry on failure

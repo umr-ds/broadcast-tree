@@ -101,7 +101,7 @@ def run(conf, repeat):
     )
 
     print("# -> Starting client nodes")
-    max_power = "--max_power" if conf['max_power'] else ""
+    flood = "--flood" if conf['flood'] else ""
 
     poll_timeout = f"--poll_timeout={conf['poll_timeout']}"
     discovery_bcast_interval = f"--broadcast_timeout={conf['discovery_bcast_interval']}"
@@ -118,7 +118,7 @@ def run(conf, repeat):
     btp_cmd_common = (
         f'bash -c "nohup btp --log_level=2'
         f" {{0}}"
-        f" {max_power} {omit_roll_back} {unchanged_counter}"
+        f" {flood} {omit_roll_back} {unchanged_counter}"
         f" {poll_timeout} {discovery_bcast_interval} {pending_timeout} {source_retransmit_payload}"
         f' --log_file={{1}} {iface} > /dev/null 2> {{1}}.err &"'
     )
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     retry = experiment_config["retry"]
 
     for payload_size in experiment_config["payload_size"]:
-        for max_power in experiment_config["max_power"]:
+        for flood in experiment_config["flood"]:
             for poll_timeout in experiment_config["poll_timeout"]:
                 for discovery_bcast_interval in experiment_config["discovery_bcast_interval"]:
                     for pending_timeout in experiment_config["pending_timeout"]:
@@ -194,7 +194,7 @@ if __name__ == "__main__":
                                     for iteration in range(experiment_config["iterations"]):
                                         current_conf = {
                                             "payload_size": payload_size,
-                                            "max_power": max_power,
+                                            "flood": flood,
                                             "poll_timeout": poll_timeout,
                                             "discovery_bcast_interval": discovery_bcast_interval,
                                             "pending_timeout": pending_timeout,
