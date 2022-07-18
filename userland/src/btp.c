@@ -899,8 +899,10 @@ void handle_data(uint8_t *recv_frame) {
         log_warn("Payload frame expired. [seq_num: %i]", in_frame.seq_num);
         return;
     }
-    // TODO: Check if we have children
-    forward_payload(&in_frame);
+    
+    if (hashmap_length(self.children) > 0 || flood) {
+        forward_payload(&in_frame);
+    }
 }
 
 void handle_packet(uint8_t *recv_frame) {
