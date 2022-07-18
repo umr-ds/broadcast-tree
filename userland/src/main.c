@@ -23,7 +23,7 @@
 
 extern self_t self;
 extern bool payload_complete;
-extern bool max_power;
+extern bool flood;
 
 uint16_t pending_timeout_msec;
 uint16_t source_retransmit_payload_msec;
@@ -37,7 +37,7 @@ void sig_handler(int signum);
 
 struct arguments {
     char *payload;
-    bool max_power;
+    bool flood;
     int log_level;
     char *log_file;
     char *interface;
@@ -55,7 +55,7 @@ static char doc[] = "BTP -- Broadcast Tree Protocol";
 static char args_doc[] = "INTERFACE";
 static struct argp_option options[] = {
         {"source",             's', "payload", 0, "Path to the payload to be sent (omit this option for client mode)",                        0},
-        {"max_power",          'm', 0,         0, "Whether to use maximum transmission power of fancy power calculations for efficiency",     0},
+        {"flood",              'd', 0,         0, "Whether to use simple flooding protocol or BTP",     0},
         {"log_level",          'l', "level",   0, "Log level\n0: QUIET, 1: TRACE, 2: DEBUG, 3: INFO (default),\n4: WARN, 5: ERROR, 6: FATAL", 1},
         {"log_file",           'f', "path",    0, "File path to log file.\nIf not present only stdout and stderr logging will be used",       1},
 
@@ -125,8 +125,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case 'f':
             arguments->log_file = arg;
             break;
-        case 'm':
-            arguments->max_power = true;
+        case 'd':
+            arguments->flood = true;
             break;
         case 'p':
             arguments->poll_timeout_msec = (uint16_t) strtol(arg, NULL, 10);
@@ -226,20 +226,26 @@ int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_mse
     int res;
     log_info("Waiting for BTP packets.");
     while (1) {
+        if (flood){
+            self.game_fin = true;
+        }
+
         // If we have received the entire payload, we can shutdown or execution.
         // If if we received the entire payload and have no children, we disconnect from our parent to notify them,
         // that we are finished.
-        if (!omit_roll_back && payload_complete && hashmap_length(self.children) == 0) {
+        if (!omit_roll_back && payload_complete) {
             log_info("Received entire payload and have no children. Disconnecting from parent.");
-            if (self_is_connected()) {
+            if (flood) {
+                return 0;
+            } else if (hashmap_length(self.children) == 0 && self_is_connected()) {
                 disconnect_from_parent();
+                return 0;
             }
-            return 0;
         }
 
         int cur_time = get_time_msec();
         if (cur_time - bcast_send_time > discovery_bcast_interval_msec) {
-            if (self.is_source || self_is_connected()) {
+            if ((self.is_source || self_is_connected()) && !flood) {
                 broadcast_discovery();
             }
 
@@ -287,7 +293,7 @@ int main(int argc, char **argv) {
 
     struct arguments arguments = {
             .payload = "",
-            .max_power = false,
+            .flood = false, // TODO: change behavior of this flag. Do not built a tree.
             .log_level = 3,
             .log_file = "",
             .interface = "",
@@ -300,7 +306,7 @@ int main(int argc, char **argv) {
     };
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-    max_power = arguments.max_power;
+    flood = arguments.flood;
     pending_timeout_msec = arguments.pending_timeout_msec;
     source_retransmit_payload_msec = arguments.source_retransmit_payload_msec;
     unchanged_counter = arguments.unchanged_counter;
@@ -337,7 +343,7 @@ int main(int argc, char **argv) {
             "omit_roll_back: %s, "
             "interface: %s]",
             strnlen(arguments.payload, PATH_MAX) == 0 ? "-" : arguments.payload,
-            arguments.max_power ? "true" : "false",
+            arguments.flood ? "true" : "false",
             arguments.log_level,
             strnlen(arguments.log_file, PATH_MAX) == 0 ? "-" : arguments.log_file,
             arguments.poll_timeout_msec,
@@ -355,7 +361,9 @@ int main(int argc, char **argv) {
     }
 
     if (strnlen(arguments.payload, PATH_MAX) != 0) {
-        broadcast_discovery();
+        if (!flood) {
+            broadcast_discovery();
+        }
     }
 
     int res = event_loop(arguments.poll_timeout_msec, arguments.discovery_bcast_interval_msec,

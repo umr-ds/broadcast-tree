@@ -11,10 +11,10 @@ typedef struct {
 } snd_pwr_iterator_t;
 
 extern self_t self;
-extern bool max_power;
+extern bool flood;
 
 int8_t set_pwr(int8_t pwr) {
-    if (max_power) {
+    if (flood) {
         return self.max_pwr;
     } else {
         return pwr;

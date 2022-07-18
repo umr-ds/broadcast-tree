@@ -18,7 +18,7 @@ bool payload_complete = false;
 char *dummy = NULL;
 int payload_transmit_time = 0;
 
-bool max_power;
+bool flood;
 
 extern struct sockaddr_ll L_SOCKADDR;
 extern uint16_t pending_timeout_msec;
@@ -94,7 +94,7 @@ ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
         log_error("Could not send data. [error: %s]", strerror(errno));
     }
 
-    log_debug("Successfully sent frame. [sent_bytes: %i, tx_pwr: %i]", sent_bytes, set_pwr(tx_pwr));
+    log_debug("Successfully sent frame. [sent_bytes: %i, send_pwr: %i]", sent_bytes, set_pwr(tx_pwr));
 
     return sent_bytes;
 }
@@ -132,7 +132,7 @@ int disconnect_child(any_t item, any_t args) {
 
     send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t), self.max_pwr);
 
-    log_debug("Child disconnected. [addr: %s]", mac_to_str(tmp_child->addr));
+    log_debug("Child disconnected. [addr: %s, tx_pwr: %i, data_len: %u]", mac_to_str(tmp_child->addr), self.max_pwr, sizeof(eth_btp_t));
 
     return MAP_OK;
 }
@@ -195,7 +195,7 @@ void send_payload(void) {
             return;
         }
 
-        log_debug("Successfully sent next chunk. [bytes_read: %i, seq_num: %i]", bytes_read, payload_frame.seq_num);
+        log_debug("Successfully sent next chunk. [bytes_read: %i, seq_num: %i, tx_pwr: %i, data_len: %u]", bytes_read, payload_frame.seq_num, self.high_pwr, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_chunk_len);
     }
 
     log_info("Completely sent file.");
@@ -232,7 +232,7 @@ void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
     /* Send packet */
     send_btp_frame((uint8_t *) &pts_frame, sizeof(eth_btp_pts_t), self.parent->own_pwr);
 
-    log_info("Sent cycle detection frame. [tx_pwr: %i]", self.parent->own_pwr);
+    log_info("Sent cycle detection frame. [tx_pwr: %i, data_len: %u]", self.parent->own_pwr, sizeof(eth_btp_pts_t));
 }
 
 void broadcast_discovery() {
@@ -243,7 +243,7 @@ void broadcast_discovery() {
     /* Send packet */
     send_btp_frame((uint8_t *) &discovery_frame, sizeof(eth_btp_t), self.max_pwr);
 
-    log_debug("Broadcast discovery. [tx_pwr: %i]", self.max_pwr);
+    log_debug("Broadcast discovery. [tx_pwr: %i, data_len: %u]", self.max_pwr, sizeof(eth_btp_t));
 }
 
 void parse_header(eth_radio_btp_t *in_frame, uint8_t *recv_frame) {
@@ -290,7 +290,7 @@ bool should_switch(btp_header_t header, int8_t new_parent_tx) {
     // then switching is essentially free. Just switch without further computations.
     if (new_parent_tx < header.high_pwr) {
         log_debug(
-                "The potential parent's new tx power is lower than it's currently sending. [new_tx_pwr: %i, tx_pwr: %i]",
+                "The potential parent's new tx power is lower than it's currently sending. [new_tx_pwr: %i, old_tx_pwr: %i]",
                 new_parent_tx, header.high_pwr);
         return true;
     }
@@ -331,7 +331,7 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
 
     send_btp_frame((uint8_t *) &child_request_frame, sizeof(eth_btp_t), new_parent_tx);
 
-    log_debug("Sent child request. [tx_pwr: %i]", new_parent_tx);
+    log_debug("Sent child request. [tx_pwr: %i, data_len: %u]", new_parent_tx, sizeof(eth_btp_t));
 }
 
 void handle_discovery(eth_radio_btp_t *in_frame) {
@@ -417,7 +417,7 @@ void reject_child(eth_radio_btp_t *in_frame) {
                 self.max_pwr);
 
     send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t), self.max_pwr);
-    log_info("Rejected child. [addr: %s]", mac_to_str(in_frame->eth.ether_shost));
+    log_info("Rejected child. [addr: %s, tw_pwr: %i, data_len: %u]", mac_to_str(in_frame->eth.ether_shost), self.max_pwr, sizeof(eth_btp_t));
 }
 
 void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
@@ -455,7 +455,7 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
 
     send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(eth_btp_t), child_tx_pwr);
 
-    log_info("Accepted child. [addr: %s]", key);
+    log_info("Accepted child. [addr: %s, tx_pwr: %i, data_len: %u]", key, child_tx_pwr, sizeof(eth_btp_t));
 }
 
 void handle_child_request(eth_radio_btp_t *in_frame) {
@@ -506,7 +506,7 @@ void disconnect_from_parent(void) {
 
     send_btp_frame((uint8_t *) &disconnect_frame, sizeof(eth_btp_t), self.max_pwr);
 
-    log_info("Disconnected from parent. [addr: %s]", mac_to_str(self.parent->addr));
+    log_info("Disconnected from parent. [addr: %s, tx_pwr: %i, data_len: %u]", mac_to_str(self.parent->addr), self.max_pwr, sizeof(eth_btp_t));
     free(self.parent);
     self.parent = NULL;
 }
@@ -810,8 +810,7 @@ void game_round(int cur_time) {
             build_frame(&eog, self.parent->addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
 
             send_btp_frame((uint8_t *) &eog, sizeof(eth_btp_t), self.max_pwr);
-            log_debug("Sent end of game frame. [parent addr: %s, tx power: %i]", mac_to_str(self.parent->addr),
-                      self.max_pwr);
+            log_debug("Sent end of game frame. [parent addr: %s, tx_pwr: %i, data_len: %u]", mac_to_str(self.parent->addr), self.max_pwr, sizeof(eth_btp_t));
         }
     }
 }
@@ -830,11 +829,10 @@ void forward_payload(eth_radio_btp_payload_t *in_frame) {
     out_frame.ttl = in_frame->ttl - 1;
     memcpy(out_frame.payload, in_frame->payload, in_frame->payload_chunk_len);
 
-    if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len, self.high_pwr) <
-        0) {
+    if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len, self.high_pwr) < 0) {
         log_warn("Could not forward payload. [seq num: %i]", out_frame.seq_num);
     } else {
-        log_info("Successfully forwarded payload. [seq num: %i, ttl: %u]", out_frame.seq_num, out_frame.ttl);
+        log_info("Successfully forwarded payload. [seq num: %i, ttl: %u, tx_pwr: %i, data_len: %u]", out_frame.seq_num, out_frame.ttl, self.high_pwr, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len);
     }
 }
 
@@ -843,7 +841,7 @@ void handle_data(uint8_t *recv_frame) {
     memcpy(&in_frame, recv_frame, sizeof(eth_radio_btp_payload_t));
 
     // If the received tree id does not match ours, ignore.
-    if (self.tree_id != in_frame.btp_frame.btp.tree_id) {
+    if (!flood && self.tree_id != in_frame.btp_frame.btp.tree_id) {
         log_debug("This data frame is not for our tree. [our tree ID: %i, received tree ID: %i]", self.tree_id,
                   in_frame.btp_frame.btp.tree_id);
         return;
@@ -901,6 +899,7 @@ void handle_data(uint8_t *recv_frame) {
         log_warn("Payload frame expired. [seq_num: %i]", in_frame.seq_num);
         return;
     }
+    // TODO: Check if we have children
     forward_payload(&in_frame);
 }
 
