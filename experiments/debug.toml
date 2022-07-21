@@ -20,7 +20,7 @@ id = [ 80 ]
 # Experiement Settings
 [EXPERIMENTS]
 # Payload size (list if strings)
-payload_size = [ "1M" ]
+payload_size = [ "1K" ]
 # Whether to use maximum power or not (list of booleans)
 flood = [ false ]
 # Timeout for poll syscall (list of integers in ms)
