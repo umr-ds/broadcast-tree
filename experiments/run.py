@@ -116,7 +116,7 @@ def run(conf, repeat):
     source_logfile_path = f"{logfile_path_base}/source_$(hostname).log"
 
     btp_cmd_common = (
-        f'bash -c "nohup btp --log_level=2'
+        f'bash -c -i -l "nohup btp --log_level=2'
         f" {{0}}"
         f" {flood} {omit_roll_back} {unchanged_counter}"
         f" {poll_timeout} {discovery_bcast_interval} {pending_timeout} {source_retransmit_payload}"
