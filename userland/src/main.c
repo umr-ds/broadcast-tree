@@ -93,10 +93,14 @@ void sig_handler(int signum) {
             exit(signum);
         case SIGABRT:
             log_fatal("Have to abort. [signal: %s]", strsignal(signum));
-            exit(signum);
+            signal(signum, SIG_DFL);
+            raise(signum);
+            break;
         case SIGSEGV:
-            log_fatal("Violated memory!. [signal: %s]", strsignal(signum));
-            exit(signum);
+            log_fatal("Violated memory! [signal: %s]", strsignal(signum));
+            signal(signum, SIG_DFL);
+            raise(signum);
+            break;
         default:
             log_error("Received signal we should not get.", strsignal(signum));
             exit(signum);
