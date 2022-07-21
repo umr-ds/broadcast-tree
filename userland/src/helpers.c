@@ -70,7 +70,9 @@ int8_t get_snd_pwr() {
 
 int get_time_msec() {
     struct timeval tval;
-    gettimeofday(&tval, NULL);
+    if (gettimeofday(&tval, NULL) != 0) {
+        log_error("Get time returned an error: %s", strerror(errno));
+    }
     return ((tval.tv_sec * 1000000) + tval.tv_usec) / 1000;
 }
 
