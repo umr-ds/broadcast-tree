@@ -46,3 +46,8 @@ RUN bash -c 'chmod +x  /bin/ro-root.sh'
 # Step 7: Add kernel boot options and remove entries from fstab to allow network boot
 RUN bash -c "echo \"dwc_otg.lpm_enable=0 console=tty1 root=/dev/nfs nfsroot=172.23.42.1:/srv/nfs/btree/,vers=3 ro rootwait ip=dhcp elevator=deadline init=/bin/ro-root.sh\" > /boot/cmdline.txt"
 RUN bash -c "echo \"\" > /etc/fstab"
+
+# Step 8: Enable core dumps for debugging
+RUN bash -c "echo kernel.core_pattern=/btree_data/%e_%p_%h_%t.core >> /etc/sysctl.d/core.conf"
+RUN bash -c "echo 'root hard core unlimited' >> /etc/security/limits.conf"
+RUN bash -c "echo 'root soft core unlimited' >> /etc/security/limits.conf"
