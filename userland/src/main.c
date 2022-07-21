@@ -297,7 +297,7 @@ int main(int argc, char **argv) {
 
     struct arguments arguments = {
             .payload = "",
-            .flood = false, // TODO: change behavior of this flag. Do not built a tree.
+            .flood = false,
             .log_level = 3,
             .log_file = "",
             .interface = "",

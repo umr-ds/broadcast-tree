@@ -7,7 +7,7 @@
 #include "helpers.h"
 #include "tree.h"
 
-self_t self = {0x0};
+self_t self = { 0x0 };
 
 uint8_t *payload_recv_buf = NULL;
 bool *seq_nums = NULL;
@@ -26,58 +26,53 @@ extern uint16_t source_retransmit_payload_msec;
 uint8_t unchanged_counter;
 
 ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr);
-
 int disconnect_child(any_t item, any_t args);
-
 void disconnect_all_children(void);
-
 void send_payload(void);
-
 void cycle_detection_ping(eth_radio_btp_pts_t *in_frame);
-
 int8_t compute_tx_pwr(eth_radio_btp_t *in_frame);
-
 bool should_switch(btp_header_t header, int8_t new_parent_tx);
-
-void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx, int8_t high_pwr, int8_t snd_high_pwr,
-                          uint32_t tree_id);
-
+void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx, int8_t high_pwr, int8_t snd_high_pwr, uint32_t tree_id);
 void handle_discovery(eth_radio_btp_t *in_frame);
-
 void reject_child(eth_radio_btp_t *in_frame);
-
 void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr);
-
 void handle_child_request(eth_radio_btp_t *in_frame);
-
 void handle_child_confirm(eth_radio_btp_t *in_frame);
-
 void handle_child_reject(mac_addr_t shost);
-
 void handle_parent_revocation(eth_radio_btp_t *in_frame);
-
 void handle_end_of_game(eth_radio_btp_t *in_frame);
-
 void handle_cycle_detection_ping(uint8_t *recv_frame);
-
 void forward_payload(eth_radio_btp_payload_t *in_frame);
-
 void handle_data(uint8_t *recv_frame);
-
 bool self_is_pending(void);
-
+bool self_was_connected(void);
 bool self_has_children(void);
+void clear_parent(parent_t *parent);
+void shift_parents(parent_t *dst_parent, parent_t *src_parent);
+
+void shift_parents(parent_t *dst_parent, parent_t *src_parent){
+    *dst_parent = *src_parent;
+}
 
 bool self_is_connected(void) {
-    return self.parent || self.is_source;
+    return self.parent.valid || self.is_source;
+}
+
+bool self_was_connected(void) {
+    return self.prev_parent.valid;
 }
 
 bool self_is_pending(void) {
-    return self.pending_parent;
+    return self.pending_parent.valid;
 }
 
 bool self_has_children(void) {
     return hashmap_length(self.children) != 0;
+}
+
+void clear_parent(parent_t *parent) {
+    parent_t new_parent = { 0x0 };
+    *parent = new_parent;
 }
 
 ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
@@ -100,24 +95,27 @@ ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
 }
 
 void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd) {
+    self.sockfd = sockfd;
+    memcpy(self.laddr, laddr, 6);
+    strncpy(self.if_name, if_name, IFNAMSIZ);
+
     bool is_source = strlen(payload) == 0 ? false : true;
     self.is_source = is_source;
+    self.payload_fd = open(payload, O_RDONLY);
+
     self.children = hashmap_new();
     self.parent_blocklist = hashmap_new();
+    self.parent = (parent_t) { 0x0 };
+    self.pending_parent = (parent_t) { 0x0 };
+    self.prev_parent = (parent_t) { 0x0 };
+
     self.max_pwr = 0;
     self.high_pwr = 0;
     self.snd_high_pwr = 0;
-    memcpy(self.laddr, laddr, 6);
-    self.parent = NULL;
-    self.pending_parent = NULL;
+
     self.tree_id = is_source ? gen_tree_id(self.laddr) : 0;
-    self.sockfd = sockfd;
     self.game_fin = false;
     self.round_unchanged_cnt = 0;
-
-    strncpy(self.if_name, if_name, IFNAMSIZ);
-
-    self.payload_fd = open(payload, O_RDONLY);
 
     dummy = (char *) malloc(sizeof(char));
 }
@@ -190,8 +188,7 @@ void send_payload(void) {
         payload_frame.payload_chunk_len = bytes_read;
         payload_frame.seq_num = seq_num++;
 
-        if (send_btp_frame((uint8_t *) &payload_frame, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_chunk_len,
-                           self.high_pwr) < 0) {
+        if (send_btp_frame((uint8_t *) &payload_frame, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_chunk_len, self.high_pwr) < 0) {
             return;
         }
 
@@ -204,7 +201,7 @@ void send_payload(void) {
 void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
     log_info("Sending Ping to Source cycle detection frame.");
     eth_btp_t pts_base = {0x0};
-    build_frame(&pts_base, self.parent->addr, 0, 0, ping_to_source, self.tree_id, self.parent->own_pwr);
+    build_frame(&pts_base, self.parent.addr, 0, 0, ping_to_source, self.tree_id, self.parent.own_pwr);
 
     eth_btp_pts_t pts_frame = {0x0};
     pts_frame.btp_frame = pts_base;
@@ -217,22 +214,22 @@ void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
         memcpy(pts_frame.new_parent, in_frame->new_parent, 6);
         memcpy(pts_frame.old_parent, in_frame->old_parent, 6);
         log_debug("Forwarding Ping to Source frame. [sender: %s, destination: %s, ttl: %u]",
-                  mac_to_str(pts_frame.sender), mac_to_str(self.parent->addr), pts_frame.ttl);
+                  mac_to_str(pts_frame.sender), mac_to_str(self.parent.addr), pts_frame.ttl);
     } else {
         pts_frame.ttl = MAX_TTL;
         memcpy(pts_frame.sender, self.laddr, 6);
-        memcpy(pts_frame.new_parent, self.parent->addr, 6);
-        if (self.prev_parent) {
-            memcpy(pts_frame.old_parent, self.prev_parent->addr, 6);
+        memcpy(pts_frame.new_parent, self.parent.addr, 6);
+        if (self_was_connected()) {
+            memcpy(pts_frame.old_parent, self.prev_parent.addr, 6);
         }
         log_debug("Added missing parts to ping to source frame. [sender: %s, destination: %s]",
-                  mac_to_str(pts_frame.sender), mac_to_str(self.parent->addr));
+                  mac_to_str(pts_frame.sender), mac_to_str(self.parent.addr));
     }
 
     /* Send packet */
-    send_btp_frame((uint8_t *) &pts_frame, sizeof(eth_btp_pts_t), self.parent->own_pwr);
+    send_btp_frame((uint8_t *) &pts_frame, sizeof(eth_btp_pts_t), self.parent.own_pwr);
 
-    log_info("Sent cycle detection frame. [tx_pwr: %i, data_len: %u]", self.parent->own_pwr, sizeof(eth_btp_pts_t));
+    log_info("Sent cycle detection frame. [tx_pwr: %i, data_len: %u]", self.parent.own_pwr, sizeof(eth_btp_pts_t));
 }
 
 void broadcast_discovery() {
@@ -279,10 +276,10 @@ bool should_switch(btp_header_t header, int8_t new_parent_tx) {
     // If parent's sending power to reach us is lower than the power
     // the parent is currently using, we should not switch, since we
     // are not the furthest away child
-    if (self.parent->own_pwr < self.parent->high_pwr) {
+    if (self.parent.own_pwr < self.parent.high_pwr) {
         log_debug(
                 "Our parents power to reach us is lower than its current sending power. [reach power: %i, parent tx power: %i]",
-                self.parent->own_pwr, self.parent->high_pwr);
+                self.parent.own_pwr, self.parent.high_pwr);
         return false;
     }
 
@@ -297,7 +294,7 @@ bool should_switch(btp_header_t header, int8_t new_parent_tx) {
 
     // The difference between the old parent's current sending power to reach us and
     // its gains when not connected to us.
-    int32_t gain = self.parent->own_pwr - self.parent->snd_high_pwr;
+    int32_t gain = self.parent.own_pwr - self.parent.snd_high_pwr;
 
     // The difference between the new parents new sending power to reach us and its
     // current highest sending power, i.e., how bad would it be to switch to this parent.
@@ -314,17 +311,16 @@ bool should_switch(btp_header_t header, int8_t new_parent_tx) {
 void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx, int8_t high_pwr, int8_t snd_high_pwr,
                           uint32_t tree_id) {
     log_info("Establishing connection. [addr: %s]", mac_to_str(potential_parent_addr));
-    self.pending_parent = (parent_t *) malloc(sizeof(parent_t));
-
-    memcpy(self.pending_parent->addr, potential_parent_addr, 6);
-    self.pending_parent->own_pwr = new_parent_tx;
-    self.pending_parent->high_pwr = high_pwr;
-    self.pending_parent->snd_high_pwr = snd_high_pwr;
-    self.pending_parent->last_seen = get_time_msec();
+    memcpy(self.pending_parent.addr, potential_parent_addr, 6);
+    self.pending_parent.own_pwr = new_parent_tx;
+    self.pending_parent.high_pwr = high_pwr;
+    self.pending_parent.snd_high_pwr = snd_high_pwr;
+    self.pending_parent.last_seen = get_time_msec();
+    self.pending_parent.valid = true;
 
     log_debug("Updated self. [own_prw: %i, high_pwr: %i, snd_high_pwr: %i, last_seen: %i]",
-              self.pending_parent->own_pwr, self.pending_parent->high_pwr, self.pending_parent->snd_high_pwr,
-              self.pending_parent->last_seen);
+              self.pending_parent.own_pwr, self.pending_parent.high_pwr, self.pending_parent.snd_high_pwr,
+              self.pending_parent.last_seen);
 
     eth_btp_t child_request_frame = {0x0};
     build_frame(&child_request_frame, potential_parent_addr, 0, 0, child_request, tree_id, new_parent_tx);
@@ -362,7 +358,7 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
 
     // if we are currently trying to connect to a new parent node, we ignore other announcements
     if (self_is_pending()) {
-        log_debug("Already waiting for connection. [addr: %s]", mac_to_str(self.pending_parent->addr));
+        log_debug("Already waiting for connection. [addr: %s]", mac_to_str(self.pending_parent.addr));
         return;
     }
 
@@ -373,12 +369,12 @@ void handle_discovery(eth_radio_btp_t *in_frame) {
     }
 
     // If we receive a discovery from our parent, update our own state.
-    if (self_is_connected() && memcmp(in_frame->eth.ether_shost, self.parent->addr, 6) == 0) {
-        self.parent->high_pwr = in_frame->btp.high_pwr;
-        self.parent->snd_high_pwr = in_frame->btp.snd_high_pwr;
-        self.parent->last_seen = get_time_msec();
-        log_debug("Updated parent information. [high_pwr: %i, snd_high_pwr: %i, last_seen: %i]", self.parent->high_pwr,
-                  self.parent->snd_high_pwr, self.parent->last_seen);
+    if (self_is_connected() && memcmp(in_frame->eth.ether_shost, self.parent.addr, 6) == 0) {
+        self.parent.high_pwr = in_frame->btp.high_pwr;
+        self.parent.snd_high_pwr = in_frame->btp.snd_high_pwr;
+        self.parent.last_seen = get_time_msec();
+        log_debug("Updated parent information. [high_pwr: %i, snd_high_pwr: %i, last_seen: %i]", self.parent.high_pwr,
+                  self.parent.snd_high_pwr, self.parent.last_seen);
         return;
     }
 
@@ -502,13 +498,12 @@ void disconnect_from_parent(void) {
     }
 
     eth_btp_t disconnect_frame = {0x0};
-    build_frame(&disconnect_frame, self.parent->addr, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
+    build_frame(&disconnect_frame, self.parent.addr, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
 
     send_btp_frame((uint8_t *) &disconnect_frame, sizeof(eth_btp_t), self.max_pwr);
 
-    log_info("Disconnected from parent. [addr: %s, tx_pwr: %i, data_len: %u]", mac_to_str(self.parent->addr), self.max_pwr, sizeof(eth_btp_t));
-    free(self.parent);
-    self.parent = NULL;
+    log_info("Disconnected from parent. [addr: %s, tx_pwr: %i, data_len: %u]", mac_to_str(self.parent.addr), self.max_pwr, sizeof(eth_btp_t));
+    clear_parent(&self.parent);
 }
 
 void handle_child_confirm(eth_radio_btp_t *in_frame) {
@@ -519,16 +514,16 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
     }
 
     // We received a confirmation from a parent we never asked. Ignore.
-    if (memcmp(in_frame->eth.ether_shost, self.pending_parent->addr, 6) != 0) {
+    if (memcmp(in_frame->eth.ether_shost, self.pending_parent.addr, 6) != 0) {
         log_debug("Received child confirm from unknown node. [potential parent: %s, received addr: %s]",
-                  mac_to_str(self.pending_parent->addr), mac_to_str(in_frame->eth.ether_shost));
+                  mac_to_str(self.pending_parent.addr), mac_to_str(in_frame->eth.ether_shost));
         return;
     }
 
     // If we are already connected, disconnect from the current parent
     if (self_is_connected()) {
         log_debug("Disconnected from old parent to connect to new parent. [old parent: %s, new parent: %s]",
-                  mac_to_str(self.parent->addr),
+                  mac_to_str(self.parent.addr),
                   mac_to_str(in_frame->eth.ether_shost));
         disconnect_from_parent();
     }
@@ -537,12 +532,15 @@ void handle_child_confirm(eth_radio_btp_t *in_frame) {
 
     self.tree_id = in_frame->btp.tree_id;
 
-    if (self.prev_parent) free(self.prev_parent);
-    self.prev_parent = self.parent;
+    if (self_was_connected()) {
+        clear_parent(&self.prev_parent);
+    }
+    shift_parents(&self.prev_parent, &self.parent);
 
-    self.parent = self.pending_parent;
-    self.parent->last_seen = get_time_msec();
-    self.pending_parent = NULL;
+    shift_parents(&self.parent, &self.pending_parent);
+    self.parent.last_seen = get_time_msec();
+
+    clear_parent(&self.pending_parent);
 
     if (self_has_children()) {
         cycle_detection_ping(NULL);
@@ -569,54 +567,50 @@ void handle_child_reject(mac_addr_t shost) {
 
     // We are connected but not pending and receive a reject from our current parent, then we are no longer part of the tree and disconnect all our children as well.
     if (self_is_connected() && !self_is_pending()) {
-        if (memcmp(shost, self.parent->addr, 6) != 0) {
+        if (memcmp(shost, self.parent.addr, 6) != 0) {
             log_debug("Ignoring child reject from node that is not our parent. [addr: %s, parent addr: %s]",
-                      mac_to_str(shost), mac_to_str(self.parent->addr));
+                      mac_to_str(shost), mac_to_str(self.parent.addr));
             return;
         }
 
-        log_info("Received disconnection command from our parent. [addr: %s]", mac_to_str(self.parent->addr));
+        log_info("Received disconnection command from our parent. [addr: %s]", mac_to_str(self.parent.addr));
 
-        if (self.prev_parent) {
-            establish_connection(self.prev_parent->addr, self.prev_parent->own_pwr, self.prev_parent->high_pwr,
-                                 self.prev_parent->snd_high_pwr, self.tree_id);
-            log_debug("Trying to connect to previous parent. [addr: %s]", mac_to_str(self.prev_parent->addr));
+        if (self_was_connected()) {
+            establish_connection(self.prev_parent.addr, self.prev_parent.own_pwr, self.prev_parent.high_pwr,
+                                 self.prev_parent.snd_high_pwr, self.tree_id);
+            log_debug("Trying to connect to previous parent. [addr: %s]", mac_to_str(self.prev_parent.addr));
         } else {
             log_info("Have not previous parent. Disconnecting all children.");
             disconnect_all_children();
         }
 
-        free(self.parent);
-        self.parent = NULL;
+        clear_parent(&self.parent);
         return;
     }
 
     if (!self_is_connected() && self_is_pending()) {
         // We received a confirmation from a node we never asked. Ignore.
-        if (memcmp(shost, self.pending_parent->addr, 6) != 0) {
+        if (memcmp(shost, self.pending_parent.addr, 6) != 0) {
             log_debug("Ignoring child reject from unknown node. [addr: %s, parent addr: %s]", mac_to_str(shost),
-                      mac_to_str(self.pending_parent->addr));
+                      mac_to_str(self.pending_parent.addr));
             return;
         }
 
         log_info("Pending parent rejected our request. [pending parent: %s]", mac_to_str(shost));
-        free(self.pending_parent);
-        self.pending_parent = NULL;
+        clear_parent(&self.pending_parent);
 
         char *key = (char *) malloc(18);
         prepare_key(shost, key);
         hashmap_put(self.parent_blocklist, key, (void **) &dummy);
         log_info("Blocked pending parent. [addr: %s]", key);
 
-        if (self.prev_parent && (memcmp(shost, self.prev_parent->addr, 6) == 0)) {
+        if (self_was_connected() && (memcmp(shost, self.prev_parent.addr, 6) == 0)) {
             log_debug("Were unable to reconnect to previous parent. [prev parent addr: %s]",
-                      mac_to_str(self.prev_parent->addr));
+                      mac_to_str(self.prev_parent.addr));
 
             disconnect_all_children();
-            free(self.prev_parent);
-            self.prev_parent = NULL;
-            free(self.pending_parent);
-            self.pending_parent = NULL;
+            clear_parent(&self.prev_parent);
+            clear_parent(&self.pending_parent);
         }
 
         return;
@@ -624,15 +618,14 @@ void handle_child_reject(mac_addr_t shost) {
 
     if (self_is_connected() && self_is_pending()) {
         // We received a confirmation from a node we never asked. Ignore.
-        if (memcmp(shost, self.pending_parent->addr, 6) != 0) {
+        if (memcmp(shost, self.pending_parent.addr, 6) != 0) {
             log_debug("Ignoring child reject from unknown node. [addr: %s, parent addr: %s]", mac_to_str(shost),
-                      mac_to_str(self.pending_parent->addr));
+                      mac_to_str(self.pending_parent.addr));
             return;
         }
 
         log_info("Sticking to old parent, as request was rejected. [pending parent: %s]", mac_to_str(shost));
-        free(self.pending_parent);
-        self.pending_parent = NULL;
+        clear_parent(&self.pending_parent);
 
         char *key = (char *) malloc(18);
         prepare_key(shost, key);
@@ -723,7 +716,7 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
     if (memcmp(self.laddr, in_frame.sender, 6) == 0) {
         log_warn("Detected potential cycle! [our addr: %s, sender addr: %s]", mac_to_str(self.laddr),
                  mac_to_str(in_frame.sender));
-        if (memcmp(self.parent->addr, in_frame.new_parent, 6) != 0) {
+        if (memcmp(self.parent.addr, in_frame.new_parent, 6) != 0) {
             // Here, our current parent and the parent in question from the Ping to Source frame do not match.
             // This means, that in the time from connecting to the parent in question and receiving this
             // Ping to Source, we probably already connected to another parent already and the cycle is already broken.
@@ -736,21 +729,21 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
             disconnect_from_parent();
             log_info("Disconnected from parent due to cycle.");
 
-            if (!self.prev_parent) {
+            if (!self_was_connected()) {
                 disconnect_all_children();
                 log_warn("Have no previous parent, can not re-connect. Disconnected from all children.");
                 return;
             }
 
-            establish_connection(self.prev_parent->addr, self.max_pwr, self.prev_parent->high_pwr,
-                                 self.prev_parent->snd_high_pwr, self.tree_id);
+            establish_connection(self.prev_parent.addr, self.max_pwr, self.prev_parent.high_pwr,
+                                 self.prev_parent.snd_high_pwr, self.tree_id);
         }
         // In this case, we received our own ping to source frame, which indicated a cycle.
     } else {
         // We just receive a ping to source as an intermediate node. First, check if it is expired. If not, forward.
         if (in_frame.ttl == 0) {
             log_warn("Ping to Source frame expired. [sender: %s, destination: %s]", mac_to_str(in_frame.sender),
-                     mac_to_str(self.parent->addr));
+                     mac_to_str(self.parent.addr));
             return;
         }
 
@@ -762,11 +755,11 @@ void handle_cycle_detection_ping(uint8_t *recv_frame) {
 void game_round(int cur_time) {
     // if we are currently waiting to connect to a new parent, we don't modify our state, since we are about to change the topology
     if (self_is_pending()) {
-        log_debug("Currently pending new connection. [addr: %s]", mac_to_str(self.pending_parent->addr));
-        if (cur_time >= self.pending_parent->last_seen + pending_timeout_msec) {
+        log_debug("Currently pending new connection. [addr: %s]", mac_to_str(self.pending_parent.addr));
+        if (cur_time >= self.pending_parent.last_seen + pending_timeout_msec) {
             log_warn("Pending parent did not respond in time. Removing pending parent. [addr: %s]",
-                     mac_to_str(self.pending_parent->addr));
-            handle_child_reject(self.pending_parent->addr);
+                     mac_to_str(self.pending_parent.addr));
+            handle_child_reject(self.pending_parent.addr);
         }
         return;
     }
@@ -807,10 +800,10 @@ void game_round(int cur_time) {
             }
 
             eth_btp_t eog = {0x0};
-            build_frame(&eog, self.parent->addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
+            build_frame(&eog, self.parent.addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
 
             send_btp_frame((uint8_t *) &eog, sizeof(eth_btp_t), self.max_pwr);
-            log_debug("Sent end of game frame. [parent addr: %s, tx_pwr: %i, data_len: %u]", mac_to_str(self.parent->addr), self.max_pwr, sizeof(eth_btp_t));
+            log_debug("Sent end of game frame. [parent addr: %s, tx_pwr: %i, data_len: %u]", mac_to_str(self.parent.addr), self.max_pwr, sizeof(eth_btp_t));
         }
     }
 }

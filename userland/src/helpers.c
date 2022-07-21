@@ -65,7 +65,11 @@ int8_t get_snd_pwr() {
 
     hashmap_iterate(self.children, hashmap_snd_pwr, snd_pwr_iterator);
 
-    return snd_pwr_iterator->snd_high_pwr;
+    int8_t snd_high_pwr = snd_pwr_iterator->snd_high_pwr;
+
+    free(snd_pwr_iterator);
+
+    return snd_high_pwr;
 }
 
 int get_time_msec() {
@@ -143,6 +147,7 @@ int8_t get_tx_pwr() {
     if ((res = iw_get_ext(self.sockfd, self.if_name, SIOCGIWTXPOW, wrq)) >= 0) {
         if (wrq->u.txpower.disabled) {
             log_error("Transmission is disabled.");
+            free(wrq);
             return -1;
         } else {
             if (wrq->u.txpower.flags & IW_TXPOW_MWATT) {
@@ -150,10 +155,12 @@ int8_t get_tx_pwr() {
             } else {
                 dbm = wrq->u.txpower.value;
             }
+            free(wrq);
             return (int8_t) dbm;
         }
     } else {
         log_error("Could not get current txpower. [%s]", explain_ioctl(self.sockfd, SIOCGIWTXPOW, wrq));
+        free(wrq);
         return (int8_t) res;
     }
 }
@@ -307,8 +314,8 @@ void build_frame(eth_btp_t *out, mac_addr_t daddr, uint8_t recv_err, uint8_t mut
     out->btp.tx_pwr = set_pwr(tx_pwr);
     out->btp.high_pwr = self.high_pwr;
     out->btp.snd_high_pwr = self.snd_high_pwr;
-    if (self.parent) {
-        memcpy(out->btp.parent_addr, self.parent, 6);
+    if (self_is_connected()) {
+        memcpy(out->btp.parent_addr, &self.parent, 6);
     }
 
     out->eth.ether_type = htons(BTP_ETHERTYPE);
