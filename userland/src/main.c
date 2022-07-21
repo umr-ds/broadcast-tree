@@ -201,8 +201,14 @@ int init_sock(char *if_name, char *payload) {
     log_debug("Initialized self. [source: %s, tree_id: %u]", self.is_source ? "true" : "false", self.tree_id);
 
     int8_t max_tx_pwr;
-    if ((max_tx_pwr = get_max_tx_pwr()) < 0) {
-        return -1;
+    for (uint8_t retries = 0; retries < 2; retries++) {
+        if ((max_tx_pwr = get_max_tx_pwr()) >= 0) {
+            break;
+        }
+
+        if (retries >= 2 && max_tx_pwr < 0) {
+            return -1;
+        }
     }
     self.max_pwr = max_tx_pwr;
     log_debug("Figured out max sending power. [max_power: %i]", max_tx_pwr);
