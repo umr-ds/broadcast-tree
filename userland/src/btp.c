@@ -630,7 +630,7 @@ void handle_child_reject(mac_addr_t shost) {
             return;
         }
 
-        log_info("Pending parent rejected our request. [pending parent: %s]", mac_to_str(shost));
+        log_info("Sticking to old parent, as request was rejected. [pending parent: %s]", mac_to_str(shost));
         free(self.pending_parent);
         self.pending_parent = NULL;
 
