@@ -6,7 +6,8 @@
 
 #define MAX_BREADTH 10
 #define MAX_DEPTH 20
-#define MAX_TTL (MAX_DEPTH * 2) + 1;
+#define MAX_TTL ((MAX_DEPTH * 2) + 1)
+#define HASHMAP_KEY_SIZE 18
 
 /**
  * State of our parent
@@ -16,7 +17,7 @@ typedef struct {
     int8_t high_pwr; // The power at which the parent does currently broadcast data frames
     int8_t snd_high_pwr; // The power at which the parent WOULD broadacst data frames, if its furthest child were to disconnect
     int8_t own_pwr; // The minimum power with which the parent has to broadcast to reach us
-    int last_seen; // When did we last receive any frame from this node
+    uint64_t last_seen; // When did we last receive any frame from this node
     bool valid; // Whether the parent is used
 } parent_t;
 
@@ -35,8 +36,8 @@ typedef struct {
 typedef struct {
     bool is_source; // whether we are the rood of the broadcast tree
     int payload_fd; // File descriptor to the file to be sent
-    map_t children; // hashmap of currently connected children
-    map_t parent_blocklist; // parents that refused request are ignored
+    struct hashmap_s *children; // hashmap of currently connected children
+    struct hashmap_s *parent_blocklist; // parents that refused request are ignored
     int8_t max_pwr; // maximum power at which we are able (or willing) to broadcast
     int8_t high_pwr; // the power at which we currently broadcast data frames
     int8_t snd_high_pwr; // the power at which we WOULD broadacst data frames, if our furthest child were to disconnect

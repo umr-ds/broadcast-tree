@@ -171,7 +171,7 @@ void init_self(mac_addr_t laddr, char *payload, char *if_name, int sockfd);
 /**
  * Performs the bookkeeping at the end of a game round
  */
-void game_round(int cur_time);
+void game_round(uint64_t cur_time);
 
 void disconnect_from_parent(void);
 

@@ -5,7 +5,7 @@
 
 #include "btp.h"
 
-int get_time_msec(void);
+uint64_t get_time_msec(void);
 
 /**
  * Generate a (hopefully unique) id for a new braodcast tree.
@@ -13,7 +13,7 @@ int get_time_msec(void);
  * 
  * @param laddr: MAC address of the source node of the new tree
  */
-uint32_t gen_tree_id(mac_addr_t laddr);
+uint32_t gen_tree_id(void);
 
 /**
  * 

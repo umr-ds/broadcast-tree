@@ -20,6 +20,7 @@
 #include "tree.h"
 #include "btp.h"
 #include "helpers.h"
+#include "hashmap.h"
 
 extern self_t self;
 extern bool payload_complete;
@@ -232,7 +233,7 @@ int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_mse
     sigaddset(&signals, SIGABRT);
     sigaddset(&signals, SIGSEGV);
 
-    int bcast_send_time = get_time_msec();
+    uint64_t bcast_send_time = get_time_msec();
     int res;
     log_info("Waiting for BTP packets.");
     while (1) {
@@ -247,13 +248,13 @@ int event_loop(uint16_t poll_timeout_msec, uint16_t discovery_bcast_interval_mse
             log_info("Received entire payload and have no children. Disconnecting from parent.");
             if (flood) {
                 return 0;
-            } else if (hashmap_length(self.children) == 0 && self_is_connected()) {
+            } else if (hashmap_num_entries(self.children) == 0 && self_is_connected()) {
                 disconnect_from_parent();
                 return 0;
             }
         }
 
-        int cur_time = get_time_msec();
+        uint64_t cur_time = get_time_msec();
         if (cur_time - bcast_send_time > discovery_bcast_interval_msec) {
             if ((self.is_source || self_is_connected()) && !flood) {
                 broadcast_discovery();
@@ -370,10 +371,8 @@ int main(int argc, char **argv) {
         exit(sockfd);
     }
 
-    if (strnlen(arguments.payload, PATH_MAX) != 0) {
-        if (!flood) {
-            broadcast_discovery();
-        }
+    if (strnlen(arguments.payload, PATH_MAX) != 0 && !flood) {
+        broadcast_discovery();
     }
 
     int res = event_loop(arguments.poll_timeout_msec, arguments.discovery_bcast_interval_msec,

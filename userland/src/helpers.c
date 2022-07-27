@@ -4,6 +4,7 @@
 #include "libexplain/ioctl.h"
 #include "log.h"
 #include "helpers.h"
+#include "hashmap.h"
 
 typedef struct {
     int8_t high_pwr;
@@ -21,32 +22,31 @@ int8_t set_pwr(int8_t pwr) {
     }
 }
 
-int hashmap_child_fin(any_t item, any_t args);
+int hashmap_child_fin(void *const context, void *const value);
+int hashmap_snd_pwr(void *const context, void *const value);
 
-int hashmap_snd_pwr(any_t item, any_t args);
-
-int hashmap_child_fin(any_t item, any_t args) {
-    (void) (item);
-    child_t *tmp_child = (child_t *) args;
+int hashmap_child_fin(void *const context, void *const value) {
+    (void) (context);
+    child_t *tmp_child = (child_t *) value;
 
     log_debug("Game fin status. [addr: %s, game_fin: %s]", mac_to_str(tmp_child->addr),
               tmp_child->game_fin ? "true" : "false");
 
-    return tmp_child->game_fin ? MAP_OK : MAP_MISSING;
+    return tmp_child->game_fin ? 0 : -1;
 }
 
 bool all_children_fin() {
-    if (hashmap_length(self.children) == 0) {
+    if (hashmap_num_entries(self.children) == 0) {
         log_debug("Have no children.");
         return true;
     }
 
-    return hashmap_iterate(self.children, hashmap_child_fin, NULL) == MAP_OK;
+    return hashmap_iterate(self.children, hashmap_child_fin, NULL) == 0;
 }
 
-int hashmap_snd_pwr(any_t item, any_t args) {
-    snd_pwr_iterator_t *snd_pwr_iterator = (snd_pwr_iterator_t *) item;
-    child_t *tmp_child = (child_t *) args;
+int hashmap_snd_pwr(void *const context, void *const value) {
+    snd_pwr_iterator_t *snd_pwr_iterator = (snd_pwr_iterator_t *) context;
+    child_t *tmp_child = (child_t *) value;
 
     if (tmp_child->tx_pwr > snd_pwr_iterator->high_pwr) {
         snd_pwr_iterator->snd_high_pwr = snd_pwr_iterator->high_pwr;
@@ -55,11 +55,12 @@ int hashmap_snd_pwr(any_t item, any_t args) {
         snd_pwr_iterator->snd_high_pwr = tmp_child->tx_pwr;
     }
 
-    return MAP_OK;
+    return 1;
 }
 
 int8_t get_snd_pwr() {
-    snd_pwr_iterator_t *snd_pwr_iterator = (snd_pwr_iterator_t *) malloc(sizeof(snd_pwr_iterator_t));
+    snd_pwr_iterator_t *snd_pwr_iterator = malloc(sizeof(snd_pwr_iterator_t));
+
     snd_pwr_iterator->high_pwr = 0;
     snd_pwr_iterator->snd_high_pwr = 0;
 
@@ -67,12 +68,10 @@ int8_t get_snd_pwr() {
 
     int8_t snd_high_pwr = snd_pwr_iterator->snd_high_pwr;
 
-    free(snd_pwr_iterator);
-
     return snd_high_pwr;
 }
 
-int get_time_msec() {
+uint64_t get_time_msec() {
     struct timeval tval;
     if (gettimeofday(&tval, NULL) != 0) {
         log_error("Get time returned an error: %s", strerror(errno));
@@ -81,31 +80,19 @@ int get_time_msec() {
 }
 
 bool already_child(mac_addr_t potential_child_addr) {
-    child_t child = {0x0};
-    char key[18] = {0x0};
+    char key[HASHMAP_KEY_SIZE] = {0x0};
     prepare_key(potential_child_addr, key);
-    if (hashmap_get(self.children, key, (any_t *) &child) == MAP_OK) {
+    child_t *tmp_child = hashmap_get(self.children, key, HASHMAP_KEY_SIZE);
+    if (tmp_child != NULL) {
         return true;
     }
 
     return false;
 }
 
-uint32_t gen_tree_id(mac_addr_t laddr) {
-    unsigned char *str = malloc(10);
-
-    time_t cur_time = time(NULL);
-    memcpy(str, laddr, 6);
-    memcpy(str + 6, &cur_time, 4);
-
-    uint32_t hash = 5381;
-    int c;
-
-    while ((c = *str++)) {
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    }
-
-    return hash;
+uint32_t gen_tree_id() {
+    // TODO: seed for random numbger generator
+    return rand() % (UINT32_MAX + 1);
 }
 
 bool set_max_tx_pwr() {
@@ -232,7 +219,7 @@ void hexdump(const void *buf, size_t size) {
 }
 
 char *mac_to_str(mac_addr_t addr) {
-    size_t res_size = sizeof(char) * 18;
+    size_t res_size = sizeof(char) * HASHMAP_KEY_SIZE;
     char *mac_str = malloc(res_size);
     snprintf(mac_str, res_size, "%02x:%02x:%02x:%02x:%02x:%02x",
              addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
@@ -241,7 +228,7 @@ char *mac_to_str(mac_addr_t addr) {
 }
 
 void prepare_key(mac_addr_t addr, char *res) {
-    snprintf(res, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
+    snprintf(res, HASHMAP_KEY_SIZE, "%02x:%02x:%02x:%02x:%02x:%02x",
              addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
 }
 
