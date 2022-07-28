@@ -75,8 +75,9 @@ def parse_node(
     for line in f:
         try:
             parsed_line = parse_line(line)
-        except (AttributeError, KeyError):
-            return None, 0
+        except (AttributeError, KeyError) as e:
+            print(f"{line}, {e}, {node_id}")
+            continue
 
         if not parsed_line:
             continue
@@ -205,13 +206,13 @@ def parse_experiment(
         with open(file, "r") as f:
             events, switches = parse_node(f, node_id=node_id, config=config)
             if events is None:
-                print(experiment_path)
+                print("No events available")
                 continue
 
-            print(
-                f"Node {node_id} switched parents {switches} times",
-                flush=True,
-            )
+            # print(
+            #     f"Node {node_id} switched parents {switches} times",
+            #     flush=True,
+            # )
 
             all_events += events
 
