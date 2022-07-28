@@ -108,6 +108,7 @@ def run(conf, repeat):
     pending_timeout = f"--pending_timeout={conf['pending_timeout']}"
     source_retransmit_payload = f"--retransmit_timeout={conf['source_retransmit_payload']}"
     unchanged_counter = f"--unchanged_counter={conf['unchanged_counter']}"
+    tx_pwr_threshold = f"--tx_pwr_threshold={conf['tx_pwr_threshold']}"
     omit_roll_back = "--omit_roll_back" if conf['omit_roll_back'] else ""
 
     iface = "$(grep -l b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
@@ -194,24 +195,26 @@ if __name__ == "__main__":
                             for unchanged_counter in experiment_config["unchanged_counter"]:
                                 for omit_roll_back in experiment_config["omit_roll_back"]:
                                     for iteration in range(experiment_config["iterations"]):
-                                        for source_id in conf["SOURCE"]["id"]:
-                                            current_conf = {
-                                                "payload_size": payload_size,
-                                                "flood": flood,
-                                                "poll_timeout": poll_timeout,
-                                                "discovery_bcast_interval": discovery_bcast_interval,
-                                                "pending_timeout": pending_timeout,
-                                                "source_retransmit_payload": source_retransmit_payload,
-                                                "unchanged_counter": unchanged_counter,
-                                                "omit_roll_back": omit_roll_back,
-                                                "experiment_duration": experiment_duration,
-                                                "retry": retry,
-                                                "iteration": iteration,
-                                                "node_filter": node_filter,
-                                                "source_id": source_id,
-                                            }
-                                            print(f"# Running iteration {iteration + 1} of configuration {current_conf}")
-                                            run(
-                                                current_conf,
-                                                args.repeat
-                                            )
+                                        for tx_pwr_threshold in experiment_config["tx_pwr_threshold"]:
+                                            for source_id in conf["SOURCE"]["id"]:
+                                                current_conf = {
+                                                    "payload_size": payload_size,
+                                                    "flood": flood,
+                                                    "poll_timeout": poll_timeout,
+                                                    "discovery_bcast_interval": discovery_bcast_interval,
+                                                    "pending_timeout": pending_timeout,
+                                                    "source_retransmit_payload": source_retransmit_payload,
+                                                    "unchanged_counter": unchanged_counter,
+                                                    "omit_roll_back": omit_roll_back,
+                                                    "experiment_duration": experiment_duration,
+                                                    "retry": retry,
+                                                    "iteration": iteration,
+                                                    "node_filter": node_filter,
+                                                    "source_id": source_id,
+                                                    "tx_pwr_threshold": tx_pwr_threshold,
+                                                }
+                                                print(f"# Running iteration {iteration + 1} of configuration {current_conf}")
+                                                run(
+                                                    current_conf,
+                                                    args.repeat
+                                                )
