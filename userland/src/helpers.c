@@ -32,7 +32,7 @@ int hashmap_child_fin(void *const context, void *const value) {
     log_debug("Game fin status. [addr: %s, game_fin: %s]", mac_to_str(tmp_child->addr),
               tmp_child->game_fin ? "true" : "false");
 
-    return tmp_child->game_fin ? 0 : -1;
+    return tmp_child->game_fin ? true : false;
 }
 
 bool all_children_fin() {
