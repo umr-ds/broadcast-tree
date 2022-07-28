@@ -119,8 +119,8 @@ def run(conf, repeat):
         f'bash -c -i -l "nohup btp --log_level=2'
         f" {{0}}"
         f" {flood} {omit_roll_back} {unchanged_counter}"
-        f" {poll_timeout} {discovery_bcast_interval} {pending_timeout} {source_retransmit_payload}"
-        f' --log_file={{1}} {iface} > /dev/null 2> {{1}}.err &"'
+        f" {poll_timeout} {discovery_bcast_interval} {pending_timeout} {source_retransmit_payload} {tx_pwr_threshold}"
+        f' --log_file={{1}} {iface} &"'
     )
 
     print("# -> Stopping potential zombie BTP processes")
