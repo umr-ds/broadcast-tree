@@ -92,7 +92,8 @@ bool already_child(mac_addr_t potential_child_addr) {
 
 uint32_t gen_tree_id() {
     // TODO: seed for random numbger generator
-    return rand() % (UINT32_MAX + 1);
+    srand(time(0));
+    return rand() % UINT32_MAX;
 }
 
 bool set_max_tx_pwr() {
