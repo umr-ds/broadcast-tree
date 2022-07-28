@@ -160,6 +160,9 @@ def run(conf, repeat):
     with open(f"{os.getcwd()}/results/{experiment_time}/config", "w") as conf_file:
         toml.dump(conf, conf_file)
 
+    source.run_command(f"rm -rf {logfile_path_base}")
+    client_nodes.run_command("rm /root/btp*")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
