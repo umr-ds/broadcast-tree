@@ -176,8 +176,8 @@ void send_payload(void) {
 
     eth_btp_payload_t payload_frame = {0x0};
     payload_frame.btp_frame = payload_base;
-    payload_frame.payload_len = file_stats.st_size;
-    payload_frame.ttl = MAX_TTL;
+    payload_frame.payload_header.payload_len = file_stats.st_size;
+    payload_frame.payload_header.ttl = MAX_TTL;
 
     log_debug("Starting chunking file for transfer.");
     while (bytes_read > 0) {
@@ -188,17 +188,17 @@ void send_payload(void) {
 
         if (bytes_read == 0) {
             log_debug("Done reading file.");
+            break;
+        }
+
+        payload_frame.payload_header.payload_chunk_len = bytes_read;
+        payload_frame.payload_header.seq_num = seq_num++;
+
+        if (send_btp_frame((uint8_t *) &payload_frame, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_header.payload_chunk_len, self.high_pwr) < 0) {
             return;
         }
 
-        payload_frame.payload_chunk_len = bytes_read;
-        payload_frame.seq_num = seq_num++;
-
-        if (send_btp_frame((uint8_t *) &payload_frame, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_chunk_len, self.high_pwr) < 0) {
-            return;
-        }
-
-        log_debug("Successfully sent next chunk. [bytes_read: %i, seq_num: %i, tx_pwr: %i, data_len: %u]", bytes_read, payload_frame.seq_num, self.high_pwr, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_chunk_len);
+        log_debug("Successfully sent next chunk. [bytes_read: %i, seq_num: %i, tx_pwr: %i, data_len: %u]", bytes_read, payload_frame.payload_header.seq_num, self.high_pwr, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_header.payload_chunk_len);
     }
 
     log_info("Completely sent file.");
@@ -827,16 +827,16 @@ void forward_payload(eth_radio_btp_payload_t *in_frame) {
 
     eth_btp_payload_t out_frame = {0x0};
     out_frame.btp_frame = base_frame;
-    out_frame.seq_num = in_frame->seq_num;
-    out_frame.payload_len = in_frame->payload_len;
-    out_frame.payload_chunk_len = in_frame->payload_chunk_len;
-    out_frame.ttl = in_frame->ttl - 1;
-    memcpy(out_frame.payload, in_frame->payload, in_frame->payload_chunk_len);
+    out_frame.payload_header.seq_num = in_frame->payload_header.seq_num;
+    out_frame.payload_header.payload_len = in_frame->payload_header.payload_len;
+    out_frame.payload_header.payload_chunk_len = in_frame->payload_header.payload_chunk_len;
+    out_frame.payload_header.ttl = in_frame->payload_header.ttl - 1;
+    memcpy(out_frame.payload, in_frame->payload, in_frame->payload_header.payload_chunk_len);
 
-    if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len, self.high_pwr) < 0) {
-        log_warn("Could not forward payload. [seq num: %i]", out_frame.seq_num);
+    if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_header.payload_chunk_len, self.high_pwr) < 0) {
+        log_warn("Could not forward payload. [seq num: %i]", out_frame.payload_header.seq_num);
     } else {
-        log_info("Successfully forwarded payload. [seq num: %i, ttl: %u, tx_pwr: %i, data_len: %u]", out_frame.seq_num, out_frame.ttl, self.high_pwr, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_chunk_len);
+        log_info("Successfully forwarded payload. [seq num: %i, ttl: %u, tx_pwr: %i, data_len: %u]", out_frame.payload_header.seq_num, out_frame.payload_header.ttl, self.high_pwr, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_header.payload_chunk_len);
     }
 }
 
@@ -852,8 +852,8 @@ void handle_data(uint8_t *recv_frame) {
         return;
     }
 
-    log_info("Received data frame. [payload size: %i, addr: %s, seq num: %i]", in_frame.payload_len,
-             mac_to_str(in_frame.btp_frame.eth.ether_shost), in_frame.seq_num);
+    log_info("Received data frame. [payload size: %i, addr: %s, seq num: %i]", in_frame.payload_header.payload_len,
+             mac_to_str(in_frame.btp_frame.eth.ether_shost), in_frame.payload_header.seq_num);
 
     // If we are the source, we do not want any payload.
     // However, we assume that the payload is possible completely sent, as we are
@@ -865,25 +865,25 @@ void handle_data(uint8_t *recv_frame) {
     }
 
     if (!payload_recv_buf) {
-        max_seq_num = (in_frame.payload_len / MAX_PAYLOAD) + 1;
-        payload_recv_buf = (uint8_t *) malloc(in_frame.payload_len);
+        max_seq_num = (in_frame.payload_header.payload_len / MAX_PAYLOAD) + 1;
+        payload_recv_buf = (uint8_t *) malloc(in_frame.payload_header.payload_len);
         seq_nums = (bool *) malloc(sizeof(bool) * max_seq_num);
         memset(seq_nums, 0, sizeof(bool) * max_seq_num);
-        log_debug("Initialized receive buffer stuff. [total payload size: %i]", in_frame.payload_len);
+        log_debug("Initialized receive buffer stuff. [total payload size: %i]", in_frame.payload_header.payload_len);
     }
 
-    if (!seq_nums[in_frame.seq_num]) {
-        uint16_t offset = in_frame.seq_num * MAX_PAYLOAD;
-        memcpy(payload_recv_buf + offset, in_frame.payload, in_frame.payload_chunk_len);
-        seq_nums[in_frame.seq_num] = true;
+    if (!seq_nums[in_frame.payload_header.seq_num]) {
+        uint16_t offset = in_frame.payload_header.seq_num * MAX_PAYLOAD;
+        memcpy(payload_recv_buf + offset, in_frame.payload, in_frame.payload_header.payload_chunk_len);
+        seq_nums[in_frame.payload_header.seq_num] = true;
         seq_num_cnt++;
-        log_debug("Wrote payload chunk. [chunk size: %i, seq num: %i]", in_frame.payload_chunk_len, in_frame.seq_num);
+        log_debug("Wrote payload chunk. [chunk size: %i, seq num: %i]", in_frame.payload_header.payload_chunk_len, in_frame.payload_header.seq_num);
 
     }
 
     if (!payload_complete && seq_num_cnt >= max_seq_num) {
         int out_fd;
-        int written_bytes;
+        int64_t written_bytes;
         char tmp_fname[] = "btp_result_XXXXXX";
 
         if ((out_fd = mkstemp(tmp_fname)) < 0) {
@@ -891,8 +891,8 @@ void handle_data(uint8_t *recv_frame) {
             return;
         }
 
-        if ((written_bytes = write(out_fd, payload_recv_buf, in_frame.payload_len)) != in_frame.payload_len) {
-            log_warn("Wrote too few bytes. [written: %i, expected: %i]", written_bytes, in_frame.payload_len);
+        if ((written_bytes = write(out_fd, payload_recv_buf, in_frame.payload_header.payload_len)) != in_frame.payload_header.payload_len) {
+            log_warn("Wrote too few bytes. [written: %i, expected: %i]", written_bytes, in_frame.payload_header.payload_len);
         }
 
         log_info("Received entire payload. [file path: %s]", tmp_fname);
@@ -900,12 +900,12 @@ void handle_data(uint8_t *recv_frame) {
         payload_complete = true;
     }
 
-    if (in_frame.ttl == 0) {
-        log_warn("Payload frame expired. [seq_num: %i]", in_frame.seq_num);
+    if (in_frame.payload_header.ttl == 0) {
+        log_warn("Payload frame expired. [seq_num: %i]", in_frame.payload_header.seq_num);
         return;
     }
     
-    if (hashmap_length(self.children) > 0 || flood) {
+    if (hashmap_num_entries(self.children) > 0 || flood) {
         forward_payload(&in_frame);
     }
 }

@@ -13,7 +13,7 @@
 
 #define MTU 1500
 #define BTP_HEADER_SIZE sizeof(eth_btp_t)
-#define BTP_PAYLOAD_HEADER_SIZE sizeof(uint16_t) * 3 + BTP_HEADER_SIZE
+#define BTP_PAYLOAD_HEADER_SIZE (sizeof(btp_payload_t) + BTP_HEADER_SIZE)
 #define MAX_PAYLOAD (MTU - (BTP_PAYLOAD_HEADER_SIZE))
 
 #define BTP_ETHERTYPE 35039
@@ -88,16 +88,20 @@ typedef struct {
     btp_header_t btp;
 } __attribute__((packed)) eth_btp_t;
 
+typedef struct {
+    uint16_t seq_num; // payload sequence number - separate from btp sequence number
+    uint32_t payload_len;
+    uint16_t payload_chunk_len;
+    uint8_t ttl;
+} __attribute__((packed)) btp_payload_t;
+
 /**
  * Payload frames are used to transmit payload data after the tree has been built
  * WITH RADIOTAP
  */
 typedef struct {
     eth_radio_btp_t btp_frame;
-    uint16_t seq_num; // payload sequence number - separate from btp sequence number
-    uint16_t payload_len;
-    uint16_t payload_chunk_len;
-    uint8_t ttl;
+    btp_payload_t payload_header;
     uint8_t payload[MAX_PAYLOAD];
 } __attribute__((packed)) eth_radio_btp_payload_t;
 
@@ -106,10 +110,7 @@ typedef struct {
  */
 typedef struct {
     eth_btp_t btp_frame;
-    uint16_t seq_num; // payload sequence number - separate from btp sequence number
-    uint16_t payload_len;
-    uint16_t payload_chunk_len;
-    uint8_t ttl;
+    btp_payload_t payload_header;
     uint8_t payload[MAX_PAYLOAD];
 } __attribute__((packed)) eth_btp_payload_t;
 
