@@ -24,7 +24,8 @@ bool flood;
 extern struct sockaddr_ll L_SOCKADDR;
 extern uint16_t pending_timeout_msec;
 extern uint16_t source_retransmit_payload_msec;
-uint8_t unchanged_counter;
+extern uint8_t tx_pwr_threshold;
+extern uint8_t unchanged_counter;
 
 ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr);
 int disconnect_child(void *const context, void *const value);
@@ -77,6 +78,8 @@ void clear_parent(parent_t *parent) {
 }
 
 ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
+    tx_pwr = (int8_t) (tx_pwr + tx_pwr_threshold > self.max_pwr ? self.max_pwr : tx_pwr + tx_pwr_threshold);
+
     for (uint8_t retries = 0; retries < 2; retries++) {
         if (set_tx_pwr(set_pwr(tx_pwr))) {
             break;

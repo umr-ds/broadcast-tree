@@ -29,6 +29,7 @@ extern bool flood;
 uint16_t pending_timeout_msec;
 uint16_t source_retransmit_payload_msec;
 uint8_t unchanged_counter;
+uint8_t tx_pwr_threshold;
 
 int init_sock(char *if_name, char *payload);
 
@@ -47,6 +48,7 @@ struct arguments {
     uint16_t pending_timeout_msec;
     uint16_t source_retransmit_payload_msec;
     uint8_t unchanged_counter;
+    uint8_t tx_pwr_threshold;
     bool omit_roll_back;
 };
 
@@ -64,6 +66,7 @@ static struct argp_option options[] = {
         {"broadcast_timeout",  'b', "msec",    0, "How often the discovery frames should be broadcasted",                                     1},
         {"pending_timeout",    't', "msec",    0, "How long to wait for potential parent to answer",                                          1},
         {"retransmit_timeout", 'r', "msec",    0, "How long to wait for retransmitting the payload from the source",                          1},
+        {"tx_pwr_threshold", 'x', "thresh", 0, "Add threshold to avoid setting tx power too low"},
 
         {"unchanged_counter",  'u', "number",  0, "How many rounds to wait until declaring game finished",                                    1},
         {"omit_roll_back",     'o', 0,         0, "Do not roll back tree after payload is completely received",                               1},
@@ -148,6 +151,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case 'u':
             arguments->unchanged_counter = (uint8_t) strtol(arg, NULL, 10);
             break;
+        case 'x':
+            arguments->tx_pwr_threshold = (uint8_t) strtol(arg, NULL, 10);
         case 'o':
             arguments->omit_roll_back = true;
             break;
@@ -313,6 +318,7 @@ int main(int argc, char **argv) {
             .pending_timeout_msec = 100,
             .source_retransmit_payload_msec = 100,
             .unchanged_counter = 5,
+            .tx_pwr_threshold = 0,
             .omit_roll_back = false,
     };
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
@@ -321,6 +327,7 @@ int main(int argc, char **argv) {
     pending_timeout_msec = arguments.pending_timeout_msec;
     source_retransmit_payload_msec = arguments.source_retransmit_payload_msec;
     unchanged_counter = arguments.unchanged_counter;
+    tx_pwr_threshold = arguments.tx_pwr_threshold;
 
     // Logging stuff
     if (arguments.log_level == 0) {
@@ -351,6 +358,7 @@ int main(int argc, char **argv) {
             "pending_timeout: %hu, "
             "retransmit_timeout: %hu, "
             "unchanged_counter: %hu, "
+            "tx_pwr_threshold: %hu, "
             "omit_roll_back: %s, "
             "interface: %s]",
             strnlen(arguments.payload, PATH_MAX) == 0 ? "-" : arguments.payload,
@@ -362,6 +370,7 @@ int main(int argc, char **argv) {
             arguments.pending_timeout_msec,
             arguments.source_retransmit_payload_msec,
             arguments.unchanged_counter,
+            arguments.tx_pwr_threshold,
             arguments.omit_roll_back ? "true" : "false",
             arguments.interface
     );
