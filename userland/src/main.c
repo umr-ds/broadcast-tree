@@ -217,6 +217,10 @@ int init_sock(char *if_name, char *payload) {
         }
     }
     self.max_pwr = max_tx_pwr;
+    if (flood) {
+        self.high_pwr = max_tx_pwr;
+        self.snd_high_pwr = max_tx_pwr;
+    }
     log_debug("Figured out max sending power. [max_power: %i]", max_tx_pwr);
 
     return tmp_sockfd;
