@@ -4,31 +4,31 @@ id = [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
 
 # ID of the source node
 [SOURCE]
-id = [ 0, 80 ]
+id = [ 0, 54, 80 ]
 
 # Experiement Settings
 [EXPERIMENTS]
 # Payload size (list if strings)
-payload_size = [ "1K", "16K" ]
+payload_size = [ "1K", "4k", "16K" ]
 # Whether to use maximum power or not (list of booleans)
 flood = [ false, true ]
 # Timeout for poll syscall (list of integers in ms)
-poll_timeout = [ 100, 1000 ]
+poll_timeout = [ 100 ]
 # How often to sent bcast frames (list of integers in ms)
-discovery_bcast_interval = [ 100, 1000 ]
+discovery_bcast_interval = [ 1000 ]
 # How long to wait until a parent is considered not responding (list of integers in ms)
-pending_timeout = [ 100, 1000 ]
+pending_timeout = [ 1000 ]
 # How often the source should re-transmit the payload (list of integers in ms)
-source_retransmit_payload = [ 100, 1000 ]
+source_retransmit_payload = [ 100 ]
 # How many rounds to wait until a node finished its game (list of integers)
-unchanged_counter = [ 5, 25 ]
+unchanged_counter = [ 5, 15, 25 ]
 # Whether the tree should be rolled back after successful payload distribution (list of booleans)
 omit_roll_back = [ true ]
 # How much tx power threshold too add for sending frames
-tx_pwr_threshold = [ 0, 5, 15 ]
+tx_pwr_threshold = [ 0 ]
 
 # How often a experiment configuration should be repeated
-iterations = 1
+iterations = 5
 # Timeout for hard killing an experiment
 experiment_duration = 60
 # How often to retry on failure

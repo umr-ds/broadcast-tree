@@ -140,6 +140,8 @@ def run(conf, repeat):
     print("# -> Starting experiment")
     source_logfile_path = f"{logfile_path_base}/source_$(hostname).log"
 
+    time.sleep(20)
+
     source.run_command(
         btp_cmd_common.format("--source=source.file", source_logfile_path)
     )
