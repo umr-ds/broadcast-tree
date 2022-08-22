@@ -151,14 +151,17 @@ def parse_node(
             "arguments" in parsed_line
             and "tx_pwr" in parsed_line["arguments"]
         ):
-            event = {
-                "event": "send",
-                "timestamp": parsed_line["timestamp"],
-                "node_id": node_id,
-                "message": parsed_line["message"],
-                "tx_pwr": parsed_line["arguments"]["tx_pwr"],
-                "data_len": parsed_line["arguments"]["data_len"],
-            }
+            try:
+                event = {
+                    "event": "send",
+                    "timestamp": parsed_line["timestamp"],
+                    "node_id": node_id,
+                    "message": parsed_line["message"],
+                    "tx_pwr": parsed_line["arguments"]["tx_pwr"],
+                    "data_len": parsed_line["arguments"]["data_len"],
+                }
+            except KeyError:
+                print(line)
 
         if event:
             events.append(event | config)
