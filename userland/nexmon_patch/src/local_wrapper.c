@@ -52,6 +52,31 @@
     #define AT(CHIPVER, FWVER, ADDR)
 #endif
 
+AT(CHIP_VER_BCM43430a1, FW_VER_ALL, 0x8467C0)
+void
+local_wlc_bmac_write_shm(void *wlc_hw, unsigned int offset, unsigned short v)
+VOID_DUMMY
+
+AT(CHIP_VER_BCM43430a1, FW_VER_ALL, 0x48570)
+int
+wlc_pcb_fn_set(void *pcbi, int tbl, int cls,  void (*pcb)(struct wlc_info *wlc, void *pkt, uint txs))
+RETURN_DUMMY
+
+AT(CHIP_VER_BCM43430a1, FW_VER_ALL, 0x42FE8)
+int
+wlc_attach_cb_init(void *wlc)
+RETURN_DUMMY
+
+AT(CHIP_VER_BCM43430a1, FW_VER_ALL, 0x845080)
+uint32
+wlc_bmac_cca_read_counter(void * wlc_hw, int lo_off, int hi_off)
+RETURN_DUMMY
+
+AT(CHIP_VER_BCM43430a1, FW_VER_ALL, 0x845C64)
+int
+local_wlc_bmac_read_shm(void *wlc_hw, unsigned int offset)
+RETURN_DUMMY
+
 AT(CHIP_VER_BCM43430a1, FW_VER_ALL, 0x880b50)
 AT(CHIP_VER_BCM43455c0, FW_VER_ALL, 0x9BE0C)
 int
