@@ -63,7 +63,7 @@ wlc_btp_stats_read(struct wlc_hw_info *wlc_hw, struct btp_stats *stats)
     stats->nopkt = wlc_bmac_cca_read_counter(wlc_hw, M_CCA_NOPKT_L, M_CCA_NOPKT_H);
 
     stats->txopp = wlc_bmac_cca_read_counter(wlc_hw, M_CCA_TXOP_L, M_CCA_TXOP_H);
-    stats->slot_time_txop = (uint32)R_REG(wlc_hw->osh, &wlc_hw->regs->ifs_slot);
+    stats->slot_time_txop = (uint32)R_REG(wlc_hw->wlc->osh, &wlc_hw->regs->ifs_slot);
     stats->gdtxdur = wlc_bmac_cca_read_counter(wlc_hw, M_CCA_GDTXDUR_L, M_CCA_GDTXDUR_H);
     stats->bdtxdur = wlc_bmac_cca_read_counter(wlc_hw, M_CCA_BDTXDUR_L, M_CCA_BDTXDUR_H);
     stats->rxdur = stats->ibss + stats->obss + stats->noctg + stats->nopkt;
@@ -136,10 +136,23 @@ wlc_btp_stats_clear(struct wlc_hw_info *wlc_hw)
 int
 wl_send_hook(void *src, void *dev, void *lb)
 {
-    struct hndrte_dev *devs = (struct hndrte_dev *)dev;
-    struct wl_info *wl = (struct wl_info *)devs->softc;
-    *(uint8 *)(lb + 30) = (*(uint8 *)(lb + 30) & 0xF0) | 4; // WLF2_PCB1_REG
-    //wlc_btp_stats_clear(wl->wlc_hw);
+    struct sk_buff *p = (struct sk_buff *) lb;
+
+    if (p == 0 || p->data == 0) {
+        return wl_send(src, dev, p);
+    }
+
+    struct ethernet_header *out_frame = (struct ethernet_header*) p->data;
+
+    // In this case the user space or kernel is communicating with the Wi-Fi firmware.
+    if (out_frame->type == ntohs(35039)) {
+        struct hndrte_dev *devs = (struct hndrte_dev *)dev;
+        struct wl_info *wl = (struct wl_info *)devs->softc;
+        *(uint8 *)(lb + 30) = (*(uint8 *)(lb + 30) & 0xF0) | 4; // WLF2_PCB1_REG
+        //wlc_btp_stats_clear(wl->wlc_hw);
+        return wl_send(src, dev, lb);
+    }
+
     return wl_send(src, dev, lb);
 }
 __attribute__((at(0x39674, "", CHIP_VER_BCM43430a1, FW_VER_7_45_41_46)))
