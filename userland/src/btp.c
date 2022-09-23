@@ -1,6 +1,7 @@
 #include <iwlib.h>
 #include <sys/stat.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "log.h"
 #include "btp.h"
@@ -77,6 +78,7 @@ void clear_parent(parent_t *parent) {
     *parent = new_parent;
 }
 
+uint64_t last_frame_sent = 0;
 ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
     tx_pwr = (int8_t) (tx_pwr + tx_pwr_threshold > self.max_pwr ? self.max_pwr : tx_pwr + tx_pwr_threshold);
 
@@ -87,8 +89,21 @@ ssize_t send_btp_frame(uint8_t *buf, size_t data_len, int8_t tx_pwr) {
         log_warn("Retrying to set tx power. [retry: %u]", retries);
     }
 
-    ssize_t sent_bytes = sendto(self.sockfd, buf, data_len, 0, (struct sockaddr *) &L_SOCKADDR,
+    uint64_t cur_time = get_time_msec();
+    uint64_t timeout = 0;
+
+    if (cur_time - last_frame_sent < SENDING_TIMEOUT) {
+        timeout = SENDING_TIMEOUT - (cur_time - last_frame_sent);
+        log_debug("Have to wait. [timeout: %llu]", timeout);
+
+        usleep(timeout * 1000);
+    }
+
+    ssize_t sent_bytes = sendto(self.sockfd, buf, data_len, 0, (struct sockaddr *)&L_SOCKADDR,
                                 sizeof(struct sockaddr_ll));
+
+    last_frame_sent = get_time_msec();
+
     if (sent_bytes < 0) {
         log_error("Could not send data. [error: %s]", strerror(errno));
     }
@@ -907,7 +922,7 @@ void handle_data(uint8_t *recv_frame) {
         log_warn("Payload frame expired. [seq_num: %i]", in_frame.payload_header.seq_num);
         return;
     }
-    
+
     if (hashmap_num_entries(self.children) > 0 || flood) {
         forward_payload(&in_frame);
     }

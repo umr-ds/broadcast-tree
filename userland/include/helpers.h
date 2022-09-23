@@ -5,18 +5,20 @@
 
 #include "btp.h"
 
+#define SENDING_TIMEOUT 20
+
 uint64_t get_time_msec(void);
 
 /**
  * Generate a (hopefully unique) id for a new braodcast tree.
  * This is done running the source node's mac address together with the current timestamp through a very simple hashing function.
- * 
+ *
  * @param laddr: MAC address of the source node of the new tree
  */
 uint32_t gen_tree_id(void);
 
 /**
- * 
+ *
  */
 void hexdump(const void *buf, size_t size);
 
