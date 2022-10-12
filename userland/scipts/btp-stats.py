@@ -41,43 +41,46 @@ laststats = [0] * 23
 counter = 0
 
 
-def print_stats(data, lock, cnt):
+def print_stats(data, lock, log_file):
     with lock:
         global counter
-        print("stats frame:", cnt)
+        log_file.write("stats frame: %d\n" % counter)
         counter += 1
         j = 0
         for i in struct.iter_unpack("<I", data):
             i = i[0]
             delta = i - laststats[j]
             laststats[j] = i
-            print("%35s %12d (diff %12d)" % (labels[j], i, delta))
+            log_file.write("%35s %12d (diff %12d)\n" % (labels[j], i, delta))
             j = j + 1
-        print("---------------------------------------")
+        log_file.write("---------------------------------------\n")
         exit()
 
 
 stop_listener = False
 
 
-def listen():
+def listen(log_file):
     lock = threading.Lock()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((UDP_IP, UDP_PORT))
-    print("* listening on " + UDP_IP + ":" + str(UDP_PORT))
     global stop_listener
     global counter
+
     while True:
         data, addr = sock.recvfrom(1024)
         if stop_listener:
             sock.close()
             exit()
-        plotter = threading.Thread(target=print_stats, args=(data, lock, counter))
+        plotter = threading.Thread(target=print_stats, args=(data, lock, log_file))
         plotter.start()
 
 
 def main():
-    listener = threading.Thread(target=listen)
+
+    log_file = open(sys.argv[1], "a+")
+
+    listener = threading.Thread(target=listen, args=(log_file,))
     listener.deamon = True
     listener.start()
     try:
