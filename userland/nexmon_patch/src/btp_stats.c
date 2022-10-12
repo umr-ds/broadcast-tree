@@ -34,22 +34,22 @@
 
 #pragma NEXMON targetregion "patch"
 
-#include <firmware_version.h>   // definition of firmware version macros
-#include <debug.h>              // contains macros to access the debug hardware
-#include <wrapper.h>            // wrapper definitions for functions that already exist in the firmware
-#include <structs.h>            // structures that are used by the code in the firmware
-#include <helper.h>             // useful helper functions
-#include <patcher.h>            // macros used to craete patches such as BLPatch, BPatch, ...
-#include <rates.h>              // rates used to build the ratespec for frame injection
-#include <nexioctls.h>          // ioctls added in the nexmon patch
-#include <capabilities.h>       // capabilities included in a nexmon patch
+#include <firmware_version.h> // definition of firmware version macros
+#include <debug.h>            // contains macros to access the debug hardware
+#include <wrapper.h>          // wrapper definitions for functions that already exist in the firmware
+#include <structs.h>          // structures that are used by the code in the firmware
+#include <helper.h>           // useful helper functions
+#include <patcher.h>          // macros used to craete patches such as BLPatch, BPatch, ...
+#include <rates.h>            // rates used to build the ratespec for frame injection
+#include <nexioctls.h>        // ioctls added in the nexmon patch
+#include <capabilities.h>     // capabilities included in a nexmon patch
+#include <udptunnel.h>
 #include "btp_stats.h"
 #include "local_wrapper.h"
 
 extern void prepend_ethernet_ipv4_udp_header(struct sk_buff *p);
 
-int
-wlc_btp_stats_read(struct wlc_hw_info *wlc_hw, struct btp_stats *stats)
+int wlc_btp_stats_read(struct wlc_hw_info *wlc_hw, struct btp_stats *stats)
 {
     /* check wlc_hw->cca_shm_base, if not initialized == -1 */
     uint32 *wlc_hw_uint32 = (uint32 *)wlc_hw;
@@ -84,15 +84,13 @@ wlc_btp_stats_read(struct wlc_hw_info *wlc_hw, struct btp_stats *stats)
     return 0;
 }
 
-void
-wlc_bmac_clear_counter(struct wlc_hw_info *wlc_hw, uint baseaddr, int lo_off, int hi_off)
+void wlc_bmac_clear_counter(struct wlc_hw_info *wlc_hw, uint baseaddr, int lo_off, int hi_off)
 {
     local_wlc_bmac_write_shm(wlc_hw, baseaddr + hi_off, 0);
     local_wlc_bmac_write_shm(wlc_hw, baseaddr + lo_off, 0);
 }
 
-void
-wlc_bmac_cca_clear_counter(struct wlc_hw_info *wlc_hw, int lo_off, int hi_off)
+void wlc_bmac_cca_clear_counter(struct wlc_hw_info *wlc_hw, int lo_off, int hi_off)
 {
     uint32 *wlc_hw_uint32 = (uint32 *)wlc_hw;
     if (wlc_hw_uint32[74] != M_CCA_STATS_BLK_PRE40)
@@ -100,8 +98,7 @@ wlc_bmac_cca_clear_counter(struct wlc_hw_info *wlc_hw, int lo_off, int hi_off)
     wlc_bmac_clear_counter(wlc_hw, wlc_hw_uint32[74], lo_off, hi_off);
 }
 
-int
-wlc_btp_stats_clear(struct wlc_hw_info *wlc_hw)
+int wlc_btp_stats_clear(struct wlc_hw_info *wlc_hw)
 {
     uint32 *wlc_hw_uint32 = (uint32 *)wlc_hw;
     if (wlc_hw_uint32[74] != M_CCA_STATS_BLK_PRE40)
@@ -133,23 +130,24 @@ wlc_btp_stats_clear(struct wlc_hw_info *wlc_hw)
 }
 
 /* tag all packets from host with callback */
-int
-wl_send_hook(void *src, void *dev, void *lb)
+int wl_send_hook(void *src, void *dev, void *lb)
 {
-    struct sk_buff *p = (struct sk_buff *) lb;
+    struct sk_buff *p = (struct sk_buff *)lb;
 
-    if (p == 0 || p->data == 0) {
+    if (p == 0 || p->data == 0)
+    {
         return wl_send(src, dev, p);
     }
 
-    struct ethernet_header *out_frame = (struct ethernet_header*) p->data;
+    struct ethernet_header *out_frame = (struct ethernet_header *)p->data;
 
-    // In this case the user space or kernel is communicating with the Wi-Fi firmware.
-    if (out_frame->type == ntohs(35039)) {
+    if (out_frame->type == ntohs(35039))
+    {
         struct hndrte_dev *devs = (struct hndrte_dev *)dev;
         struct wl_info *wl = (struct wl_info *)devs->softc;
         *(uint8 *)(lb + 30) = (*(uint8 *)(lb + 30) & 0xF0) | 4; // WLF2_PCB1_REG
-        //wlc_btp_stats_clear(wl->wlc_hw);
+        wlc_btp_stats_clear(wl->wlc_hw);
+
         return wl_send(src, dev, lb);
     }
 
@@ -158,22 +156,23 @@ wl_send_hook(void *src, void *dev, void *lb)
 __attribute__((at(0x39674, "", CHIP_VER_BCM43430a1, FW_VER_7_45_41_46)))
 GenericPatch4(wl_send_hook, wl_send_hook + 1)
 
-/* callback */
-void
-wlc_btp_complete(struct wlc_info *wlc, void *pkt, uint txstatus)
+    /* callback */
+    void wlc_btp_complete(struct wlc_info *wlc, void *pkt, uint txstatus)
 {
-    if (!(txstatus & TX_STATUS_VALID))
-        return;
     struct sk_buff *p_stats = pkt_buf_get_skb(wlc->osh, sizeof(struct stats_udp_frame));
-    struct stats_udp_frame *udpfrm = (struct stats_udp_frame *) p_stats->data;
+    struct stats_udp_frame *udpfrm = (struct stats_udp_frame *)p_stats->data;
     wlc_btp_stats_read(wlc->hw, &udpfrm->stats);
+
+    struct sk_buff *p = (struct sk_buff *)pkt;
+    uint16 *frm_id = (uint16 *)(p->data + 164);
+    udpfrm->frm_id = (uint32)*frm_id;
+
     skb_pull(p_stats, sizeof(struct ethernet_ip_udp_header));
     prepend_ethernet_ipv4_udp_header(p_stats);
     wlc->wl->dev->chained->funcs->xmit(wlc->wl->dev, wlc->wl->dev->chained, p_stats);
 }
 
-int
-wlc_attach_cb_init_hook(struct wlc_info *wlc)
+int wlc_attach_cb_init_hook(struct wlc_info *wlc)
 {
     int ret = wlc_attach_cb_init(wlc);
     uint32 *wlcv = (uint32 *)wlc;

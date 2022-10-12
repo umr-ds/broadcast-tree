@@ -194,6 +194,7 @@ struct btp_stats {
 struct stats_udp_frame {
     struct ethernet_ip_udp_header hdrs;
     struct btp_stats stats;
+    uint32 frm_id;
 } __attribute__((packed));
 
 #endif /* BTP_STATS_H */
