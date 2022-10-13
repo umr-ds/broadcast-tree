@@ -5,8 +5,6 @@
 
 #include "btp.h"
 
-#define SENDING_TIMEOUT 20
-
 uint64_t get_time_msec(void);
 
 /**
