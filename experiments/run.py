@@ -70,13 +70,13 @@ def run(conf, repeat):
     source_node = client.get_nodes_by_filter(**{"id": [source_id]})[0]
 
     if not fix_testbed(client_nodes, source_node):
-        print(f"# -> Some nodes were down. Retrying ({retry}) times.")
+        print(f"# -> Some nodes were down. Retrying {conf['retry']} times.")
         time.sleep(30)
         conf["retry"] -= 1
         run(conf, repeat)
         return
 
-    if retry == 0:
+    if conf["retry"] == 0:
         print("# -> Could not boot all nodes. Stopping.")
         return
 
@@ -93,16 +93,23 @@ def run(conf, repeat):
     )
     source.run_command(f"mkdir {logfile_path_base}")
 
-    print("# -> Preparing hosts for PSSH")
+    print("# -> Preparing clients for PSSH")
     pssh_nodes = [f"172.23.42.{node.id + 100}" for node in client_nodes]
 
     client_nodes = ParallelSSHClient(
         pssh_nodes, user="root", password="raspberry", allow_agent=False
     )
 
+    print("# -> Stopping potential zombie BTP processes")
+    source.run_command("pkill -9 btp")
+    client_nodes.run_command("pkill -9 btp")
+
+    print("# -> Starting BTP stats logging")
+    source.run_command(f'bash -c -i -l "nohup btp-stats.py {logfile_path_base}/source_$(hostname).stats > {logfile_path_base}/source_$(hostname).stats_err 2>&1 &"')
+    client_nodes.run_command(f'bash -c -i -l "nohup btp-stats.py {logfile_path_base}/$(hostname).stats > {logfile_path_base}/$(hostname).stats_err 2>&1 &"')
+
     print("# -> Starting client nodes")
     flood = "--flood" if conf['flood'] else ""
-
     poll_timeout = f"--poll_timeout={conf['poll_timeout']}"
     discovery_bcast_interval = f"--broadcast_timeout={conf['discovery_bcast_interval']}"
     pending_timeout = f"--pending_timeout={conf['pending_timeout']}"
@@ -110,9 +117,7 @@ def run(conf, repeat):
     unchanged_counter = f"--unchanged_counter={conf['unchanged_counter']}"
     tx_pwr_threshold = f"--tx_pwr_threshold={conf['tx_pwr_threshold']}"
     omit_roll_back = "--omit_roll_back" if conf['omit_roll_back'] else ""
-
     iface = "$(grep -l b8:27 /sys/class/net/wlan*/address | cut -d'/' -f5)"
-
     client_logfile_path = f"{logfile_path_base}/$(hostname).log"
     source_logfile_path = f"{logfile_path_base}/source_$(hostname).log"
 
@@ -124,10 +129,6 @@ def run(conf, repeat):
         f' --log_file={{1}} {iface} &"'
     )
 
-    print("# -> Stopping potential zombie BTP processes")
-    source.run_command("pkill -9 btp")
-    client_nodes.run_command("pkill -9 btp")
-
     client_output = client_nodes.run_command(
         btp_cmd_common.format("", client_logfile_path)
     )
@@ -138,8 +139,6 @@ def run(conf, repeat):
     source.run_command(f"dd bs={conf['payload_size']} count=1 </dev/urandom > source.file")
 
     print("# -> Starting experiment")
-    source_logfile_path = f"{logfile_path_base}/source_$(hostname).log"
-
     time.sleep(20)
 
     source.run_command(
@@ -148,6 +147,10 @@ def run(conf, repeat):
 
     print("# -> Waiting for experiment to finish")
     time.sleep(conf['experiment_duration'])
+
+    print("# -> Stopping BTP stats on all nodes")
+    source.run_command("pkill --signal SIGKILL btp-stats.py")
+    client_nodes.run_command("pkill --signal SIGKILL btp-stats.py")
 
     print("# -> Stopping BTP on all nodes")
     source.run_command("pkill --signal SIGINT btp")

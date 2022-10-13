@@ -35,6 +35,10 @@ WORKDIR /broadcast-tree/btp
 RUN make
 RUN install -D -m 755 btp /usr/local/bin/btp
 
+# Step 6: Install BTP stats
+WORKDIR /broadcast-tree/btp/scipts
+RUN install -D -m 755 btp-stats.py /usr/local/bin/btp-stats.py
+
 # Step 6: Install the firstboot stuff and r/w overlay script
 INSTALL /root/firstboot.sh /bin/firstboot.sh
 RUN bash -c 'chmod +x /bin/firstboot.sh'
