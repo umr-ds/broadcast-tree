@@ -1,3 +1,6 @@
 [submodule "nexmon"]
 	path = nexmon
 	url = https://github.com/seemoo-lab/nexmon.git
+[submodule "userland"]
+	path = userland
+	url = git@github.com:umr-ds/broadcast-tree-protocol.git
