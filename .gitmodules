@@ -4,3 +4,6 @@
 [submodule "userland"]
 	path = userland
 	url = git@github.com:umr-ds/broadcast-tree-protocol.git
+[submodule "ns-3/btp"]
+	path = ns-3/btp
+	url = git@github.com:umr-ds/broadcast-tree-ns3.git
