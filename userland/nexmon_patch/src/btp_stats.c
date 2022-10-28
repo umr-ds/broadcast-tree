@@ -132,40 +132,36 @@ int wlc_btp_stats_clear(struct wlc_hw_info *wlc_hw)
 /* tag all packets from host with callback */
 int wl_send_hook(void *src, void *dev, void *lb)
 {
-    struct sk_buff *p = (struct sk_buff *)lb;
+    // struct sk_buff *p = (struct sk_buff *)lb;
 
-    if (p == 0 || p->data == 0)
-    {
-        return wl_send(src, dev, p);
-    }
+    // if (p == 0 || p->data == 0)
+    // {
+    //     return wl_send(src, dev, p);
+    // }
 
-    struct ethernet_header *out_frame = (struct ethernet_header *)p->data;
+    // struct ethernet_header *out_frame = (struct ethernet_header *)p->data;
 
-    if (out_frame->type == ntohs(35039))
-    {
-        struct hndrte_dev *devs = (struct hndrte_dev *)dev;
-        struct wl_info *wl = (struct wl_info *)devs->softc;
-        *(uint8 *)(lb + 30) = (*(uint8 *)(lb + 30) & 0xF0) | 4; // WLF2_PCB1_REG
-        wlc_btp_stats_clear(wl->wlc_hw);
+    // if (out_frame->type == ntohs(35039))
+    // {
+    //     struct hndrte_dev *devs = (struct hndrte_dev *)dev;
+    //     struct wl_info *wl = (struct wl_info *)devs->softc;
+    //     *(uint8 *)(lb + 30) = (*(uint8 *)(lb + 30) & 0xF0) | 4; // WLF2_PCB1_REG
+    //     wlc_btp_stats_clear(wl->wlc_hw);
 
-        return wl_send(src, dev, lb);
-    }
+    //     return wl_send(src, dev, lb);
+    // }
 
     return wl_send(src, dev, lb);
 }
 __attribute__((at(0x39674, "", CHIP_VER_BCM43430a1, FW_VER_7_45_41_46)))
 GenericPatch4(wl_send_hook, wl_send_hook + 1)
 
-    /* callback */
-    void wlc_btp_complete(struct wlc_info *wlc, void *pkt, uint txstatus)
+/* callback */
+void wlc_btp_complete(struct wlc_info *wlc, void *pkt, uint txstatus)
 {
     struct sk_buff *p_stats = pkt_buf_get_skb(wlc->osh, sizeof(struct stats_udp_frame));
     struct stats_udp_frame *udpfrm = (struct stats_udp_frame *)p_stats->data;
     wlc_btp_stats_read(wlc->hw, &udpfrm->stats);
-
-    struct sk_buff *p = (struct sk_buff *)pkt;
-    uint16 *frm_id = (uint16 *)(p->data + 164);
-    udpfrm->frm_id = (uint32)*frm_id;
 
     skb_pull(p_stats, sizeof(struct ethernet_ip_udp_header));
     prepend_ethernet_ipv4_udp_header(p_stats);

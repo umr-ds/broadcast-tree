@@ -33,7 +33,6 @@ labels = [
     "num rx",
     "num rx/carriersense glitches",
     "num bad PLCP",
-    "frame id",
 ]
 
 laststats = [0] * 23

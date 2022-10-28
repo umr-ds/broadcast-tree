@@ -263,8 +263,7 @@ void pprint_frame(eth_radio_btp_t *in_frame) {
               "    TX Power:..........%hhu\n"
               "    Parent Addr:.......%x:%x:%x:%x:%x:%x\n"
               "    Highest Power:.....%hhu\n"
-              "    2nd highest power:.%hhu\n"
-              "    Frame ID:..........%u",
+              "    2nd highest power:.%hhu\n",
               eth.ether_shost[0], eth.ether_shost[1], eth.ether_shost[2], eth.ether_shost[3], eth.ether_shost[4],
               eth.ether_shost[5],
               eth.ether_dhost[0], eth.ether_dhost[1], eth.ether_dhost[2], eth.ether_dhost[3], eth.ether_dhost[4],
@@ -290,7 +289,6 @@ void pprint_frame(eth_radio_btp_t *in_frame) {
               btp.parent_addr[5],
               btp.high_pwr,
               btp.snd_high_pwr,
-              btp.frame_id
     );
 }
 

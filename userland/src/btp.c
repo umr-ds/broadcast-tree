@@ -18,7 +18,6 @@ bool payload_complete = false;
 
 char dummy[1] = { 0x0 };
 uint64_t payload_transmit_time = 0;
-uint16_t frame_id = 0;
 
 bool flood;
 
@@ -139,11 +138,9 @@ int disconnect_child(void *const context, void *const value) {
     eth_btp_t child_rejection_frame = {0x0};
     build_frame(&child_rejection_frame, tmp_child->addr, 0, 0, child_reject, self.tree_id, self.max_pwr);
 
-    child_rejection_frame.btp.frame_id = frame_id;
-    frame_id++;
     send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t), self.max_pwr);
 
-    log_debug("Child disconnected. [addr: %s, tx_pwr: %i, data_len: %u, frame_id: %u]", mac_to_str(tmp_child->addr), self.max_pwr, sizeof(eth_btp_t), frame_id - 1);
+    log_debug("Child disconnected. [addr: %s, tx_pwr: %i, data_len: %u]", mac_to_str(tmp_child->addr), self.max_pwr, sizeof(eth_btp_t));
 
     return 1;
 }
@@ -200,13 +197,11 @@ void send_payload(void) {
         payload_frame.payload_header.payload_chunk_len = bytes_read;
         payload_frame.payload_header.seq_num = seq_num++;
 
-        payload_frame.btp_frame.btp.frame_id = frame_id;
-        frame_id++;
         if (send_btp_frame((uint8_t *) &payload_frame, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_header.payload_chunk_len, self.high_pwr) < 0) {
             return;
         }
 
-        log_debug("Successfully sent next chunk. [bytes_read: %i, seq_num: %i, tx_pwr: %i, data_len: %u, frame_id: %u]", bytes_read, payload_frame.payload_header.seq_num, self.high_pwr, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_header.payload_chunk_len, frame_id - 1);
+        log_debug("Successfully sent next chunk. [bytes_read: %i, seq_num: %i, tx_pwr: %i, data_len: %u]", bytes_read, payload_frame.payload_header.seq_num, self.high_pwr, BTP_PAYLOAD_HEADER_SIZE + payload_frame.payload_header.payload_chunk_len);
     }
 
     log_info("Completely sent file.");
@@ -241,11 +236,9 @@ void cycle_detection_ping(eth_radio_btp_pts_t *in_frame) {
     }
 
     /* Send packet */
-    pts_frame.btp_frame.btp.frame_id = frame_id;
-    frame_id++;
     send_btp_frame((uint8_t *) &pts_frame, sizeof(eth_btp_pts_t), self.parent.own_pwr);
 
-    log_info("Sent cycle detection frame. [tx_pwr: %i, data_len: %u, frame_id: %u]", self.parent.own_pwr, sizeof(eth_btp_pts_t), frame_id - 1);
+    log_info("Sent cycle detection frame. [tx_pwr: %i, data_len: %u]", self.parent.own_pwr, sizeof(eth_btp_pts_t));
 }
 
 void broadcast_discovery() {
@@ -254,11 +247,9 @@ void broadcast_discovery() {
     build_frame(&discovery_frame, bcast_addr, 0, 0, discovery, self.tree_id, self.max_pwr);
 
     /* Send packet */
-    discovery_frame.btp.frame_id = frame_id;
-    frame_id++;
     send_btp_frame((uint8_t *) &discovery_frame, sizeof(eth_btp_t), self.max_pwr);
 
-    log_debug("Broadcast discovery. [tx_pwr: %i, data_len: %u, frame_id: %u]", self.max_pwr, sizeof(eth_btp_t), frame_id - 1);
+    log_debug("Broadcast discovery. [tx_pwr: %i, data_len: %u]", self.max_pwr, sizeof(eth_btp_t));
 }
 
 void parse_header(eth_radio_btp_t *in_frame, uint8_t *recv_frame) {
@@ -343,11 +334,9 @@ void establish_connection(mac_addr_t potential_parent_addr, int8_t new_parent_tx
     eth_btp_t child_request_frame = {0x0};
     build_frame(&child_request_frame, potential_parent_addr, 0, 0, child_request, tree_id, new_parent_tx);
 
-    child_request_frame.btp.frame_id = frame_id;
-    frame_id++;
     send_btp_frame((uint8_t *) &child_request_frame, sizeof(eth_btp_t), new_parent_tx);
 
-    log_debug("Sent child request. [tx_pwr: %i, data_len: %u, frame_id: %u]", new_parent_tx, sizeof(eth_btp_t), frame_id - 1);
+    log_debug("Sent child request. [tx_pwr: %i, data_len: %u]", new_parent_tx, sizeof(eth_btp_t));
 }
 
 void handle_discovery(eth_radio_btp_t *in_frame) {
@@ -433,10 +422,8 @@ void reject_child(eth_radio_btp_t *in_frame) {
     build_frame(&child_rejection_frame, in_frame->eth.ether_shost, 0, 0, child_reject, in_frame->btp.tree_id,
                 self.max_pwr);
 
-    child_rejection_frame.btp.frame_id = frame_id;
-    frame_id++;
     send_btp_frame((uint8_t *) &child_rejection_frame, sizeof(eth_btp_t), self.max_pwr);
-    log_info("Rejected child. [addr: %s, tw_pwr: %i, data_len: %u, frame_id: %u]", mac_to_str(in_frame->eth.ether_shost), self.max_pwr, sizeof(eth_btp_t), frame_id - 1);
+    log_info("Rejected child. [addr: %s, tw_pwr: %i, data_len: %u]", mac_to_str(in_frame->eth.ether_shost), self.max_pwr, sizeof(eth_btp_t));
 }
 
 void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
@@ -472,11 +459,9 @@ void accept_child(eth_radio_btp_t *in_frame, int8_t child_tx_pwr) {
     build_frame(&child_confirm_frame, in_frame->eth.ether_shost, 0, 0, child_confirm, in_frame->btp.tree_id,
                 child_tx_pwr);
 
-    child_confirm_frame.btp.frame_id = frame_id;
-    frame_id++;
     send_btp_frame((uint8_t *) &child_confirm_frame, sizeof(eth_btp_t), child_tx_pwr);
 
-    log_info("Accepted child. [addr: %s, tx_pwr: %i, data_len: %u, frame_id: %u]", key, child_tx_pwr, sizeof(eth_btp_t), frame_id - 1);
+    log_info("Accepted child. [addr: %s, tx_pwr: %i, data_len: %u]", key, child_tx_pwr, sizeof(eth_btp_t));
 }
 
 void handle_child_request(eth_radio_btp_t *in_frame) {
@@ -524,11 +509,9 @@ void disconnect_from_parent(void) {
     eth_btp_t disconnect_frame = {0x0};
     build_frame(&disconnect_frame, self.parent.addr, 0, 0, parent_revocaction, self.tree_id, self.max_pwr);
 
-    disconnect_frame.btp.frame_id = frame_id;
-    frame_id++;
     send_btp_frame((uint8_t *) &disconnect_frame, sizeof(eth_btp_t), self.max_pwr);
 
-    log_info("Disconnected from parent. [addr: %s, tx_pwr: %i, data_len: %u, frame_id: %u]", mac_to_str(self.parent.addr), self.max_pwr, sizeof(eth_btp_t), frame_id - 1);
+    log_info("Disconnected from parent. [addr: %s, tx_pwr: %i, data_len: %u]", mac_to_str(self.parent.addr), self.max_pwr, sizeof(eth_btp_t));
     clear_parent(&self.parent);
 }
 
@@ -831,10 +814,8 @@ void game_round(uint64_t cur_time) {
             eth_btp_t eog = {0x0};
             build_frame(&eog, self.parent.addr, 0, 0, end_of_game, self.tree_id, self.max_pwr);
 
-            eog.btp.frame_id = frame_id;
-            frame_id++;
             send_btp_frame((uint8_t *) &eog, sizeof(eth_btp_t), self.max_pwr);
-            log_debug("Sent end of game frame. [parent addr: %s, tx_pwr: %i, data_len: %u, frame_id: %u]", mac_to_str(self.parent.addr), self.max_pwr, sizeof(eth_btp_t), frame_id - 1);
+            log_debug("Sent end of game frame. [parent addr: %s, tx_pwr: %i, data_len: %u]", mac_to_str(self.parent.addr), self.max_pwr, sizeof(eth_btp_t));
         }
     } else {
         log_debug("Game not finished, yet. [unchanged_counter: %i, all_children_fin: %s]", self.round_unchanged_cnt, children_fin ? "true" : "false");
@@ -855,12 +836,10 @@ void forward_payload(eth_radio_btp_payload_t *in_frame) {
     out_frame.payload_header.ttl = in_frame->payload_header.ttl - 1;
     memcpy(out_frame.payload, in_frame->payload, in_frame->payload_header.payload_chunk_len);
 
-    out_frame.btp_frame.btp.frame_id = frame_id;
-    frame_id++;
     if (send_btp_frame((uint8_t *) &out_frame, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_header.payload_chunk_len, self.high_pwr) < 0) {
         log_warn("Could not forward payload. [seq num: %i]", out_frame.payload_header.seq_num);
     } else {
-        log_info("Successfully forwarded payload. [seq num: %i, ttl: %u, tx_pwr: %i, data_len: %u, frame_id: %u]", out_frame.payload_header.seq_num, out_frame.payload_header.ttl, self.high_pwr, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_header.payload_chunk_len, frame_id - 1);
+        log_info("Successfully forwarded payload. [seq num: %i, ttl: %u, tx_pwr: %i, data_len: %u]", out_frame.payload_header.seq_num, out_frame.payload_header.ttl, self.high_pwr, BTP_PAYLOAD_HEADER_SIZE + out_frame.payload_header.payload_chunk_len);
     }
 }
 

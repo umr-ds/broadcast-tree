@@ -68,7 +68,6 @@ typedef struct {
     mac_addr_t parent_addr; // address of the parent of the sending node
     int8_t high_pwr; // power with which the sending node sends data frames
     int8_t snd_high_pwr; // power with which the sending node WOULD send data frames, if its furthest child were to disconnect
-    uint16_t frame_id; // frame id required to determine how long the sending of that frame required
 } __attribute__((packed)) btp_header_t;
 
 /**
