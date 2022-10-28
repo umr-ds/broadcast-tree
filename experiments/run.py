@@ -104,10 +104,6 @@ def run(conf, repeat):
     source.run_command("pkill -9 btp")
     client_nodes.run_command("pkill -9 btp")
 
-    print("# -> Starting BTP stats logging")
-    source.run_command(f'bash -c -i -l "nohup btp-stats.py {logfile_path_base}/source_$(hostname).stats > {logfile_path_base}/source_$(hostname).stats_err 2>&1 &"')
-    client_nodes.run_command(f'bash -c -i -l "nohup btp-stats.py {logfile_path_base}/$(hostname).stats > {logfile_path_base}/$(hostname).stats_err 2>&1 &"')
-
     print("# -> Starting client nodes")
     flood = "--flood" if conf['flood'] else ""
     poll_timeout = f"--poll_timeout={conf['poll_timeout']}"
@@ -147,10 +143,6 @@ def run(conf, repeat):
 
     print("# -> Waiting for experiment to finish")
     time.sleep(conf['experiment_duration'])
-
-    print("# -> Stopping BTP stats on all nodes")
-    source.run_command("pkill --signal SIGKILL btp-stats.py")
-    client_nodes.run_command("pkill --signal SIGKILL btp-stats.py")
 
     print("# -> Stopping BTP on all nodes")
     source.run_command("pkill --signal SIGINT btp")
