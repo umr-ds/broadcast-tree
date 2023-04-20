@@ -73,12 +73,13 @@ def run(conf, repeat):
         print(f"# -> Some nodes were down. Retrying {conf['retry']} times.")
         time.sleep(30)
         conf["retry"] -= 1
-        run(conf, repeat)
-        return
 
-    if conf["retry"] == 0:
-        print("# -> Could not boot all nodes. Stopping.")
-        return
+        if conf["retry"] == 0:
+            print("# -> Could not boot all nodes. Stopping.")
+            return
+        else:
+            run(conf, repeat)
+            return
 
     print("# -> Generating log file path")
     experiment_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
