@@ -37,6 +37,7 @@ iwconfig "$IFNAME" channel 1
 iwconfig "$IFNAME" ap c0:ff:ee:c0:ff:ee
 ifconfig "$IFNAME" "$IP_ADDR"
 ifconfig "$IFNAME" netmask 255.0.0.0
+iwconfig "$IFNAME" rts 10
 
 # Mount folder for logs
 BASE_PATH=/btree_data
